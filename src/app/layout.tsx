@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Hewster",
-  description: "Shared dog meal, potty, and weight tracker built for mobile.",
+  title: "Pet Notebook",
+  description: "A calm pet care tracker for meals, activity, alerts, and weight.",
 };
 
 export default function RootLayout({
