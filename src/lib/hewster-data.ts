@@ -466,7 +466,17 @@ export async function loadAppState(): Promise<HewsterAppState> {
     dailyMealsWithFedNotesPromise,
   ]);
 
-  let dailyMealsResult = dailyMealsWithFedNotesResult;
+  let dailyMealsResult: {
+    data: Array<{
+      profile_slug: string;
+      meal_id: number;
+      day_key: string;
+      actual_time: string | null;
+      status: string;
+      fed_notes?: string | null;
+    }> | null;
+    error: { message: string } | null;
+  } = dailyMealsWithFedNotesResult;
 
   if (dailyMealsWithFedNotesResult.error && dailyMealsWithFedNotesResult.error.message.includes("fed_notes")) {
     dailyMealsResult = await supabase

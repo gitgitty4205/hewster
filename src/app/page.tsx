@@ -223,16 +223,16 @@ export default function Home() {
     if (!hydrated || mealActionState === "idle") return;
 
     let cancelled = false;
+    let timeout: number | null = null;
 
     async function persistDailyMeals() {
       if (mealActionState === "saved") {
-        const timeout = window.setTimeout(() => {
+        timeout = window.setTimeout(() => {
           if (!cancelled) {
             setMealActionState("idle");
           }
         }, 1800);
-
-        return () => window.clearTimeout(timeout);
+        return;
       }
 
       setMealActionState("saving");
@@ -252,12 +252,12 @@ export default function Home() {
       }
     }
 
-    const cleanup = persistDailyMeals();
+    void persistDailyMeals();
 
     return () => {
       cancelled = true;
-      if (typeof cleanup === "function") {
-        cleanup();
+      if (timeout !== null) {
+        window.clearTimeout(timeout);
       }
     };
   }, [dailyMealState, hydrated, mealActionState, supabaseReady]);
@@ -429,7 +429,7 @@ export default function Home() {
     const timestamp = formatCurrentTime();
     const activeTodayKey = todayKey || currentTodayKey();
 
-    const nextMealState = dailyMealState.map((meal) =>
+    const nextMealState: DailyMealState[] = dailyMealState.map((meal) =>
       meal.mealId === mealId
         ? {
             ...meal,
