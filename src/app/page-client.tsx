@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  Bell,
   Clock3,
-  ShieldAlert,
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
@@ -989,16 +987,6 @@ export default function HomeApp() {
         </section>
 
         <BottomNav alertsCount={alerts.length} />
-
-        <div className="pointer-events-none fixed right-5 top-28 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 shadow-sm">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="size-4" />
-            Lindy meal alerts enabled
-          </div>
-          <div className="mt-1 flex items-center gap-2 text-rose-600">
-            <Bell className="size-3.5" /> Shared owners notified when overdue
-          </div>
-        </div>
       </div>
     </main>
   );
