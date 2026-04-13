@@ -168,7 +168,20 @@ export default function HomeApp() {
         if (cancelled) return;
 
         setTemplates(state.templates);
-        setDailyMealState(state.dailyMealState);
+        setDailyMealState(
+          state.templates.map((template) => {
+            const existing = state.dailyMealState.find((entry) => entry.mealId === template.id);
+            return (
+              existing ?? {
+                mealId: template.id,
+                actualTime: null,
+                status: "upcoming" as const,
+                fedNotes: null,
+                dayKey: state.todayKey,
+              }
+            );
+          })
+        );
         setActivityLogs(state.activityLogs);
         setManualAlerts(state.manualAlerts ?? []);
         setMealLogs(state.mealLogs ?? []);
