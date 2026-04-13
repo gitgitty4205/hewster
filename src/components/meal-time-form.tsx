@@ -54,10 +54,10 @@ export function MealTimeForm({ mealName, actualTime, onActualTimeChange, onSave,
       </label>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button onClick={onSave} className="rounded-full">Save time</Button>
-        <Button variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
+        <Button type="button" onClick={onSave} className="rounded-full">Save time</Button>
+        <Button type="button" variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
         {onUndo ? (
-          <Button variant="outline" onClick={onUndo} className="rounded-full text-rose-600">
+          <Button type="button" variant="outline" onClick={onUndo} className="rounded-full text-rose-600">
             Undo marked fed
           </Button>
         ) : null}

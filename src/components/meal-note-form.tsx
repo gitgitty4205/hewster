@@ -30,8 +30,8 @@ export function MealNoteForm({ mealName, note, onNoteChange, onSave, onCancel }:
       </label>
 
       <div className="mt-4 flex gap-2">
-        <Button onClick={onSave} className="rounded-full">Save note</Button>
-        <Button variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
+        <Button type="button" onClick={onSave} className="rounded-full">Save note</Button>
+        <Button type="button" variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
       </div>
     </section>
   );
