@@ -768,7 +768,7 @@ export default function HomeApp() {
           <header className="mb-6">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <Link href="/hewie" className="text-sm font-medium text-violet-500">
+                <Link href="/hewie" className="text-sm font-bold text-violet-500">
                   Hewster&apos;s Notebook
                 </Link>
                 <div className="skeleton-pulse mt-1 h-8 w-56 rounded-xl bg-white/40" />
@@ -797,12 +797,12 @@ export default function HomeApp() {
   }
 
   return (
-    <main className="min-h-screen bg-[#979ca7] text-zinc-900">
+    <main className="min-h-screen bg-zinc-100 text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <Link href="/hewie" className="text-sm font-medium text-violet-500">
+              <Link href="/hewie" className="text-sm font-bold text-violet-500">
                 Hewster&apos;s Notebook
               </Link>
               <div className="mt-1 flex flex-col gap-1">
