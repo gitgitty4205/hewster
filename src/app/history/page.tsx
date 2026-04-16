@@ -1,6 +1,8 @@
 "use client";
 
 import { BellPlus, Candy, Check, Droplets, Ellipsis, Trees } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
@@ -81,6 +83,37 @@ function inferMealHistoryDate(actualTime: string) {
   candidate.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
 
   return historyDayKeyFromDate(candidate);
+}
+
+function formatPoopBadgeLabel(detail: string) {
+  return detail
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("-");
+}
+
+function poopBadgeClasses(detail: string | null) {
+  const normalized = detail?.trim().toLowerCase() ?? "";
+
+  switch (normalized) {
+    case "no poop":
+      return "bg-white text-zinc-600 ring-1 ring-zinc-300";
+    case "constipated":
+      return "bg-zinc-700 text-white";
+    case "normal":
+      return "bg-amber-700 text-white";
+    case "normal-hard":
+    case "normal-soft":
+      return "bg-orange-800 text-white";
+    case "soft":
+      return "bg-orange-500 text-white";
+    case "1 time diarrhea":
+    case "repeated severe diarrhea":
+    case "severe diarrhea":
+      return "bg-rose-500 text-white";
+    default:
+      return "bg-orange-800 text-white";
+  }
 }
 
 function getActivityStyle(activityType: ActivityLog["activityType"]) {
@@ -175,18 +208,39 @@ export default function HistoryPage() {
   const [manualAlerts, setManualAlerts] = useState<ManualAlert[]>([]);
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    const fallbackTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        setHydrated(true);
+      }
+    }, 2200);
+
     async function hydrate() {
-      const state = await loadAppState();
-      setTemplates(state.templates);
-      setMealLogs(state.mealLogs ?? []);
-      setActivityLogs(state.activityLogs);
-      setManualAlerts(state.manualAlerts ?? []);
-      setWeightLogs(state.weightLogs ?? []);
+      try {
+        const state = await loadAppState();
+        if (cancelled) return;
+        setTemplates(state.templates);
+        setMealLogs(state.mealLogs ?? []);
+        setActivityLogs(state.activityLogs);
+        setManualAlerts(state.manualAlerts ?? []);
+        setWeightLogs(state.weightLogs ?? []);
+      } finally {
+        if (!cancelled) {
+          window.clearTimeout(fallbackTimer);
+          setHydrated(true);
+        }
+      }
     }
 
     hydrate();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(fallbackTimer);
+    };
   }, []);
 
   const historyDays = useMemo<HistoryDay[]>(() => {
@@ -207,7 +261,19 @@ export default function HistoryPage() {
       return days.get(day)!;
     };
 
+    const latestMealsByDayAndMealId = new Map<string, MealLog>();
+
     mealLogs.forEach((meal) => {
+      const day = meal.dayKey ?? inferMealHistoryDate(meal.actualTime);
+      const key = `${day}-${meal.mealId}`;
+      const existing = latestMealsByDayAndMealId.get(key);
+
+      if (!existing || (meal.createdAt ?? "") >= (existing.createdAt ?? "")) {
+        latestMealsByDayAndMealId.set(key, meal);
+      }
+    });
+
+    latestMealsByDayAndMealId.forEach((meal) => {
       const template = templatesById.get(meal.mealId);
       const day = meal.dayKey ?? inferMealHistoryDate(meal.actualTime);
       const targetDay = ensureDay(day);
@@ -292,13 +358,61 @@ export default function HistoryPage() {
       }));
   }, [activityLogs, manualAlerts, mealLogs, templates, weightLogs]);
 
+  if (!hydrated) {
+    return (
+      <main className="min-h-screen bg-[#979ca7] text-zinc-900">
+        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
+          <header className="mb-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Link href="/hewie" className="text-sm font-medium text-violet-500">
+                  Hewster&apos;s Notebook
+                </Link>
+                <div className="skeleton-pulse mt-1 h-10 w-36 rounded-xl bg-white/40" />
+              </div>
+              <Image
+                src="/hewster-profile.jpg"
+                alt="Hewster"
+                width={48}
+                height={48}
+                className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
+              />
+            </div>
+            <div className="skeleton-pulse mt-2 h-4 w-72 rounded-xl bg-white/30" />
+          </header>
+
+          <div className="space-y-4">
+            <div className="skeleton-pulse h-40 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
+            <div className="skeleton-pulse h-40 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
+            <div className="skeleton-pulse h-40 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
+          </div>
+
+          <BottomNav />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#979ca7] text-zinc-900">
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
+      <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
-          <p className="text-sm font-medium text-violet-500">Hewster</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">History</h1>
-          <p className="mt-2 text-sm leading-6 text-zinc-600">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Link href="/hewie" className="text-sm font-medium text-violet-500">
+                Hewster&apos;s Notebook
+              </Link>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight">History</h1>
+            </div>
+            <Image
+              src="/hewster-profile.jpg"
+              alt="Hewster"
+              width={48}
+              height={48}
+              className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
+            />
+          </div>
+          <p className="mt-1 text-sm leading-5 text-zinc-600">
             Daily history of meals, activities, notes, and weight entries.
           </p>
         </header>
@@ -336,7 +450,7 @@ export default function HistoryPage() {
                                 <p className="text-sm text-zinc-500">{meal.actualTime}</p>
                               </div>
                               <p className="mt-2 text-sm text-zinc-600">{meal.food}</p>
-                              <p className="mt-1 text-sm text-zinc-500">Default Notes: {meal.notes}</p>
+                              {meal.notes ? <p className="mt-1 text-sm text-zinc-500">Default Notes: {meal.notes}</p> : null}
                               {meal.fedNotes ? (
                                 <p className="mt-1 text-sm font-bold text-zinc-700">Fed Notes: {meal.fedNotes}</p>
                               ) : null}
@@ -398,7 +512,16 @@ export default function HistoryPage() {
                                   </div>
                                   <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
                                 </div>
-                                <p className="mt-2 text-sm text-zinc-600">{renderActivityDetail(activity)}</p>
+                                {activity.activityType === "poop" && activity.detail ? (
+                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${poopBadgeClasses(activity.detail)}`}>
+                                      {formatPoopBadgeLabel(activity.detail)}
+                                    </span>
+                                    {activity.notes ? <p className="text-sm text-zinc-600">{activity.notes}</p> : null}
+                                  </div>
+                                ) : (
+                                  <p className="mt-2 text-sm text-zinc-600">{renderActivityDetail(activity)}</p>
+                                )}
                               </article>
                             );
                           })}

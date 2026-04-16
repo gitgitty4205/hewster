@@ -1,6 +1,8 @@
 "use client";
 
 import { BellPlus, TriangleAlert } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
@@ -27,19 +29,40 @@ export default function AlertsPage() {
   const [manualAlerts, setManualAlerts] = useState<ManualAlert[]>([]);
   const [titleValue, setTitleValue] = useState("");
   const [messageValue, setMessageValue] = useState("");
+  const [hydrated, setHydrated] = useState(false);
   const supabaseReady = isSupabaseConfigured();
 
   useEffect(() => {
+    let cancelled = false;
+    const fallbackTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        setHydrated(true);
+      }
+    }, 2200);
+
     async function hydrate() {
-      const state = await loadAppState();
-      setTemplates(state.templates);
-      setDailyMealState(state.dailyMealState);
-      setActivityLogs(state.activityLogs);
-      setWeightLogs(state.weightLogs ?? []);
-      setManualAlerts(state.manualAlerts ?? []);
+      try {
+        const state = await loadAppState();
+        if (cancelled) return;
+        setTemplates(state.templates);
+        setDailyMealState(state.dailyMealState);
+        setActivityLogs(state.activityLogs);
+        setWeightLogs(state.weightLogs ?? []);
+        setManualAlerts(state.manualAlerts ?? []);
+      } finally {
+        if (!cancelled) {
+          window.clearTimeout(fallbackTimer);
+          setHydrated(true);
+        }
+      }
     }
 
     hydrate();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(fallbackTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -100,13 +123,58 @@ export default function AlertsPage() {
     }
   };
 
+  if (!hydrated) {
+    return (
+      <main className="min-h-screen bg-[#979ca7] text-zinc-900">
+        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
+          <header className="mb-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Link href="/hewie" className="text-sm font-medium text-violet-500">
+                  Hewster&apos;s Notebook
+                </Link>
+                <div className="skeleton-pulse mt-1 h-10 w-32 rounded-xl bg-white/40" />
+              </div>
+              <Image
+                src="/hewster-profile.jpg"
+                alt="Hewster"
+                width={48}
+                height={48}
+                className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
+              />
+            </div>
+          </header>
+
+          <div className="space-y-4">
+            <div className="skeleton-pulse h-64 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
+            <div className="skeleton-pulse h-40 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
+          </div>
+
+          <BottomNav />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#979ca7] text-zinc-900">
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
+      <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
-          <p className="text-sm font-medium text-violet-500">Hewster</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Alerts</h1>
-
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Link href="/hewie" className="text-sm font-medium text-violet-500">
+                Hewster&apos;s Notebook
+              </Link>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight">Alerts</h1>
+            </div>
+            <Image
+              src="/hewster-profile.jpg"
+              alt="Hewster"
+              width={48}
+              height={48}
+              className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
+            />
+          </div>
         </header>
 
         <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">

@@ -572,7 +572,14 @@ export async function loadAppState(): Promise<HewsterAppState> {
 
   const mealLogs = [...remoteMealLogs, ...localState.mealLogs]
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
-    .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));
+    .filter((entry, index, all) => {
+      const sameIdIndex = all.findIndex((candidate) => candidate.id === entry.id);
+      const sameMealDayIndex = all.findIndex(
+        (candidate) => candidate.dayKey === entry.dayKey && candidate.mealId === entry.mealId
+      );
+
+      return index === sameIdIndex && index === sameMealDayIndex;
+    });
 
   const manualAlerts = [...remoteManualAlerts, ...localState.manualAlerts].filter(
     (entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id)

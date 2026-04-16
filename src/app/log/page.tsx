@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { ActivityDetailForm } from "@/components/activity-detail-form";
@@ -48,15 +50,36 @@ export default function LogPage() {
   const [detailValue, setDetailValue] = useState("");
   const [notesValue, setNotesValue] = useState("");
   const [happenedAtValue, setHappenedAtValue] = useState(nowForTimeInput());
+  const [hydrated, setHydrated] = useState(false);
   const supabaseReady = isSupabaseConfigured();
 
   useEffect(() => {
+    let cancelled = false;
+    const fallbackTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        setHydrated(true);
+      }
+    }, 2200);
+
     async function hydrate() {
-      const state = await loadAppState();
-      setActivityLogs(state.activityLogs);
+      try {
+        const state = await loadAppState();
+        if (cancelled) return;
+        setActivityLogs(state.activityLogs);
+      } finally {
+        if (!cancelled) {
+          window.clearTimeout(fallbackTimer);
+          setHydrated(true);
+        }
+      }
     }
 
     hydrate();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(fallbackTimer);
+    };
   }, []);
 
   const todayActivityLogs = useMemo(() => {
@@ -172,12 +195,59 @@ export default function LogPage() {
     }
   };
 
+  if (!hydrated) {
+    return (
+      <main className="min-h-screen bg-[#979ca7] text-zinc-900">
+        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
+          <header className="mb-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Link href="/hewie" className="text-sm font-medium text-violet-500">
+                  Hewster&apos;s Notebook
+                </Link>
+                <div className="skeleton-pulse mt-1 h-10 w-44 rounded-xl bg-white/40" />
+              </div>
+              <Image
+                src="/hewster-profile.jpg"
+                alt="Hewster"
+                width={48}
+                height={48}
+                className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
+              />
+            </div>
+            <div className="skeleton-pulse mt-2 h-4 w-72 rounded-xl bg-white/30" />
+          </header>
+
+          <div className="space-y-4">
+            <div className="skeleton-pulse h-48 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
+            <div className="skeleton-pulse h-64 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
+          </div>
+
+          <BottomNav />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#979ca7] text-zinc-900">
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
+      <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
-          <p className="text-sm font-medium text-violet-500">Hewster</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Log Activity</h1>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Link href="/hewie" className="text-sm font-medium text-violet-500">
+                Hewster&apos;s Notebook
+              </Link>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight">Log Activity</h1>
+            </div>
+            <Image
+              src="/hewster-profile.jpg"
+              alt="Hewster"
+              width={48}
+              height={48}
+              className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
+            />
+          </div>
           <p className="mt-2 text-sm leading-6 text-zinc-600">
             Quick activity tracking for potty breaks, hikes, treats, and anything else you want to remember.
           </p>
@@ -185,28 +255,32 @@ export default function LogPage() {
 
         <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} />
 
-        {detailActivityType ? (
-          <ActivityDetailForm
-            activityType={detailActivityType as Exclude<ActivityType, "pee">}
-            detail={detailValue}
-            notes={notesValue}
-            happenedAt={happenedAtValue}
-            isEditing={Boolean(editingActivityId)}
-            onDetailChange={setDetailValue}
-            onNotesChange={setNotesValue}
-            onHappenedAtChange={setHappenedAtValue}
-            onSave={saveDetailedActivity}
-            onCancel={resetEditor}
-            onDelete={editingActivityId ? deleteActivity : undefined}
-            saving={activityState === "saving"}
-          />
-        ) : null}
-
         <ActivityFeed
           activityLogs={todayActivityLogs}
           grouped
           title="Activity History"
           onSelectActivity={openEditorForActivity}
+          renderInlineEditor={(activity) =>
+            activity.id === editingActivityId || (!editingActivityId && detailActivityType === activity.activityType && activity.happenedAt === todayActivityLogs[0]?.happenedAt)
+              ? (
+                  <ActivityDetailForm
+                    activityType={detailActivityType as Exclude<ActivityType, "pee">}
+                    detail={detailValue}
+                    notes={notesValue}
+                    happenedAt={happenedAtValue}
+                    isEditing={Boolean(editingActivityId)}
+                    embedded
+                    onDetailChange={setDetailValue}
+                    onNotesChange={setNotesValue}
+                    onHappenedAtChange={setHappenedAtValue}
+                    onSave={saveDetailedActivity}
+                    onCancel={resetEditor}
+                    onDelete={editingActivityId ? deleteActivity : undefined}
+                    saving={activityState === "saving"}
+                  />
+                )
+              : null
+          }
         />
 
         <BottomNav />

@@ -8,13 +8,15 @@ type Props = {
   alertsCount?: number;
 };
 
+const APP_BASE = "/hewie";
+
 const items = [
-  { label: "Today", href: "/" },
-  { label: "Log", href: "/log" },
-  { label: "Weight", href: "/weight" },
-  { label: "History", href: "/history" },
-  { label: "alerts", href: "/alerts", icon: BellPlus },
-  { label: "settings", href: "/meals", icon: Settings2 },
+  { label: "Today", href: `${APP_BASE}` },
+  { label: "Log", href: `${APP_BASE}/log` },
+  { label: "Weight", href: `${APP_BASE}/weight` },
+  { label: "History", href: `${APP_BASE}/history` },
+  { label: "alerts", href: `${APP_BASE}/alerts`, icon: BellPlus },
+  { label: "settings", href: `${APP_BASE}/meals`, icon: Settings2 },
 ];
 
 export function BottomNav({ alertsCount = 0 }: Props) {
@@ -24,7 +26,7 @@ export function BottomNav({ alertsCount = 0 }: Props) {
     <div className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-md px-3 pb-3">
       <nav className="flex items-center justify-between gap-1 rounded-[28px] border border-white/50 bg-white/82 px-1.5 py-2 shadow-[0_-10px_28px_rgba(15,23,42,0.10)] backdrop-blur-md">
         {items.map((item) => {
-          const active = pathname === item.href || (item.href === "/" && pathname === "/poop-history");
+          const active = pathname === item.href || (item.href === APP_BASE && pathname === "/poop-history");
           const showBadge = item.href === "/alerts" && alertsCount > 0;
 
           return (

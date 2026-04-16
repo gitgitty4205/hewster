@@ -10,6 +10,7 @@ type Props = {
   notes: string;
   happenedAt: string;
   isEditing?: boolean;
+  embedded?: boolean;
   onDetailChange: (value: string) => void;
   onNotesChange: (value: string) => void;
   onHappenedAtChange: (value: string) => void;
@@ -22,13 +23,14 @@ type Props = {
 const presets: Record<ActivityType, string[]> = {
   pee: [],
   poop: [
-    "No poop",
+    "No Poop",
     "Constipated",
-    "Normal-hard",
-    "Normal-soft",
+    "Normal-Hard",
+    "Normal",
+    "Normal-Soft",
     "Soft",
-    "1 time diarrhea",
-    "Repeated severe diarrhea",
+    "1 Time Diarrhea",
+    "Repeated Severe Diarrhea",
   ],
   hike: ["Short hiking", "Long hike"],
   treat: ["Small chomper", "Big chomper", "Other"],
@@ -49,6 +51,7 @@ export function ActivityDetailForm({
   notes,
   happenedAt,
   isEditing = false,
+  embedded = false,
   onDetailChange,
   onNotesChange,
   onHappenedAtChange,
@@ -61,10 +64,10 @@ export function ActivityDetailForm({
   const showDetailField = activityType === "other";
 
   return (
-    <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
+    <section className={embedded ? "mt-3 border-t border-zinc-200 pt-4" : "rounded-[1.5rem] border border-zinc-200 bg-white/80 p-4"}>
       <div className="mb-4">
         <h2 className="text-lg font-semibold">
-          {isEditing ? "Edit" : "Add details for"} {formatActivityLabel(activityType).toLowerCase()}
+          {isEditing ? "Edit" : "Log"} {formatActivityLabel(activityType)}
         </h2>
         <p className="text-sm text-zinc-500">Mostly tap-based, with optional notes when helpful.</p>
       </div>
@@ -137,7 +140,7 @@ export function ActivityDetailForm({
           {saving ? "Saving..." : isEditing ? "Save changes" : "Save details"}
         </Button>
         <Button variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
-        {isEditing && onDelete ? (
+        {onDelete ? (
           <Button variant="outline" onClick={onDelete} className="rounded-full text-rose-600">
             Delete
           </Button>

@@ -37,7 +37,7 @@ export function renderActivityDetail(activity: ActivityLog) {
     return `${activity.detail}, ${activity.notes}`;
   }
 
-  return activity.detail ?? activity.notes ?? "Quick log";
+  return activity.detail ?? activity.notes ?? "";
 }
 
 export function groupActivitiesByDay(activityLogs: ActivityLog[]) {

@@ -9,6 +9,7 @@ type Props = {
   activityState: "idle" | "saved" | "saving" | "error";
   onQuickLog: (activityType: ActivityType) => void;
   includeOther?: boolean;
+  children?: React.ReactNode;
 };
 
 const quickActions = [
@@ -54,7 +55,7 @@ const quickActions = [
   },
 ];
 
-export function QuickLogCard({ activityState, onQuickLog, includeOther = true }: Props) {
+export function QuickLogCard({ activityState, onQuickLog, includeOther = true, children }: Props) {
   return (
     <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
       <div className="mb-4 flex items-center justify-between">
@@ -92,6 +93,8 @@ export function QuickLogCard({ activityState, onQuickLog, includeOther = true }:
           );
         })}
       </div>
+
+      {children ? <div className="mt-3 pt-1">{children}</div> : null}
     </section>
   );
 }

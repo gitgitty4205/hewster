@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   Clock3,
   TriangleAlert,
@@ -69,6 +70,20 @@ function formatTodayHeaderDateTime() {
   }).format(new Date());
 }
 
+function buildMealLog(meal: DailyMeal, fedNotes: string | null, dayKey: string): MealLog {
+  return {
+    id: `${dayKey}-${meal.id}`,
+    profileSlug: HEWSTER_PROFILE_SLUG,
+    dayKey,
+    mealId: meal.id,
+    mealName: meal.name,
+    food: meal.food,
+    defaultNotes: meal.notes,
+    fedNotes,
+    actualTime: meal.actualTime ?? "",
+  };
+}
+
 function parseClockMinutes(value: string) {
   const normalized = value.trim().replace(/\s+/g, " ").toUpperCase();
   const parts = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s?(AM|PM)$/i);
@@ -84,18 +99,11 @@ function parseClockMinutes(value: string) {
   return hours * 60 + minutes;
 }
 
-function buildMealLog(meal: DailyMeal, fedNotes: string | null, dayKey: string): MealLog {
-  return {
-    id: `${dayKey}-${meal.id}`,
-    profileSlug: HEWSTER_PROFILE_SLUG,
-    dayKey,
-    mealId: meal.id,
-    mealName: meal.name,
-    food: meal.food,
-    defaultNotes: meal.notes,
-    fedNotes,
-    actualTime: meal.actualTime ?? "",
-  };
+function formatPoopBadgeLabel(detail: string) {
+  return detail
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("-");
 }
 
 function poopBadgeClasses(detail: string | null) {
@@ -106,15 +114,17 @@ function poopBadgeClasses(detail: string | null) {
       return "bg-white text-zinc-600 ring-1 ring-zinc-300";
     case "constipated":
       return "bg-zinc-700 text-white";
+    case "normal":
+      return "bg-amber-700 text-white";
     case "normal-hard":
     case "normal-soft":
       return "bg-orange-800 text-white";
     case "soft":
       return "bg-orange-500 text-white";
     case "1 time diarrhea":
-      return "bg-rose-500 text-white";
+    case "repeated severe diarrhea":
     case "severe diarrhea":
-      return "bg-rose-700 text-white";
+      return "bg-rose-500 text-white";
     default:
       return "bg-orange-800 text-white";
   }
@@ -133,6 +143,7 @@ export default function HomeApp() {
   );
   const [detailActivityType, setDetailActivityType] = useState<ActivityType | null>(null);
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+  const [pendingQuickLogId, setPendingQuickLogId] = useState<string | null>(null);
   const [detailValue, setDetailValue] = useState("");
   const [notesValue, setNotesValue] = useState("");
   const [happenedAtValue, setHappenedAtValue] = useState(() =>
@@ -159,6 +170,14 @@ export default function HomeApp() {
 
   useEffect(() => {
     let cancelled = false;
+    const fallbackTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        initialLoadComplete.current = true;
+        setHeaderDateTime(formatTodayHeaderDateTime());
+        setTodayKey((current) => current || currentTodayKey());
+        setHydrated(true);
+      }
+    }, 2200);
 
     async function hydrate() {
       try {
@@ -187,8 +206,11 @@ export default function HomeApp() {
         setHeaderDateTime(formatTodayHeaderDateTime());
       } catch {
         if (cancelled) return;
+        setHeaderDateTime(formatTodayHeaderDateTime());
+        setTodayKey((current) => current || currentTodayKey());
       } finally {
         if (!cancelled) {
+          window.clearTimeout(fallbackTimer);
           initialLoadComplete.current = true;
           setHydrated(true);
         }
@@ -199,6 +221,7 @@ export default function HomeApp() {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(fallbackTimer);
     };
   }, []);
 
@@ -357,21 +380,6 @@ export default function HomeApp() {
     });
   }, [activityLogs, todayKey]);
 
-  const alerts = useMemo(
-    () => resolveAlerts(templates, todayMealState, todayActivityLogs, manualAlerts),
-    [templates, todayMealState, todayActivityLogs, manualAlerts]
-  );
-
-  const poopRecords = useMemo(() => {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setHours(0, 0, 0, 0);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-
-    return activityLogs
-      .filter((activity) => activity.activityType === "poop" && new Date(activity.happenedAt) >= sevenDaysAgo)
-      .sort((a, b) => b.happenedAt.localeCompare(a.happenedAt));
-  }, [activityLogs]);
-
   const dynamicTimeline = useMemo(() => {
     const mealTimeline = dailyMeals
       .filter((meal) => meal.actualTime)
@@ -435,6 +443,21 @@ export default function HomeApp() {
 
     return [...mealTimeline, ...activityTimeline, ...manualAlertTimeline].sort((a, b) => a.sortMinutes - b.sortMinutes);
   }, [dailyMeals, todayActivityLogs, todayMealState, manualAlerts, todayKey]);
+
+  const alerts = useMemo(
+    () => resolveAlerts(templates, todayMealState, todayActivityLogs, manualAlerts),
+    [templates, todayMealState, todayActivityLogs, manualAlerts]
+  );
+
+  const poopRecords = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+
+    return activityLogs
+      .filter((activity) => activity.activityType === "poop" && new Date(activity.happenedAt) >= sevenDaysAgo)
+      .sort((a, b) => b.happenedAt.localeCompare(a.happenedAt));
+  }, [activityLogs]);
 
   const markMealFed = async (mealId: number) => {
     const timestamp = formatCurrentTime();
@@ -632,6 +655,7 @@ export default function HomeApp() {
   const resetActivityEditor = () => {
     setDetailActivityType(null);
     setEditingActivityId(null);
+    setPendingQuickLogId(null);
     setDetailValue("");
     setNotesValue("");
     setHappenedAtValue(
@@ -641,14 +665,6 @@ export default function HomeApp() {
         hour12: false,
       }).format(new Date())
     );
-  };
-
-  const openEditorForActivity = (activity: ActivityLog) => {
-    setDetailActivityType(activity.activityType);
-    setEditingActivityId(activity.id);
-    setDetailValue(activity.detail ?? "");
-    setNotesValue(activity.notes ?? "");
-    setHappenedAtValue(toTimeInputValue(activity.happenedAt));
   };
 
   const saveActivity = async (activity: ActivityLog, mode: "create" | "update") => {
@@ -700,7 +716,12 @@ export default function HomeApp() {
     };
 
     await saveActivity(activity, "create");
-    openEditorForActivity(activity);
+    setPendingQuickLogId(activity.id);
+    setDetailActivityType(activity.activityType);
+    setEditingActivityId(activity.id);
+    setDetailValue("");
+    setNotesValue("");
+    setHappenedAtValue(toTimeInputValue(activity.happenedAt));
   };
 
   const saveDetailedActivity = async () => {
@@ -740,16 +761,64 @@ export default function HomeApp() {
     }
   };
 
+  if (!hydrated) {
+    return (
+      <main className="min-h-screen bg-[#979ca7] text-zinc-900">
+        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
+          <header className="mb-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Link href="/hewie" className="text-sm font-medium text-violet-500">
+                  Hewster&apos;s Notebook
+                </Link>
+                <div className="skeleton-pulse mt-1 h-8 w-56 rounded-xl bg-white/40" />
+                <div className="skeleton-pulse mt-1 h-4 w-52 rounded-xl bg-white/30" />
+              </div>
+              <Image
+                src="/hewster-profile.jpg"
+                alt="Hewster"
+                width={48}
+                height={48}
+                className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
+              />
+            </div>
+          </header>
+
+          <div className="space-y-4">
+            <div className="skeleton-pulse h-64 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
+            <div className="skeleton-pulse h-52 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
+            <div className="skeleton-pulse h-40 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
+          </div>
+
+          <BottomNav />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#979ca7] text-zinc-900">
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
+      <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
-          <p className="text-sm font-medium text-violet-500">Pet Notebook</p>
-          <div className="mt-1 flex flex-col gap-1">
-            <p className="text-xl font-bold tracking-tight text-zinc-700">{headerDateTime}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Link href="/hewie" className="text-sm font-medium text-violet-500">
+                Hewster&apos;s Notebook
+              </Link>
+              <div className="mt-1 flex flex-col gap-1">
+                <p className="text-xl font-bold tracking-tight text-zinc-700">{headerDateTime}</p>
+              </div>
+            </div>
+            <Image
+              src="/hewster-profile.jpg"
+              alt="Hewster"
+              width={48}
+              height={48}
+              className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
+            />
           </div>
-          <p className="mt-2 max-w-xs text-sm leading-6 text-zinc-600">
-            Shared meal tracking and potty logs for everyone caring for Hewster.
+          <p className="mt-1 text-xs leading-4 text-zinc-600">
+            Shared meal tracking and potty logs for Hewster.
           </p>
         </header>
 
@@ -806,55 +875,24 @@ export default function HomeApp() {
           </section>
         ) : null}
 
-        <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} includeOther={false} />
-
-        {detailActivityType ? (
-          <ActivityDetailForm
-            activityType={detailActivityType}
-            detail={detailValue}
-            notes={notesValue}
-            happenedAt={happenedAtValue}
-            isEditing={Boolean(editingActivityId)}
-            onDetailChange={setDetailValue}
-            onNotesChange={setNotesValue}
-            onHappenedAtChange={setHappenedAtValue}
-            onSave={saveDetailedActivity}
-            onCancel={resetActivityEditor}
-            onDelete={editingActivityId ? deleteActivity : undefined}
-            saving={activityState === "saving"}
-          />
-        ) : null}
-
-        {editingMealTimeId !== null ? (
-          <MealTimeForm
-            mealName={dailyMeals.find((meal) => meal.id === editingMealTimeId)?.name ?? "Meal"}
-            actualTime={editingMealTimeValue}
-            onActualTimeChange={setEditingMealTimeValue}
-            onSave={saveMealTime}
-            onCancel={() => {
-              setEditingMealTimeId(null);
-              setEditingMealTimeValue("");
-            }}
-            onUndo={() => {
-              undoMealFed(editingMealTimeId);
-              setEditingMealTimeId(null);
-              setEditingMealTimeValue("");
-            }}
-          />
-        ) : null}
-
-        {editingMealNoteId !== null ? (
-          <MealNoteForm
-            mealName={dailyMeals.find((meal) => meal.id === editingMealNoteId)?.name ?? "Meal"}
-            note={editingMealNoteValue}
-            onNoteChange={setEditingMealNoteValue}
-            onSave={saveMealNote}
-            onCancel={() => {
-              setEditingMealNoteId(null);
-              setEditingMealNoteValue("");
-            }}
-          />
-        ) : null}
+        <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} includeOther={false}>
+          {pendingQuickLogId && detailActivityType ? (
+            <ActivityDetailForm
+              activityType={detailActivityType}
+              detail={detailValue}
+              notes={notesValue}
+              happenedAt={happenedAtValue}
+              embedded
+              onDetailChange={setDetailValue}
+              onNotesChange={setNotesValue}
+              onHappenedAtChange={setHappenedAtValue}
+              onSave={saveDetailedActivity}
+              onCancel={resetActivityEditor}
+              onDelete={editingActivityId ? deleteActivity : undefined}
+              saving={activityState === "saving"}
+            />
+          ) : null}
+        </QuickLogCard>
 
         <section className="mb-4 rounded-3xl bg-rose-50/80 p-5 shadow-sm ring-1 ring-rose-200">
           <div className="mb-4 flex items-center justify-between">
@@ -928,7 +966,6 @@ export default function HomeApp() {
                         Fed notes: {editingMealNoteValue.trim()}
                       </p>
                     ) : null}
-                    {meal.status === "done" ? null : null}
                   </div>
                   <button
                     className="min-w-[96px] rounded-full bg-rose-100 px-3 py-2 text-center text-xs font-semibold text-rose-600 ring-1 ring-rose-200 transition hover:bg-rose-200"
@@ -937,6 +974,41 @@ export default function HomeApp() {
                     Fed notes
                   </button>
                 </div>
+
+                {editingMealTimeId === meal.id ? (
+                  <div className="mt-3">
+                    <MealTimeForm
+                      mealName={meal.name}
+                      actualTime={editingMealTimeValue}
+                      onActualTimeChange={setEditingMealTimeValue}
+                      onSave={saveMealTime}
+                      onCancel={() => {
+                        setEditingMealTimeId(null);
+                        setEditingMealTimeValue("");
+                      }}
+                      onUndo={() => {
+                        undoMealFed(meal.id);
+                        setEditingMealTimeId(null);
+                        setEditingMealTimeValue("");
+                      }}
+                    />
+                  </div>
+                ) : null}
+
+                {editingMealNoteId === meal.id ? (
+                  <div className="mt-3">
+                    <MealNoteForm
+                      mealName={meal.name}
+                      note={editingMealNoteValue}
+                      onNoteChange={setEditingMealNoteValue}
+                      onSave={saveMealNote}
+                      onCancel={() => {
+                        setEditingMealNoteId(null);
+                        setEditingMealNoteValue("");
+                      }}
+                    />
+                  </div>
+                ) : null}
               </article>
             ))}
           </div>
@@ -974,7 +1046,7 @@ export default function HomeApp() {
                       <p className="mt-1 text-xs text-zinc-500">{formatActivityTime(record.happenedAt)}</p>
                     </div>
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${poopBadgeClasses(record.detail)}`}>
-                      {record.detail ?? "Logged"}
+                      {record.detail ? formatPoopBadgeLabel(record.detail) : "Logged"}
                     </span>
                   </div>
                   {record.notes ? <p className="mt-2 text-sm text-zinc-600">{record.notes}</p> : null}

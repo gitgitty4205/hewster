@@ -17,7 +17,39 @@ type Props = {
   subtitle?: string;
   grouped?: boolean;
   onSelectActivity?: (activity: ActivityLog) => void;
+  renderInlineEditor?: (activity: ActivityLog) => React.ReactNode;
 };
+
+function formatPoopBadgeLabel(detail: string) {
+  return detail
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("-");
+}
+
+function poopBadgeClasses(detail: string | null) {
+  const normalized = detail?.trim().toLowerCase() ?? "";
+
+  switch (normalized) {
+    case "no poop":
+      return "bg-white text-zinc-600 ring-1 ring-zinc-300";
+    case "constipated":
+      return "bg-zinc-700 text-white";
+    case "normal":
+      return "bg-amber-700 text-white";
+    case "normal-hard":
+    case "normal-soft":
+      return "bg-orange-800 text-white";
+    case "soft":
+      return "bg-orange-500 text-white";
+    case "1 time diarrhea":
+    case "repeated severe diarrhea":
+    case "severe diarrhea":
+      return "bg-rose-500 text-white";
+    default:
+      return "bg-orange-800 text-white";
+  }
+}
 
 function getActivityStyle(activityType: ActivityLog["activityType"]) {
   switch (activityType) {
@@ -116,6 +148,7 @@ export function ActivityFeed({
   subtitle = "",
   grouped = false,
   onSelectActivity,
+  renderInlineEditor,
 }: Props) {
   if (grouped) {
     const groupedLogs = groupActivitiesByDay(activityLogs);
@@ -138,23 +171,36 @@ export function ActivityFeed({
                   const style = getActivityStyle(activity.activityType);
                   const Icon = style.icon;
 
+                  const inlineEditor = renderInlineEditor ? renderInlineEditor(activity) : null;
+
                   return (
-                    <button
-                      key={activity.id}
-                      className={`block w-full rounded-2xl p-4 text-left ring-1 ${style.card}`}
-                      onClick={() => onSelectActivity?.(activity)}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
-                            {Icon ? <Icon className="size-4.5" /> : <span className="text-lg leading-none">{style.iconText}</span>}
-                          </span>
-                          <p className="font-medium text-zinc-900">{formatActivityLabel(activity.activityType)}</p>
+                    <div key={activity.id} className={`rounded-2xl p-4 ring-1 ${style.card}`}>
+                      <button
+                        className="block w-full text-left"
+                        onClick={() => onSelectActivity?.(activity)}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+                              {Icon ? <Icon className="size-4.5" /> : <span className="text-lg leading-none">{style.iconText}</span>}
+                            </span>
+                            <p className="font-medium text-zinc-900">{formatActivityLabel(activity.activityType)}</p>
+                          </div>
+                          <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
                         </div>
-                        <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
-                      </div>
-                      <p className="mt-2 text-sm text-zinc-600">{renderActivityDetail(activity)}</p>
-                    </button>
+                        {activity.activityType === "poop" && activity.detail ? (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${poopBadgeClasses(activity.detail)}`}>
+                              {formatPoopBadgeLabel(activity.detail)}
+                            </span>
+                            {activity.notes ? <p className="text-sm text-zinc-600">{activity.notes}</p> : null}
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-sm text-zinc-600">{renderActivityDetail(activity)}</p>
+                        )}
+                      </button>
+                      {inlineEditor ? <div className="mt-3">{inlineEditor}</div> : null}
+                    </div>
                   );
                 })}
               </div>
@@ -173,10 +219,10 @@ export function ActivityFeed({
       </div>
       <div className="space-y-4">
         {timelineItems?.length ? (
-          timelineItems.map((item) => {
+          timelineItems.map((item, index) => {
             const style = getTimelineStyle(item.activityType);
             return (
-              <div key={`${item.time}-${item.label}-${item.detail}`} className="flex gap-3">
+              <div key={`${item.activityType ?? "item"}-${item.time}-${item.label}-${item.detail}-${index}`} className="flex gap-3">
                 <div className={`mt-1 shrink-0 flex size-5 items-center justify-center rounded-full ${style.dot}`}>
                   {style.icon}
                 </div>
