@@ -109,7 +109,7 @@ export default function WeightPage() {
 
   if (!hydrated) {
     return (
-      <main className="min-h-screen bg-zinc-100 text-zinc-900">
+      <main className="min-h-screen bg-[#979ca7] text-zinc-900">
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
           <header className="mb-6">
             <div className="flex items-start justify-between gap-3">
@@ -141,7 +141,7 @@ export default function WeightPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-100 text-zinc-900">
+    <main className="min-h-screen bg-[#979ca7] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex items-start justify-between gap-3">

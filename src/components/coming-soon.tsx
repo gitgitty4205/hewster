@@ -1,6 +1,6 @@
 export function ComingSoon() {
   return (
-    <main className="min-h-screen bg-zinc-100 text-zinc-900">
+    <main className="min-h-screen bg-[#979ca7] text-zinc-900">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12 text-center">
         <div className="w-full rounded-[2rem] bg-white/90 p-8 shadow-sm ring-1 ring-zinc-200">
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-violet-500">Hewster&apos;s Notebook</p>
