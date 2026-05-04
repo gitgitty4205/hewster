@@ -85,6 +85,30 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
         iconWrap: "bg-pink-100 text-pink-600",
         dot: "bg-pink-400",
       };
+    case "food":
+      return {
+        icon: null,
+        iconText: "🍽️",
+        card: "bg-sky-50/80 ring-sky-200",
+        iconWrap: "bg-sky-100 text-sky-600",
+        dot: "bg-sky-400",
+      };
+    case "supplement":
+      return {
+        icon: null,
+        iconText: "💊",
+        card: "bg-violet-50/80 ring-violet-200",
+        iconWrap: "bg-violet-100 text-violet-600",
+        dot: "bg-violet-400",
+      };
+    case "sick":
+      return {
+        icon: null,
+        iconText: "🤒",
+        card: "bg-rose-50/80 ring-rose-200",
+        iconWrap: "bg-rose-100 text-rose-600",
+        dot: "bg-rose-400",
+      };
     case "other":
       return {
         icon: Ellipsis,
@@ -116,6 +140,21 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
     case "treat":
       return {
         dot: "bg-pink-400",
+        icon: null,
+      };
+    case "food":
+      return {
+        dot: "bg-sky-400",
+        icon: null,
+      };
+    case "supplement":
+      return {
+        dot: "bg-violet-400",
+        icon: null,
+      };
+    case "sick":
+      return {
+        dot: "bg-rose-400",
         icon: null,
       };
     case "other":

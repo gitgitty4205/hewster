@@ -10,6 +10,12 @@ export function formatActivityLabel(activityType: ActivityType) {
       return "Hiking";
     case "treat":
       return "Treat";
+    case "food":
+      return "Food";
+    case "supplement":
+      return "Supplement";
+    case "sick":
+      return "Sick";
     case "other":
       return "Other";
     default:
@@ -29,7 +35,7 @@ export function renderActivityDetail(activity: ActivityLog) {
     return `Other treat: ${activity.notes}`;
   }
 
-  if (activity.activityType === "other" && activity.detail && activity.notes) {
+  if ((activity.activityType === "other" || activity.activityType === "food" || activity.activityType === "supplement" || activity.activityType === "sick") && activity.detail && activity.notes) {
     return `${activity.detail}: ${activity.notes}`;
   }
 

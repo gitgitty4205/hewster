@@ -13,6 +13,7 @@ const APP_BASE = "/hewie";
 const items = [
   { label: "Today", href: `${APP_BASE}` },
   { label: "Log", href: `${APP_BASE}/log` },
+  { label: "Activity", href: `${APP_BASE}/activity` },
   { label: "Weight", href: `${APP_BASE}/weight` },
   { label: "History", href: `${APP_BASE}/history` },
   { label: "alerts", href: `${APP_BASE}/alerts`, icon: BellPlus },
@@ -27,7 +28,7 @@ export function BottomNav({ alertsCount = 0 }: Props) {
       <nav className="flex items-center justify-between gap-1 rounded-[28px] border border-white/50 bg-white/82 px-1.5 py-2 shadow-[0_-10px_28px_rgba(15,23,42,0.10)] backdrop-blur-md">
         {items.map((item) => {
           const active = pathname === item.href || (item.href === APP_BASE && pathname === "/poop-history");
-          const showBadge = item.href === "/alerts" && alertsCount > 0;
+          const showBadge = item.href === `${APP_BASE}/alerts` && alertsCount > 0;
 
           return (
             <Link

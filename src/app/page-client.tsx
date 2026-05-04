@@ -875,7 +875,7 @@ export default function HomeApp() {
           </section>
         ) : null}
 
-        <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} includeOther={false}>
+        <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity}>
           {pendingQuickLogId && detailActivityType ? (
             <ActivityDetailForm
               activityType={detailActivityType}

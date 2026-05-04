@@ -10,7 +10,7 @@ export type DailyMealState = {
   dayKey?: string;
 };
 
-export type ActivityType = "pee" | "poop" | "hike" | "treat" | "other";
+export type ActivityType = "pee" | "poop" | "hike" | "treat" | "food" | "supplement" | "sick" | "other";
 
 export type ActivityLog = {
   id: string;
