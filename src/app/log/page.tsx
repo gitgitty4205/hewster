@@ -1188,12 +1188,10 @@ export default function LogPage() {
             <button
               type="button"
               onClick={collapseLogEvent}
-              className="absolute inset-x-0 -bottom-4 flex justify-center"
+              className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-8 w-24 items-center justify-center rounded-b-3xl rounded-t-sm bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/90"
               aria-label="Collapse Log Event"
             >
-              <div className="flex h-8 w-24 items-center justify-center rounded-b-3xl rounded-t-sm bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:translate-y-0.5">
-                <ChevronUp className="size-4.5" strokeWidth={3} />
-              </div>
+              <ChevronUp className="size-4.5" strokeWidth={3} />
             </button>
           </div>
         ) : (
