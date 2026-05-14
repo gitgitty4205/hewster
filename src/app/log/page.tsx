@@ -1120,14 +1120,10 @@ export default function LogPage() {
                 resetEditor();
                 setLogEventOpen(false);
               }}
-              className="absolute right-4 top-4 z-10 flex h-8 w-14 items-center justify-center rounded-full bg-white/18 text-[var(--hewie-accent-text,#ffffff)]/75 ring-1 ring-white/20 backdrop-blur transition hover:bg-white/24 hover:text-[var(--hewie-accent-text,#ffffff)]"
+              className="absolute inset-x-0 top-3 z-10 mx-auto flex h-7 w-14 items-center justify-center rounded-full bg-white/16 text-[var(--hewie-accent-text,#ffffff)]/75 ring-1 ring-white/20 backdrop-blur transition hover:bg-white/24 hover:text-[var(--hewie-accent-text,#ffffff)]"
               aria-label="Collapse Log Event"
             >
-              <div className="flex -space-x-1.5">
-                <ChevronUp className="size-3.5" strokeWidth={3} />
-                <ChevronUp className="size-3.5" strokeWidth={3} />
-                <ChevronUp className="size-3.5" strokeWidth={3} />
-              </div>
+              <ChevronUp className="size-4" strokeWidth={3} />
             </button>
             <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
 
