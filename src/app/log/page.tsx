@@ -1158,7 +1158,7 @@ export default function LogPage() {
 
 
         {logEventOpen ? (
-          <div className={`relative mb-7 ${logEventClosing ? "log-event-curtain-close" : "log-event-curtain-open"}`}>
+          <div className={`relative mb-7 [&>section]:mb-0 ${logEventClosing ? "log-event-curtain-close" : "log-event-curtain-open"}`}>
             <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
 
             {detailActivityType && !editingActivityId ? (
