@@ -165,15 +165,16 @@
 
 .log-event-drawer {
   position: relative;
-  top: -200px;
+  top: 0;
   min-height: 200px;
   background: var(--hewie-accent, #2c3e50);
   color: var(--hewie-accent-text, #ffffff);
-  transition: ease-in-out 500ms all;
+  transform: translateY(calc(-100% + 68px));
+  transition: ease-in-out 500ms transform;
 }
 
 .log-event-drawer[data-open="true"] {
-  top: 0;
+  transform: translateY(0);
 }
 
 .log-event-drawer::before {
