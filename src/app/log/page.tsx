@@ -4,7 +4,7 @@
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 
-import { Check, ChevronDown, Clock3, Ellipsis, Tablets } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Clock3, Ellipsis, Tablets } from "lucide-react";
 
 import Link from "next/link";
 
@@ -1113,7 +1113,8 @@ export default function LogPage() {
 
 
         {logEventOpen ? (
-          <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
+          <div className="relative mb-7">
+            <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
 
             {detailActivityType && !editingActivityId ? (
 
@@ -1160,7 +1161,23 @@ export default function LogPage() {
 
             ) : null}
 
-          </QuickLogCard>
+            </QuickLogCard>
+            <button
+              type="button"
+              onClick={() => {
+                resetEditor();
+                setLogEventOpen(false);
+              }}
+              className="absolute inset-x-0 -bottom-4 mx-auto flex h-8 w-24 items-center justify-center rounded-t-3xl rounded-b-sm bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:translate-y-[-1px] hover:text-[var(--hewie-accent-text,#ffffff)]/90"
+              aria-label="Collapse Log Event"
+            >
+              <div className="flex -space-x-1">
+                <ChevronUp className="size-4" strokeWidth={3} />
+                <ChevronUp className="size-4" strokeWidth={3} />
+                <ChevronUp className="size-4" strokeWidth={3} />
+              </div>
+            </button>
+          </div>
         ) : (
           <section
             role="button"
