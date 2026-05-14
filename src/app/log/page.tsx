@@ -1169,15 +1169,17 @@ export default function LogPage() {
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") setLogEventOpen(true);
             }}
-            className="mb-4 cursor-pointer rounded-3xl bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
+            className="group relative mb-7 cursor-pointer overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
           >
             <h2 className="text-lg font-semibold">Log Event</h2>
             <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
-            <div className="mt-3 flex justify-center text-[var(--hewie-accent-text,#ffffff)]/70">
-              <div className="flex -space-x-1">
-                <ChevronDown className="size-4" strokeWidth={3} />
-                <ChevronDown className="size-4" strokeWidth={3} />
-                <ChevronDown className="size-4" strokeWidth={3} />
+            <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
+              <div className="flex h-8 w-24 items-center justify-center rounded-b-3xl rounded-t-sm bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition group-hover:translate-y-0.5">
+                <div className="flex -space-x-1">
+                  <ChevronDown className="size-4" strokeWidth={3} />
+                  <ChevronDown className="size-4" strokeWidth={3} />
+                  <ChevronDown className="size-4" strokeWidth={3} />
+                </div>
               </div>
             </div>
           </section>
