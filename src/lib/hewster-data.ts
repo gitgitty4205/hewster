@@ -627,6 +627,32 @@ export async function loadAppState(): Promise<HewsterAppState> {
     : [];
 
   const deletedWeightLogIds = readDeletedWeightLogIds();
+
+  if (deletedWeightLogIds.size && !weightLogsResult.error) {
+    await Promise.all(
+      [...deletedWeightLogIds].map((weightLogId) =>
+        supabase
+          .from("weight_logs")
+          .delete()
+          .eq("id", weightLogId)
+          .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      )
+    ).catch(() => undefined);
+  }
+
+  const remoteWeightLogIds = new Set(remoteWeightLogs.map((entry) => entry.id));
+  const localOnlyWeightLogs = localState.weightLogs.filter((entry) => !remoteWeightLogIds.has(entry.id) && !deletedWeightLogIds.has(entry.id));
+
+  if (localOnlyWeightLogs.length && !weightLogsResult.error) {
+    const { error } = await supabase
+      .from("weight_logs")
+      .upsert(localOnlyWeightLogs.map(mapWeightLogToRow), { onConflict: "id" });
+
+    if (error) {
+      console.warn("Failed to backfill local weight logs to Supabase", error);
+    }
+  }
+
   const weightLogs = [...remoteWeightLogs, ...localState.weightLogs]
     .filter((entry) => !deletedWeightLogIds.has(entry.id))
     .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));

@@ -150,7 +150,14 @@ export async function loadCareTemplatesFromSupabase(kind: CareItemKind) {
     .eq("kind", kind)
     .maybeSingle();
 
-  if (error || !data) return localTemplates;
+  if (error) return localTemplates;
+
+  if (!data) {
+    if (localTemplates.length) {
+      await saveCareTemplatesToSupabase(kind, localTemplates).catch(() => undefined);
+    }
+    return localTemplates;
+  }
 
   const items = (data as { items?: unknown }).items;
   if (!isCareItemTemplateArray(items, kind)) return localTemplates;
