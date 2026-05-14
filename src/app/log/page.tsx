@@ -4,7 +4,7 @@
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 
-import { Check, ChevronDown, ChevronUp, Clock3, Ellipsis, Tablets } from "lucide-react";
+import { Check, Clock3, Ellipsis, Tablets } from "lucide-react";
 
 import Link from "next/link";
 
@@ -1157,60 +1157,89 @@ export default function LogPage() {
 
 
 
-        <div className="log-event-pulldown-frame mb-6" data-open={logEventOpen && !logEventClosing ? "true" : "false"}>
-          <section className="log-event-pulldown-drawer" data-open={logEventOpen && !logEventClosing ? "true" : "false"}>
-            <div className="drawer_content px-5 pt-5 text-[var(--hewie-accent-text,#ffffff)]">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">Log Event</h2>
-                  <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
-                </div>
-                <div className="text-right text-xs text-[var(--hewie-accent-text,#ffffff)]/75">
-                  {activityState === "saving"
-                    ? "Saving Event..."
-                    : activityState === "saved"
-                      ? "Event Logged"
-                      : activityState === "error"
-                        ? "Saved In Browser Only"
-                        : ""}
-                </div>
+        {logEventOpen ? (
+          <div className={`relative mb-14 ${logEventClosing ? "log-event-curtain-close" : "log-event-curtain-open"}`}>
+            <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
+
+            {detailActivityType && !editingActivityId ? (
+
+              <ActivityDetailForm
+
+                activityType={detailActivityType}
+
+                detail={detailValue}
+
+                notes={notesValue}
+
+                extraNotes={extraNotesValue}
+
+                happenedAt={happenedAtValue}
+
+                embedded
+
+                onDetailChange={setDetailValue}
+
+                onNotesChange={setNotesValue}
+
+                onExtraNotesChange={setExtraNotesValue}
+
+                attachmentNames={attachmentFiles.map((file) => file.name)}
+
+                onAttachmentsChange={setAttachmentFiles}
+
+                recordTags={recordTags}
+
+                onRecordTagsChange={setRecordTags}
+
+                onHappenedAtChange={setHappenedAtValue}
+
+                onSave={saveDetailedActivity}
+
+                onCancel={collapseLogEvent}
+
+                saving={activityState === "saving"}
+
+              />
+
+            ) : null}
+
+            </QuickLogCard>
+            <button type="button" onClick={collapseLogEvent} className="log-event-original-tab" data-direction="up" aria-label="Collapse Log Event">
+              <span className="log-event-original-tab-mark" />
+            </button>
+          </div>
+        ) : (
+          <section
+            role="button"
+            tabIndex={0}
+            onClick={openLogEvent}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                openLogEvent();
+              }
+            }}
+            className="group relative mb-14 cursor-pointer overflow-visible rounded-3xl rounded-tl-lg bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-px"
+          >
+            <div className="relative z-10 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Log Event</h2>
+                <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
               </div>
-              <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title={null} iconOnly accentBackground />
             </div>
             <button
               type="button"
-              onClick={logEventOpen && !logEventClosing ? collapseLogEvent : openLogEvent}
-              className="log-event-pulldown-toggle"
-              aria-label={logEventOpen && !logEventClosing ? "Collapse Log Event" : "Open Log Event"}
+              onClick={(event) => {
+                event.stopPropagation();
+                openLogEvent();
+              }}
+              className="log-event-original-tab"
+              data-direction="down"
+              aria-label="Open Log Event"
             >
-              {logEventOpen && !logEventClosing ? <ChevronUp className="size-6" strokeWidth={2.5} /> : <ChevronDown className="size-6" strokeWidth={2.5} />}
+              <span className="log-event-original-tab-mark" />
             </button>
           </section>
-        </div>
-
-        {detailActivityType && !editingActivityId ? (
-          <div className="mb-6 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-zinc-200">
-            <ActivityDetailForm
-              activityType={detailActivityType}
-              detail={detailValue}
-              notes={notesValue}
-              extraNotes={extraNotesValue}
-              happenedAt={happenedAtValue}
-              embedded
-              onDetailChange={setDetailValue}
-              onNotesChange={setNotesValue}
-              onExtraNotesChange={setExtraNotesValue}
-              attachmentNames={attachmentFiles.map((file) => file.name)}
-              onAttachmentsChange={setAttachmentFiles}
-              recordTags={recordTags}
-              onRecordTagsChange={setRecordTags}
-              onHappenedAtChange={setHappenedAtValue}
-              onSave={saveDetailedActivity}
-              onCancel={collapseLogEvent}
-              saving={activityState === "saving"}
-            />
-          </div>
-        ) : null}
+        )}
 
 
 
