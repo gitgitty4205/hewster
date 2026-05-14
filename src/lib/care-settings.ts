@@ -34,6 +34,7 @@ export type CareItemTemplate = {
 
 export const SUPPLEMENT_SETTINGS_STORAGE_KEY = "hewster.supplementSettings";
 export const MEDICATION_SETTINGS_STORAGE_KEY = "hewster.medicationSettings";
+const CARE_SETTINGS_BACKUP_LIMIT = 10;
 
 export const initialSupplementTemplates: CareItemTemplate[] = [
   {
@@ -133,7 +134,36 @@ export function loadCareTemplates(kind: CareItemKind): CareItemTemplate[] {
   }
 }
 
+function backupKeyForCareKind(kind: CareItemKind) {
+  return `${storageKeyForCareKind(kind)}.backups`;
+}
+
+function backupCareTemplates(kind: CareItemKind, templates: CareItemTemplate[]) {
+  if (!templates.length) return;
+
+  try {
+    const backupKey = backupKeyForCareKind(kind);
+    const currentBackups = JSON.parse(window.localStorage.getItem(backupKey) ?? "[]") as Array<{ savedAt: string; items: CareItemTemplate[] }>;
+    const backupSignature = JSON.stringify(templates.map((item) => ({ id: item.id, name: item.name, dose: item.dose, mealIds: item.mealIds })));
+    const filteredBackups = Array.isArray(currentBackups)
+      ? currentBackups.filter((backup) => JSON.stringify(backup.items?.map((item) => ({ id: item.id, name: item.name, dose: item.dose, mealIds: item.mealIds })) ?? []) !== backupSignature)
+      : [];
+
+    window.localStorage.setItem(
+      backupKey,
+      JSON.stringify([{ savedAt: new Date().toISOString(), items: templates }, ...filteredBackups].slice(0, CARE_SETTINGS_BACKUP_LIMIT))
+    );
+  } catch {
+    // Best-effort local safety net only.
+  }
+}
+
 export function saveCareTemplates(kind: CareItemKind, templates: CareItemTemplate[]) {
+  if (typeof window !== "undefined") {
+    const currentTemplates = loadCareTemplates(kind);
+    backupCareTemplates(kind, currentTemplates.length ? currentTemplates : templates);
+  }
+
   window.localStorage.setItem(storageKeyForCareKind(kind), JSON.stringify(templates));
   window.dispatchEvent(new CustomEvent("hewster:care-settings-updated", { detail: { kind } }));
 }
