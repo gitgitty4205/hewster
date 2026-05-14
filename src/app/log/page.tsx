@@ -1162,19 +1162,25 @@ export default function LogPage() {
 
           </QuickLogCard>
         ) : (
-          <button
-            type="button"
+          <section
+            role="button"
+            tabIndex={0}
             onClick={() => setLogEventOpen(true)}
-            className="mb-4 flex w-full items-center justify-between rounded-3xl bg-[var(--hewie-accent,#64748b)] p-4 text-left text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") setLogEventOpen(true);
+            }}
+            className="mb-4 cursor-pointer rounded-3xl bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
           >
-            <div>
-              <h2 className="text-lg font-semibold">Log Event</h2>
-              <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
+            <h2 className="text-lg font-semibold">Log Event</h2>
+            <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
+            <div className="mt-3 flex justify-center text-[var(--hewie-accent-text,#ffffff)]/70">
+              <div className="flex -space-x-1">
+                <ChevronDown className="size-4" strokeWidth={3} />
+                <ChevronDown className="size-4" strokeWidth={3} />
+                <ChevronDown className="size-4" strokeWidth={3} />
+              </div>
             </div>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/18 text-[var(--hewie-accent-text,#ffffff)] ring-1 ring-white/20">
-              <ChevronDown className="size-5" strokeWidth={3} />
-            </span>
-          </button>
+          </section>
         )}
 
 
