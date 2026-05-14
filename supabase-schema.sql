@@ -25,7 +25,7 @@ create table if not exists public.daily_meals (
 create table if not exists public.activity_logs (
   id text not null primary key,
   profile_slug text not null,
-  activity_type text not null check (activity_type in ('pee', 'poop', 'hike', 'treat', 'food', 'supplement', 'sick', 'other')),
+  activity_type text not null check (activity_type in ('potty', 'pee', 'poop', 'activity', 'outdoor', 'care', 'wellness', 'hike', 'treat', 'food', 'supplement', 'medication', 'sick', 'other')),
   happened_at timestamptz not null,
   detail text,
   notes text,
@@ -37,7 +37,7 @@ alter table public.activity_logs
 
 alter table public.activity_logs
   add constraint activity_logs_activity_type_check
-  check (activity_type in ('pee', 'poop', 'hike', 'treat', 'food', 'supplement', 'sick', 'other'));
+  check (activity_type in ('potty', 'pee', 'poop', 'activity', 'outdoor', 'care', 'wellness', 'hike', 'treat', 'food', 'supplement', 'medication', 'sick', 'other'));
 
 create table if not exists public.weight_logs (
   id text not null primary key,

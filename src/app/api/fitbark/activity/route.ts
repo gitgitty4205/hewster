@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 
 const FITBARK_API_BASE = "https://app.fitbark.com";
 

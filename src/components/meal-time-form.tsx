@@ -1,15 +1,26 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import type { CareItemTemplate } from "@/lib/care-settings";
 
 type Props = {
   mealName: string;
   actualTime: string;
   onActualTimeChange: (value: string) => void;
+  fedNote: string;
+  onFedNoteChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
   onUndo?: () => void;
+  saveLabel?: string;
+  careItems?: CareItemTemplate[];
+  skippedCareItemIds?: string[];
+  onToggleCareItem?: (careItemId: string) => void;
 };
+
+function careItemId(item: CareItemTemplate) {
+  return `${item.kind}-${item.id}`;
+}
 
 function toTimeInputValue(value: string) {
   const normalized = value.trim().replace(/\s+/g, " ").toUpperCase();
@@ -35,16 +46,16 @@ function fromTimeInputValue(value: string) {
   return `${hours}:${String(rawMinutes).padStart(2, "0")} ${suffix}`;
 }
 
-export function MealTimeForm({ mealName, actualTime, onActualTimeChange, onSave, onCancel, onUndo }: Props) {
+export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote, onFedNoteChange, onSave, onCancel, onUndo, saveLabel = "Save Meal", careItems = [], skippedCareItemIds = [], onToggleCareItem }: Props) {
   return (
     <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold">Edit meal time</h2>
-        <p className="text-sm text-zinc-500">Set the correct logged time for {mealName}.</p>
+        <h2 className="text-lg font-semibold">Edit Meal</h2>
+        <p className="text-sm text-zinc-500">Update the logged time, notes, and what was given with {mealName}.</p>
       </div>
 
       <label className="block text-sm">
-        <span className="mb-1 block font-medium text-zinc-700">Actual time</span>
+        <span className="mb-1 block font-medium text-zinc-700">Actual Time</span>
         <input
           type="time"
           value={toTimeInputValue(actualTime)}
@@ -53,12 +64,48 @@ export function MealTimeForm({ mealName, actualTime, onActualTimeChange, onSave,
         />
       </label>
 
+      {careItems.length ? (
+        <div className="mt-4 space-y-2 rounded-2xl bg-white/70 p-3 ring-1 ring-zinc-200">
+          <p className="text-sm font-semibold text-zinc-700">Given With Meal</p>
+          {careItems.map((item) => {
+            const id = careItemId(item);
+            const checked = !skippedCareItemIds.includes(id);
+
+            return (
+              <label key={id} className="flex items-start gap-2 text-sm text-zinc-600">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggleCareItem?.(id)}
+                  className="mt-1 size-4 accent-[var(--hewie-accent,#64748b)]"
+                />
+                <span>
+                  <span className="font-semibold text-zinc-800">{item.name}</span>
+                  {item.dose ? <span> — {item.dose}</span> : null}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      ) : null}
+
+      <label className="mt-4 block text-sm">
+        <span className="mb-1 block font-medium text-zinc-700">Notes</span>
+        <textarea
+          value={fedNote}
+          onChange={(event) => onFedNoteChange(event.target.value)}
+          rows={3}
+          placeholder={`Notes for ${mealName}`}
+          className="w-full resize-none rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+        />
+      </label>
+
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button type="button" onClick={onSave} className="rounded-full">Save time</Button>
+        <Button type="button" onClick={onSave} className="rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90">{saveLabel}</Button>
         <Button type="button" variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
         {onUndo ? (
           <Button type="button" variant="outline" onClick={onUndo} className="rounded-full text-rose-600">
-            Undo marked fed
+            Undo Marked Fed
           </Button>
         ) : null}
       </div>

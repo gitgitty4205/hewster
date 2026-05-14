@@ -12,26 +12,21 @@ type Props = {
 
 export function MealNoteForm({ mealName, note, onNoteChange, onSave, onCancel }: Props) {
   return (
-    <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold">Add Meal Note</h2>
-        <p className="text-sm text-zinc-500">Add a note for {mealName}.</p>
-      </div>
-
+    <section className="rounded-3xl bg-white/72 p-4 shadow-sm ring-1 ring-[#d8b895]/55">
       <label className="block text-sm">
-        <span className="mb-1 block font-medium text-zinc-700">Note</span>
+        <span className="mb-2 block font-semibold text-[#4f2f1b]">Add Notes</span>
         <textarea
           value={note}
           onChange={(event) => onNoteChange(event.target.value)}
           rows={3}
-          placeholder="Anything worth remembering about this feeding"
-          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+          placeholder={`Notes for ${mealName}`}
+          className="w-full rounded-2xl border-0 bg-white px-3 py-2.5 text-sm text-[#4f2f1b] shadow-sm outline-none ring-1 ring-[#d8b895]/60 transition placeholder:text-[#6b3f22]/40 focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
         />
       </label>
 
-      <div className="mt-4 flex gap-2">
-        <Button type="button" onClick={onSave} className="rounded-full">Save note</Button>
-        <Button type="button" variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
+      <div className="mt-3 flex gap-2">
+        <Button type="button" onClick={onSave} className="rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90">Save</Button>
+        <Button type="button" variant="outline" onClick={onCancel} className="rounded-full border-0 bg-white/80 text-[#6b3f22] shadow-sm ring-1 ring-[#d8b895]/60 hover:bg-white">Cancel</Button>
       </div>
     </section>
   );

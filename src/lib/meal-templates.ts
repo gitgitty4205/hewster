@@ -1,10 +1,9 @@
-export type MealTemplate = {
+﻿export type MealTemplate = {
   id: number;
   name: string;
   plannedTime: string;
   food: string;
   notes: string;
-  reminderOffset: string;
 };
 
 export type MealStatus = "done" | "upcoming" | "late";
@@ -23,7 +22,6 @@ export const initialTemplates: MealTemplate[] = [
     plannedTime: "8:00 AM",
     food: "Turkey mix + kefir",
     notes: "Add pumpkin if stool was soft the night before.",
-    reminderOffset: "15 min after planned time",
   },
   {
     id: 2,
@@ -31,7 +29,6 @@ export const initialTemplates: MealTemplate[] = [
     plannedTime: "1:00 PM",
     food: "Goat milk + sardine topper",
     notes: "Use half portion if breakfast ran late.",
-    reminderOffset: "10 min after planned time",
   },
   {
     id: 3,
@@ -39,7 +36,6 @@ export const initialTemplates: MealTemplate[] = [
     plannedTime: "6:30 PM",
     food: "Beef raw bowl + greens",
     notes: "Main full meal. Add supplements here.",
-    reminderOffset: "30 min after planned time",
   },
 ];
 
@@ -60,8 +56,7 @@ export function isMealTemplateArray(value: unknown): value is MealTemplate[] {
         "name" in item &&
         "plannedTime" in item &&
         "food" in item &&
-        "notes" in item &&
-        "reminderOffset" in item
+        "notes" in item
     )
   );
 }

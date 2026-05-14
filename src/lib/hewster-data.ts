@@ -1,3 +1,4 @@
+﻿import { compareActivitiesReverseChronological } from "@/lib/activity";
 import type { MealStatus, MealTemplate } from "@/lib/meal-templates";
 import { initialTemplates, isMealTemplateArray, STORAGE_KEY } from "@/lib/meal-templates";
 import { getSupabaseBrowserClient, HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
@@ -7,10 +8,25 @@ export type DailyMealState = {
   actualTime: string | null;
   status: MealStatus;
   fedNotes: string | null;
+  skippedCareItemIds?: string[];
   dayKey?: string;
 };
 
-export type ActivityType = "pee" | "poop" | "hike" | "treat" | "food" | "supplement" | "sick" | "other";
+export type ActivityType =
+  | "potty"
+  | "pee"
+  | "poop"
+  | "activity"
+  | "outdoor"
+  | "care"
+  | "wellness"
+  | "hike"
+  | "treat"
+  | "food"
+  | "supplement"
+  | "medication"
+  | "sick"
+  | "other";
 
 export type ActivityLog = {
   id: string;
@@ -40,6 +56,7 @@ export type MealLog = {
   food: string;
   defaultNotes: string;
   fedNotes: string | null;
+  skippedCareItemIds?: string[];
   actualTime: string;
   createdAt?: string;
 };
@@ -49,6 +66,10 @@ export type ManualAlert = {
   profileSlug: string;
   title: string;
   message: string;
+  scope?: "today" | "tomorrow" | "date" | "ongoing" | "every-other-day" | "certain-days";
+  weekdays?: number[];
+  time?: string;
+  createdDayKey?: string;
   resolved: boolean;
   createdAt?: string;
   resolvedAt?: string | null;
@@ -68,6 +89,7 @@ export type HewsterAppState = {
 export const DAILY_MEAL_STORAGE_KEY = "hewster.dailyMeals";
 export const ACTIVITY_LOGS_STORAGE_KEY = "hewster.activityLogs";
 export const WEIGHT_LOGS_STORAGE_KEY = "hewster.weightLogs";
+export const DELETED_WEIGHT_LOG_IDS_STORAGE_KEY = "hewster.deletedWeightLogIds";
 export const MEAL_LOGS_STORAGE_KEY = "hewster.mealLogs";
 export const MANUAL_ALERTS_STORAGE_KEY = "hewster.manualAlerts";
 export const TODAY_KEY_STORAGE_KEY = "hewster.todayKey";
@@ -176,6 +198,30 @@ function isWeightLogArray(value: unknown): value is WeightLog[] {
   );
 }
 
+function readDeletedWeightLogIds() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const stored = window.localStorage.getItem(DELETED_WEIGHT_LOG_IDS_STORAGE_KEY);
+    const parsed = stored ? JSON.parse(stored) : null;
+    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+export function markWeightLogDeleted(weightLogId: string) {
+  const deletedIds = readDeletedWeightLogIds();
+  deletedIds.add(weightLogId);
+  window.localStorage.setItem(DELETED_WEIGHT_LOG_IDS_STORAGE_KEY, JSON.stringify([...deletedIds]));
+}
+
+export function unmarkWeightLogDeleted(weightLogId: string) {
+  const deletedIds = readDeletedWeightLogIds();
+  if (!deletedIds.delete(weightLogId)) return;
+  window.localStorage.setItem(DELETED_WEIGHT_LOG_IDS_STORAGE_KEY, JSON.stringify([...deletedIds]));
+}
+
 function isMealLogArray(value: unknown): value is MealLog[] {
   return (
     Array.isArray(value) &&
@@ -220,6 +266,7 @@ function buildFreshDailyMealState(templates: MealTemplate[]) {
     actualTime: null,
     status: "upcoming" as const,
     fedNotes: null,
+    skippedCareItemIds: [],
     dayKey: currentTodayKey(),
   }));
 }
@@ -264,6 +311,7 @@ export function loadLocalState(): HewsterAppState {
             actualTime: meal.actualTime,
             status: meal.status,
             fedNotes: "fedNotes" in meal ? (meal as DailyMealState).fedNotes : null,
+            skippedCareItemIds: Array.isArray((meal as DailyMealState).skippedCareItemIds) ? (meal as DailyMealState).skippedCareItemIds : [],
             dayKey: "dayKey" in meal ? (meal as DailyMealState).dayKey ?? todayKey : todayKey,
           }))
           .filter((meal) => (meal.dayKey ?? todayKey) === todayKey)
@@ -290,19 +338,21 @@ export function loadLocalState(): HewsterAppState {
 
 export function persistLocalState(
   templates: MealTemplate[] = initialTemplates,
-  dailyMealState: DailyMealState[] = buildFreshDailyMealState(templates),
-  activityLogs: ActivityLog[] = [],
-  weightLogs: WeightLog[] = [],
+  dailyMealState?: DailyMealState[],
+  activityLogs?: ActivityLog[],
+  weightLogs?: WeightLog[],
   todayKey: string = currentTodayKey(),
-  manualAlerts: ManualAlert[] = [],
-  mealLogs: MealLog[] = []
+  manualAlerts?: ManualAlert[],
+  mealLogs?: MealLog[]
 ) {
+  const existingState = loadLocalState();
+
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-  window.localStorage.setItem(DAILY_MEAL_STORAGE_KEY, JSON.stringify(dailyMealState));
-  window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(activityLogs));
-  window.localStorage.setItem(WEIGHT_LOGS_STORAGE_KEY, JSON.stringify(weightLogs));
-  window.localStorage.setItem(MANUAL_ALERTS_STORAGE_KEY, JSON.stringify(manualAlerts));
-  window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(mealLogs));
+  window.localStorage.setItem(DAILY_MEAL_STORAGE_KEY, JSON.stringify(dailyMealState ?? existingState.dailyMealState));
+  window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(activityLogs ?? existingState.activityLogs));
+  window.localStorage.setItem(WEIGHT_LOGS_STORAGE_KEY, JSON.stringify(weightLogs ?? existingState.weightLogs));
+  window.localStorage.setItem(MANUAL_ALERTS_STORAGE_KEY, JSON.stringify(manualAlerts ?? existingState.manualAlerts));
+  window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(mealLogs ?? existingState.mealLogs));
   window.localStorage.setItem(TODAY_KEY_STORAGE_KEY, todayKey);
 }
 
@@ -313,7 +363,6 @@ function mapTemplateRowToTemplate(row: MealTemplateRow): MealTemplate {
     plannedTime: row.planned_time,
     food: row.food,
     notes: row.notes,
-    reminderOffset: row.reminder_offset,
   };
 }
 
@@ -325,7 +374,7 @@ function mapTemplateToRow(template: MealTemplate, index: number): MealTemplateRo
     planned_time: template.plannedTime,
     food: template.food,
     notes: template.notes,
-    reminder_offset: template.reminderOffset,
+    reminder_offset: "",
     sort_order: index,
   };
 }
@@ -395,6 +444,7 @@ function mapMealLogRowToMealLog(row: MealLogRow): MealLog {
     food: row.food,
     defaultNotes: row.default_notes,
     fedNotes: row.fed_notes,
+    skippedCareItemIds: [],
     actualTime: row.actual_time,
     createdAt: row.created_at,
   };
@@ -420,6 +470,8 @@ function mapManualAlertRowToAlert(row: ManualAlertRow): ManualAlert {
     profileSlug: row.profile_slug,
     title: row.title,
     message: row.message,
+    scope: "today",
+    createdDayKey: row.created_at ? currentTodayKey() : undefined,
     resolved: row.resolved,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at ?? null,
@@ -538,21 +590,29 @@ export async function loadAppState(): Promise<HewsterAppState> {
     : localState.templates;
 
   const dailyMealState = dailyMealsResult.data?.length
-    ? (dailyMealsResult.data as DailyMealRow[]).map((row) => ({
-        mealId: row.meal_id,
-        actualTime: row.actual_time,
-        status: row.status,
-        fedNotes: row.fed_notes ?? null,
-        dayKey: row.day_key ?? localState.todayKey,
-      }))
+    ? (dailyMealsResult.data as DailyMealRow[]).map((row) => {
+        const localMeal = localState.dailyMealState.find((meal) => meal.mealId === row.meal_id && (meal.dayKey ?? localState.todayKey) === (row.day_key ?? localState.todayKey));
+        return {
+          mealId: row.meal_id,
+          actualTime: row.actual_time,
+          status: row.status,
+          fedNotes: row.fed_notes ?? null,
+          skippedCareItemIds: localMeal?.skippedCareItemIds ?? [],
+          dayKey: row.day_key ?? localState.todayKey,
+        };
+      })
     : buildFreshDailyMealState(templates).map((meal) => ({
         ...meal,
         dayKey: localState.todayKey,
       }));
 
-  const activityLogs = !activityLogsResult.error && activityLogsResult.data?.length
+  const remoteActivityLogs = !activityLogsResult.error && activityLogsResult.data?.length
     ? (activityLogsResult.data as ActivityLogRow[]).map(mapActivityLogRowToActivity)
-    : localState.activityLogs;
+    : [];
+
+  const activityLogs = [...remoteActivityLogs, ...localState.activityLogs]
+    .sort(compareActivitiesReverseChronological)
+    .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));
 
   const remoteWeightLogs = !weightLogsResult.error && weightLogsResult.data?.length
     ? (weightLogsResult.data as WeightLogRow[]).map(mapWeightLogRowToWeight)
@@ -566,12 +626,23 @@ export async function loadAppState(): Promise<HewsterAppState> {
     ? (manualAlertsResult.data as ManualAlertRow[]).map(mapManualAlertRowToAlert)
     : [];
 
-  const weightLogs = [...remoteWeightLogs, ...localState.weightLogs].filter(
-    (entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id)
-  );
+  const deletedWeightLogIds = readDeletedWeightLogIds();
+  const weightLogs = [...localState.weightLogs, ...remoteWeightLogs]
+    .filter((entry) => !deletedWeightLogIds.has(entry.id))
+    .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));
 
   const mealLogs = [...remoteMealLogs, ...localState.mealLogs]
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+    .map((entry) => {
+      const localMatch = localState.mealLogs.find(
+        (candidate) => candidate.dayKey === entry.dayKey && candidate.mealId === entry.mealId
+      );
+
+      return {
+        ...entry,
+        skippedCareItemIds: entry.skippedCareItemIds?.length ? entry.skippedCareItemIds : localMatch?.skippedCareItemIds ?? [],
+      };
+    })
     .filter((entry, index, all) => {
       const sameIdIndex = all.findIndex((candidate) => candidate.id === entry.id);
       const sameMealDayIndex = all.findIndex(
@@ -581,9 +652,18 @@ export async function loadAppState(): Promise<HewsterAppState> {
       return index === sameIdIndex && index === sameMealDayIndex;
     });
 
-  const manualAlerts = [...remoteManualAlerts, ...localState.manualAlerts].filter(
-    (entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id)
-  );
+  const manualAlerts = [...remoteManualAlerts, ...localState.manualAlerts]
+    .map((entry) => {
+      const localMatch = localState.manualAlerts.find((candidate) => candidate.id === entry.id);
+      return {
+        ...entry,
+        scope: localMatch?.scope ?? (["today", "tomorrow", "date", "ongoing", "every-other-day", "certain-days"].includes(entry.scope ?? "") ? entry.scope : "today"),
+        weekdays: localMatch?.weekdays ?? entry.weekdays,
+        time: localMatch?.time ?? entry.time,
+        createdDayKey: localMatch?.createdDayKey ?? entry.createdDayKey,
+      };
+    })
+    .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));
 
   return {
     templates,
@@ -715,7 +795,43 @@ export async function saveWeightLogToSupabase(weight: WeightLog) {
     return;
   }
 
-  const { error } = await supabase.from("weight_logs").insert(mapWeightLogToRow(weight));
+  const { error } = await supabase.from("weight_logs").upsert(mapWeightLogToRow(weight), {
+    onConflict: "id",
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updateWeightLogInSupabase(weight: WeightLog) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from("weight_logs")
+    .update(mapWeightLogToRow(weight))
+    .eq("id", weight.id)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function deleteWeightLogInSupabase(weightLogId: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from("weight_logs")
+    .delete()
+    .eq("id", weightLogId)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
   if (error) {
     throw error;
@@ -782,6 +898,23 @@ export async function updateManualAlertInSupabase(alert: ManualAlert) {
       resolved_at: alert.resolvedAt ?? null,
     })
     .eq("id", alert.id)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function deleteManualAlertInSupabase(alertId: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from("manual_alerts")
+    .delete()
+    .eq("id", alertId)
     .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
   if (error) {

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { PottyDetailBadges } from "@/components/potty-detail-badges";
 import {
   type ActivityLog,
   loadAppState,
@@ -18,26 +19,11 @@ function formatDayLabel(isoString: string) {
   }).format(new Date(isoString));
 }
 
-function poopBadgeClasses(detail: string | null) {
-  const normalized = detail?.trim().toLowerCase() ?? "";
-
-  switch (normalized) {
-    case "no poop":
-      return "bg-white text-zinc-600 ring-1 ring-zinc-300";
-    case "constipated":
-      return "bg-zinc-700 text-white";
-    case "normal-hard":
-    case "normal-soft":
-      return "bg-orange-800 text-white";
-    case "soft":
-      return "bg-orange-500 text-white";
-    case "1 time diarrhea":
-      return "bg-rose-500 text-white";
-    case "severe diarrhea":
-      return "bg-rose-700 text-white";
-    default:
-      return "bg-orange-800 text-white";
-  }
+function isActualPoopRecord(activity: ActivityLog) {
+  const detail = activity.detail?.trim() ?? "";
+  if (activity.activityType !== "poop") return false;
+  if (detail === "No Poop" || detail === "Pee") return false;
+  return detail === "Poop" || detail === "Pee & Poop" || detail.includes("• Type ") || detail.startsWith("Type ");
 }
 
 export default function PoopHistoryPage() {
@@ -48,7 +34,7 @@ export default function PoopHistoryPage() {
       const state = await loadAppState();
       setPoopLogs(
         state.activityLogs
-          .filter((activity) => activity.activityType === "poop")
+          .filter(isActualPoopRecord)
           .sort((a, b) => b.happenedAt.localeCompare(a.happenedAt))
       );
     }
@@ -76,11 +62,11 @@ export default function PoopHistoryPage() {
   const dayEntries = Object.entries(groupedLogs).sort((a, b) => b[0].localeCompare(a[0]));
 
   return (
-    <main className="min-h-screen bg-[#979ca7] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
-          <p className="text-sm font-medium text-violet-500">Hewster</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Poop History</h1>
+          <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]">Hewster</p>
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Poop History</h1>
         </header>
 
         <div className="space-y-4">
@@ -93,16 +79,14 @@ export default function PoopHistoryPage() {
                     <article key={log.id} className="rounded-2xl border border-orange-200 bg-orange-50/60 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <span className="flex size-9 items-center justify-center rounded-full bg-orange-100 text-orange-600">
-                            <span className="text-lg leading-none">💩</span>
+                          <span className="flex size-9 items-center justify-center rounded-full bg-[rgba(255,255,255,0.55)] text-[#8a6200] ring-1 ring-[rgba(240,210,122,0.6)]">
+                            <span className="text-lg leading-none">{"\u{1F6BD}"}</span>
                           </span>
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${poopBadgeClasses(log.detail)}`}>
-                            {log.detail ?? "Logged"}
-                          </span>
+                          <p className="font-medium text-zinc-900">Potty</p>
                         </div>
-                        <p className="text-sm text-zinc-500">{formatActivityTime(log.happenedAt)}</p>
+                        <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(log.happenedAt)}</p>
                       </div>
-                      {log.notes ? <p className="mt-2 text-sm text-zinc-600">{log.notes}</p> : null}
+                      <PottyDetailBadges detail={log.detail} notes={log.notes} />
                     </article>
                   ))}
                 </div>
@@ -110,7 +94,7 @@ export default function PoopHistoryPage() {
             ))
           ) : (
             <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
-              <p className="text-sm text-zinc-500">No poop records logged yet.</p>
+              <p className="text-sm text-zinc-500">No Poop Records Logged Yet.</p>
             </section>
           )}
         </div>

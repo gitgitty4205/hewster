@@ -152,6 +152,31 @@
   animation: contentFadeIn 220ms ease-out;
 }
 
+@keyframes hewiePriorityBorderPulse {
+  0%, 100% {
+    outline-offset: 0;
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    outline-offset: 2px;
+    box-shadow: 0 0 16px 2px var(--hewie-priority-color);
+  }
+}
+
+.hewie-priority-border {
+  --hewie-priority-color: color-mix(in srgb, var(--hewie-accent, #78608f) 58%, white);
+  outline: 2px solid var(--hewie-priority-color);
+  animation: hewiePriorityBorderPulse 1.45s ease-in-out infinite;
+}
+
+.hewie-priority-border-medication {
+  --hewie-priority-color: #bae6fd;
+}
+
+.hewie-priority-border-supplement {
+  --hewie-priority-color: #b8c9dd;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

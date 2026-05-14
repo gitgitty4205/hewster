@@ -115,7 +115,6 @@ export default function MealsPage() {
         plannedTime: "12:00 PM",
         food: "Add meal details",
         notes: "Optional instructions for the caregiver.",
-        reminderOffset: "15 min after planned time",
       },
     ]);
   };
@@ -127,21 +126,21 @@ export default function MealsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#979ca7] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
-          <p className="text-sm font-medium text-violet-500">Hewster</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Meals</h1>
+          <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]">Hewster</p>
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Meals</h1>
           <p className="mt-2 text-sm leading-6 text-zinc-600">
-            Edit the meal plan defaults that roll into each day.
+            Edit The Saved Meal Plan That Rolls Into Each Day.
           </p>
         </header>
 
         <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">Meal Plan Defaults</h2>
-              <p className="text-sm text-zinc-500">Your saved data stays the same, this is just the new home for it.</p>
+              <h2 className="text-lg font-semibold">Saved Meal Plan</h2>
+              <p className="text-sm text-zinc-500">Your Saved Data Stays The Same, This Is Just The New Home For It.</p>
             </div>
             <div className="text-right text-xs text-zinc-500">
               <div className="flex items-center justify-end gap-1.5 text-emerald-600">
@@ -151,19 +150,19 @@ export default function MealsPage() {
                   : saveState === "saved"
                     ? storageMode === "supabase"
                       ? "Saved to Supabase"
-                      : "Saved in browser"
+                      : "Saved In Browser"
                     : saveState === "error"
-                      ? "Supabase save failed"
+                      ? "Supabase Save Failed"
                       : hydrated
                         ? "Ready"
                         : "Loading"}
               </div>
               <p className="mt-1">
                 {storageMode === "supabase"
-                  ? "Shared database is active"
+                  ? "Shared Database Is Active"
                   : supabaseReady
-                    ? "Using browser fallback until Supabase succeeds"
-                    : "Persists in this browser for now"}
+                    ? "Using Browser Fallback Until Supabase Succeeds"
+                    : "Persists In This Browser For Now"}
               </p>
             </div>
           </div>
@@ -175,7 +174,7 @@ export default function MealsPage() {
             </Button>
             <Button variant="outline" className="rounded-full" onClick={resetTemplates}>
               <RotateCcw className="size-4" />
-              Reset Defaults
+              Reset Meal Plan
             </Button>
           </div>
 
@@ -188,7 +187,7 @@ export default function MealsPage() {
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
                       <h3 className="font-medium text-zinc-900">{meal.name}</h3>
-                      <p className="text-sm text-zinc-500">Template used for future daily checklists.</p>
+                      <p className="text-sm text-zinc-500">Template Used For Future Daily Checklists.</p>
                     </div>
                     <Button
                       variant={isEditing ? "default" : "outline"}
@@ -201,7 +200,7 @@ export default function MealsPage() {
 
                   <div className="space-y-3">
                     <label className="block text-sm">
-                      <span className="mb-1 block font-medium text-zinc-700">Meal name</span>
+                      <span className="mb-1 block font-medium text-zinc-700">Meal Name</span>
                       <input
                         value={meal.name}
                         disabled={!isEditing}
@@ -210,29 +209,18 @@ export default function MealsPage() {
                       />
                     </label>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <label className="block text-sm">
-                        <span className="mb-1 block font-medium text-zinc-700">Planned time</span>
-                        <input
-                          value={meal.plannedTime}
-                          disabled={!isEditing}
-                          onChange={(event) => updateTemplate(meal.id, "plannedTime", event.target.value)}
-                          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
-                        />
-                      </label>
-                      <label className="block text-sm">
-                        <span className="mb-1 block font-medium text-zinc-700">Reminder rule</span>
-                        <input
-                          value={meal.reminderOffset}
-                          disabled={!isEditing}
-                          onChange={(event) => updateTemplate(meal.id, "reminderOffset", event.target.value)}
-                          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
-                        />
-                      </label>
-                    </div>
+                    <label className="block text-sm">
+                      <span className="mb-1 block font-medium text-zinc-700">Planned Time</span>
+                      <input
+                        value={meal.plannedTime}
+                        disabled={!isEditing}
+                        onChange={(event) => updateTemplate(meal.id, "plannedTime", event.target.value)}
+                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                      />
+                    </label>
 
                     <label className="block text-sm">
-                      <span className="mb-1 block font-medium text-zinc-700">Food / ingredients</span>
+                      <span className="mb-1 block font-medium text-zinc-700">Food / Ingredients</span>
                       <input
                         value={meal.food}
                         disabled={!isEditing}
@@ -246,10 +234,12 @@ export default function MealsPage() {
                       <textarea
                         value={meal.notes}
                         disabled={!isEditing}
+                        maxLength={180}
                         onChange={(event) => updateTemplate(meal.id, "notes", event.target.value)}
-                        rows={3}
+                        rows={2}
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
+                      <span className="mt-1 block text-right text-xs text-zinc-400">{meal.notes.length}/180</span>
                     </label>
                   </div>
                 </article>

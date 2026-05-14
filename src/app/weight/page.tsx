@@ -1,7 +1,7 @@
 "use client";
 
-import { Scale } from "lucide-react";
-import Image from "next/image";
+import { ChevronDown, ChevronRight, Ellipsis } from "lucide-react";
+import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -9,11 +9,20 @@ import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
 import {
   type WeightLog,
+  deleteWeightLogInSupabase,
   loadAppState,
+  markWeightLogDeleted,
   loadLocalState,
   persistLocalState,
   saveWeightLogToSupabase,
+  updateWeightLogInSupabase,
 } from "@/lib/hewster-data";
+import {
+  type PetProfile,
+  appThemes,
+  loadPetProfile,
+  savePetProfile,
+} from "@/lib/pet-profile";
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 
 function todayInputValue() {
@@ -32,14 +41,37 @@ function formatWeightDate(date: string) {
   }).format(new Date(`${date}T00:00:00`));
 }
 
+function formatWeightWithUnit(weight: string, unit: PetProfile["weightUnit"]) {
+  const trimmed = weight.trim();
+  if (/\s(?:lb|kg)$/i.test(trimmed)) return trimmed;
+  return `${trimmed} ${unit}`;
+}
+
+function weightInputValue(weight: string) {
+  return weight.replace(/\s(?:lb|kg)$/i, "");
+}
+
 export default function WeightPage() {
+  const [profile, setProfile] = useState<PetProfile>(() => loadPetProfile());
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
   const [dateValue, setDateValue] = useState(todayInputValue());
   const [weightValue, setWeightValue] = useState("");
   const [noteValue, setNoteValue] = useState("");
+  const [editingWeightId, setEditingWeightId] = useState<string | null>(null);
+  const [editingDateValue, setEditingDateValue] = useState("");
+  const [editingWeightValue, setEditingWeightValue] = useState("");
+  const [editingNoteValue, setEditingNoteValue] = useState("");
+  const [expandedYears, setExpandedYears] = useState<string[]>([]);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [hydrated, setHydrated] = useState(false);
   const supabaseReady = isSupabaseConfigured();
+  const theme = appThemes[profile.themeId];
+
+  const updateWeightUnit = (weightUnit: PetProfile["weightUnit"]) => {
+    const updated = { ...profile, weightUnit };
+    setProfile(updated);
+    savePetProfile(updated);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +107,30 @@ export default function WeightPage() {
     [weightLogs]
   );
 
+  const recentLogs = useMemo(() => sortedLogs.slice(0, 3), [sortedLogs]);
+  const olderLogs = useMemo(() => sortedLogs.slice(3), [sortedLogs]);
+
+  const logsByYear = useMemo(() => {
+    return olderLogs.reduce<Array<{ year: string; entries: WeightLog[] }>>((groups, entry) => {
+      const year = entry.date.slice(0, 4) || "Unknown";
+      const existingGroup = groups.find((group) => group.year === year);
+
+      if (existingGroup) {
+        existingGroup.entries.push(entry);
+      } else {
+        groups.push({ year, entries: [entry] });
+      }
+
+      return groups;
+    }, []);
+  }, [olderLogs]);
+
+  const toggleYear = (year: string) => {
+    setExpandedYears((current) =>
+      current.includes(year) ? current.filter((entry) => entry !== year) : [...current, year]
+    );
+  };
+
   const saveWeight = async () => {
     if (!dateValue || !weightValue.trim()) return;
 
@@ -82,7 +138,7 @@ export default function WeightPage() {
       id: `weight-${Date.now()}`,
       profileSlug: HEWSTER_PROFILE_SLUG,
       date: dateValue,
-      weight: weightValue.trim(),
+      weight: formatWeightWithUnit(weightValue, profile.weightUnit),
       note: noteValue.trim() || null,
     };
 
@@ -99,6 +155,8 @@ export default function WeightPage() {
       }
 
       setSaveState("saved");
+      setExpandedYears((current) => (current.includes(entry.date.slice(0, 4)) ? current : [entry.date.slice(0, 4), ...current]));
+      setDateValue(todayInputValue());
       setWeightValue("");
       setNoteValue("");
       window.setTimeout(() => setSaveState("idle"), 1800);
@@ -107,25 +165,179 @@ export default function WeightPage() {
     }
   };
 
+  const editWeight = (entry: WeightLog) => {
+    setEditingWeightId(entry.id);
+    setEditingDateValue(entry.date);
+    setEditingWeightValue(weightInputValue(entry.weight));
+    setEditingNoteValue(entry.note ?? "");
+    setSaveState("idle");
+  };
+
+  const cancelEdit = () => {
+    setEditingWeightId(null);
+    setEditingDateValue("");
+    setEditingWeightValue("");
+    setEditingNoteValue("");
+    setSaveState("idle");
+  };
+
+  const deleteWeight = async (entry: WeightLog) => {
+    const confirmed = window.confirm(`Delete the weight entry from ${formatWeightDate(entry.date)}?`);
+    if (!confirmed) return;
+
+    const nextLogs = weightLogs.filter((log) => log.id !== entry.id);
+    const localState = loadLocalState();
+
+    markWeightLogDeleted(entry.id);
+    setWeightLogs(nextLogs);
+    persistLocalState(localState.templates, localState.dailyMealState, localState.activityLogs, nextLogs);
+    setSaveState("saving");
+    cancelEdit();
+
+    try {
+      if (supabaseReady) {
+        await deleteWeightLogInSupabase(entry.id);
+      }
+
+      setSaveState("saved");
+      window.setTimeout(() => setSaveState("idle"), 1800);
+    } catch {
+      setSaveState("error");
+    }
+  };
+
+  const saveEditedWeight = async () => {
+    if (!editingWeightId || !editingDateValue || !editingWeightValue.trim()) return;
+
+    const existing = weightLogs.find((log) => log.id === editingWeightId);
+    if (!existing) return;
+
+    const entry: WeightLog = {
+      ...existing,
+      date: editingDateValue,
+      weight: formatWeightWithUnit(editingWeightValue, profile.weightUnit),
+      note: editingNoteValue.trim() || null,
+    };
+    const nextLogs = weightLogs.map((log) => (log.id === editingWeightId ? entry : log));
+    const localState = loadLocalState();
+
+    setWeightLogs(nextLogs);
+    persistLocalState(localState.templates, localState.dailyMealState, localState.activityLogs, nextLogs);
+    setSaveState("saving");
+    cancelEdit();
+
+    try {
+      if (supabaseReady) {
+        await updateWeightLogInSupabase(entry);
+      }
+
+      setSaveState("saved");
+      window.setTimeout(() => setSaveState("idle"), 1800);
+    } catch {
+      setSaveState("error");
+    }
+  };
+
+  const renderWeightEntry = (entry: WeightLog) => (
+    <article
+      key={entry.id}
+      className="relative rounded-2xl bg-white/70 p-4 pr-10 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.045)]"
+    >
+      <button
+        type="button"
+        onClick={() => editWeight(entry)}
+        className="absolute right-2.5 top-2.5 flex size-7 items-center justify-center rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/55 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/45 transition hover:bg-white hover:text-[var(--hewie-active-text,#334155)]"
+        aria-label={`Edit weight from ${formatWeightDate(entry.date)}`}
+      >
+        <Ellipsis className="size-3.5" />
+      </button>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="font-medium">{formatWeightDate(entry.date)}</p>
+          {entry.note ? <p className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/75">{entry.note}</p> : null}
+        </div>
+        <p className="mr-5 shrink-0 text-sm font-semibold">{formatWeightWithUnit(entry.weight, profile.weightUnit)}</p>
+      </div>
+      {editingWeightId === entry.id ? (
+        <div className="mt-4 space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-4">
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Date</span>
+            <input
+              type="date"
+              value={editingDateValue}
+              onChange={(event) => setEditingDateValue(event.target.value)}
+              className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+            />
+          </label>
+
+          <div className="grid grid-cols-[1fr_auto] gap-3">
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Weight</span>
+              <input
+                inputMode="decimal"
+                value={editingWeightValue}
+                onChange={(event) => setEditingWeightValue(event.target.value)}
+                placeholder={`e.g. 24.8 ${profile.weightUnit}`}
+                className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Unit</span>
+              <select
+                value={profile.weightUnit}
+                onChange={(event) => updateWeightUnit(event.target.value as PetProfile["weightUnit"])}
+                className="w-24 rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+              >
+                <option value="lb">lb</option>
+                <option value="kg">kg</option>
+              </select>
+            </label>
+          </div>
+
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Notes</span>
+            <input
+              value={editingNoteValue}
+              onChange={(event) => setEditingNoteValue(event.target.value)}
+              placeholder="Optional Notes"
+              className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+            />
+          </label>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={saveEditedWeight}
+              className="rounded-full !text-white hover:opacity-90"
+              style={{ backgroundColor: theme.activeText }}
+            >
+              Save Changes
+            </Button>
+            <Button variant="outline" onClick={cancelEdit} className="rounded-full">
+              Cancel
+            </Button>
+            <Button variant="outline" onClick={() => deleteWeight(entry)} className="rounded-full border-rose-200 text-rose-600 hover:bg-rose-50">
+              Delete
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </article>
+  );
+
   if (!hydrated) {
     return (
-      <main className="min-h-screen bg-[#979ca7] text-zinc-900">
+      <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
           <header className="mb-6">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <Link href="/hewie" className="text-sm font-bold text-violet-500">
+                <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
                   Hewster&apos;s Notebook
                 </Link>
                 <div className="skeleton-pulse mt-1 h-10 w-32 rounded-xl bg-white/40" />
               </div>
-              <Image
-                src="/hewster-profile.jpg"
-                alt="Hewster"
-                width={48}
-                height={48}
-                className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
-              />
+              <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
             </div>
           </header>
 
@@ -141,100 +353,146 @@ export default function WeightPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#979ca7] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <Link href="/hewie" className="text-sm font-bold text-violet-500">
+              <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
                 Hewster&apos;s Notebook
               </Link>
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight">Weight</h1>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Weight</h1>
             </div>
-            <Image
-              src="/hewster-profile.jpg"
-              alt="Hewster"
-              width={48}
-              height={48}
-              className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
-            />
+            <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
           </div>
         </header>
 
-        <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
+        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Add Weight</h2>
             </div>
-            <div className="text-right text-xs text-zinc-500">
+            <div className="text-right text-xs text-[var(--hewie-active-text,#334155)]/60">
               {saveState === "saving"
                 ? "Saving..."
                 : saveState === "saved"
                   ? "Saved"
                   : saveState === "error"
-                    ? "Saved in browser only"
+                    ? "Saved In Browser Only"
                     : ""}
             </div>
           </div>
 
           <div className="space-y-3">
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-zinc-700">Date</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Date</span>
               <input
                 type="date"
                 value={dateValue}
                 onChange={(event) => setDateValue(event.target.value)}
-                className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+                className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
               />
             </label>
 
+            <div className="grid grid-cols-[1fr_auto] gap-3">
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Weight</span>
+                <input
+                  inputMode="decimal"
+                  value={weightValue}
+                  onChange={(event) => setWeightValue(event.target.value)}
+                  placeholder={`e.g. 24.8 ${profile.weightUnit}`}
+                  className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                />
+              </label>
+
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Unit</span>
+                <select
+                  value={profile.weightUnit}
+                  onChange={(event) => updateWeightUnit(event.target.value as PetProfile["weightUnit"])}
+                  className="w-24 rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                >
+                  <option value="lb">lb</option>
+                  <option value="kg">kg</option>
+                </select>
+              </label>
+            </div>
+
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-zinc-700">Weight</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Notes</span>
               <input
-                inputMode="decimal"
-                value={weightValue}
-                onChange={(event) => setWeightValue(event.target.value)}
-                placeholder="e.g. 24.8 lb"
-                className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
-              />
-            </label>
-
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium text-zinc-700">Note</span>
-              <textarea
                 value={noteValue}
                 onChange={(event) => setNoteValue(event.target.value)}
-                rows={3}
-                placeholder="Optional note"
-                className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+                placeholder="Optional Notes"
+                className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
               />
             </label>
 
-            <Button onClick={saveWeight} className="rounded-full bg-zinc-300 text-zinc-800 hover:bg-zinc-400">
-              Save Weight
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={saveWeight}
+                className="rounded-full !text-white hover:opacity-90"
+                style={{ backgroundColor: theme.activeText }}
+              >
+                Save Weight
+              </Button>
+            </div>
           </div>
         </section>
 
-        <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
-          <div className="mb-4 flex items-center gap-2">
-            <Scale className="size-4 text-violet-500" />
+        <section className="mb-4 overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-sm">
+          <div className="bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)]">
             <h2 className="text-lg font-semibold">Weight History</h2>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 p-5">
+
             {sortedLogs.length ? (
-              sortedLogs.map((entry) => (
-                <article key={entry.id} className="rounded-2xl bg-zinc-50 p-4 ring-1 ring-zinc-200">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium text-zinc-900">{formatWeightDate(entry.date)}</p>
-                    <p className="text-sm font-semibold text-zinc-800">{entry.weight}</p>
+              <>
+                <div className="space-y-2">
+                  <h3 className="px-1 text-sm font-bold text-[var(--hewie-active-text,#334155)]/85">Recent</h3>
+                  <div className="space-y-3">
+                    {recentLogs.map((entry) => renderWeightEntry(entry))}
                   </div>
-                  {entry.note ? <p className="mt-2 text-sm text-zinc-600">{entry.note}</p> : null}
-                </article>
-              ))
+                </div>
+
+                {logsByYear.length ? (
+                  <div className="space-y-2 pt-2">
+                    <h3 className="px-1 text-sm font-bold text-[var(--hewie-active-text,#334155)]/85">Older</h3>
+                    <div className="space-y-2">
+                {logsByYear.map((group) => {
+                const isExpanded = expandedYears.includes(group.year);
+
+                return (
+                <div key={group.year} className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleYear(group.year)}
+                    className="flex w-full items-center justify-between rounded-2xl bg-white/60 px-3 py-2 text-left shadow-[0_6px_14px_rgba(15,23,42,0.035)] transition hover:bg-white/75"
+                    aria-expanded={isExpanded}
+                  >
+                    <span className="flex items-center gap-2">
+                      {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                      <span className="text-sm font-bold text-[var(--hewie-active-text,#334155)]/85">{group.year}</span>
+                    </span>
+                    <span className="sr-only">{isExpanded ? "Collapse" : "Expand"} {group.year}</span>
+                  </button>
+
+                  {isExpanded ? (
+                  <div className="space-y-3">
+                    {group.entries.map((entry) => renderWeightEntry(entry))}
+                  </div>
+                  ) : null}
+                </div>
+                );
+                })}
+                    </div>
+                  </div>
+                ) : null}
+              </>
             ) : (
-              <p className="text-sm text-zinc-500">No weight entries yet.</p>
+              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No Weight Entries Yet.</p>
             )}
           </div>
         </section>

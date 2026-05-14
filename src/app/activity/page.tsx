@@ -1,34 +1,27 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { FitBarkActivityCard } from "@/components/fitbark-activity-card";
 
 export default function ActivityPage() {
   return (
-    <main className="min-h-screen bg-[#979ca7] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <Link href="/hewie" className="text-sm font-bold text-violet-500">
+              <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
                 Hewster&apos;s Notebook
               </Link>
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight">Activity</h1>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Fitness</h1>
             </div>
-            <Image
-              src="/hewster-profile.jpg"
-              alt="Hewster"
-              width={48}
-              height={48}
-              className="mt-0.5 size-12 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm"
-              priority
-            />
+            <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
           </div>
           <p className="mt-1 text-sm leading-5 text-zinc-600">
-            FitBark activity-only data for Hewie.
+            Fitness and tracker summaries for Hewie.
           </p>
         </header>
 

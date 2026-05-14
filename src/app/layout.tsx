@@ -12,10 +12,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body
         className="min-h-full flex flex-col bg-stone-50 text-zinc-900"
         style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
+        suppressHydrationWarning
       >
         {children}
       </body>
