@@ -4,7 +4,7 @@
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 
-import { Check, Clock3, Ellipsis, Tablets } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Clock3, Ellipsis, Tablets } from "lucide-react";
 
 import Link from "next/link";
 
@@ -991,7 +991,7 @@ export default function LogPage() {
     window.setTimeout(() => {
       setLogEventOpen(false);
       setLogEventClosing(false);
-    }, 500);
+    }, 220);
 
   };
 
@@ -1019,7 +1019,7 @@ export default function LogPage() {
 
       setLogEventClosing(false);
 
-    }, 500);
+    }, 220);
 
   };
 
@@ -1158,7 +1158,7 @@ export default function LogPage() {
 
 
         {logEventOpen ? (
-          <div className={`relative mb-14 ${logEventClosing ? "log-event-curtain-close" : "log-event-curtain-open"}`}>
+          <div className={`relative mb-7 ${logEventClosing ? "log-event-curtain-close" : "log-event-curtain-open"}`}>
             <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
 
             {detailActivityType && !editingActivityId ? (
@@ -1204,8 +1204,13 @@ export default function LogPage() {
             ) : null}
 
             </QuickLogCard>
-            <button type="button" onClick={collapseLogEvent} className="log-event-original-tab" data-direction="up" aria-label="Collapse Log Event">
-              <span className="log-event-original-tab-mark" />
+            <button
+              type="button"
+              onClick={collapseLogEvent}
+              className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-8 w-24 items-center justify-center rounded-b-3xl rounded-t-sm bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/90"
+              aria-label="Collapse Log Event"
+            >
+              <ChevronUp className="size-4.5" strokeWidth={3} />
             </button>
           </div>
         ) : (
@@ -1218,26 +1223,15 @@ export default function LogPage() {
                 openLogEvent();
               }
             }}
-            className="group relative mb-14 cursor-pointer overflow-visible rounded-3xl rounded-tl-lg bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-px"
+            className="group relative mb-7 cursor-pointer overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
           >
-            <div className="relative z-10 flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Log Event</h2>
-                <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
+            <h2 className="text-lg font-semibold">Log Event</h2>
+            <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
+            <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
+              <div className="flex h-8 w-24 items-center justify-center rounded-b-3xl rounded-t-sm bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition group-hover:translate-y-0.5">
+                <ChevronDown className="size-4.5" strokeWidth={3} />
               </div>
             </div>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                openLogEvent();
-              }}
-              className="log-event-original-tab"
-              data-direction="down"
-              aria-label="Open Log Event"
-            >
-              <span className="log-event-original-tab-mark" />
-            </button>
           </section>
         )}
 
