@@ -1140,6 +1140,7 @@ export default function LogPage() {
 
         {logEventOpen ? (
           <div className={`relative mb-7 ${logEventClosing ? "log-event-curtain-close" : "log-event-curtain-open"}`}>
+            <div className="absolute -top-2 left-7 z-10 h-5 w-28 rounded-t-2xl bg-[var(--hewie-accent,#64748b)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35" />
             <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
 
             {detailActivityType && !editingActivityId ? (
@@ -1188,7 +1189,7 @@ export default function LogPage() {
             <button
               type="button"
               onClick={collapseLogEvent}
-              className="absolute right-4 top-4 z-10 flex size-9 items-center justify-center rounded-full bg-white/18 text-[var(--hewie-accent-text,#ffffff)]/80 ring-1 ring-white/20 transition hover:bg-white/25 hover:text-[var(--hewie-accent-text,#ffffff)]"
+              className="absolute right-4 top-4 z-20 flex size-9 items-center justify-center rounded-full bg-white/18 text-[var(--hewie-accent-text,#ffffff)]/80 ring-1 ring-white/20 transition hover:bg-white/25 hover:text-[var(--hewie-accent-text,#ffffff)]"
               aria-label="Collapse Log Event"
             >
               <ChevronUp className="size-4.5" strokeWidth={2.5} />
@@ -1208,19 +1209,20 @@ export default function LogPage() {
                 setLogEventOpen(true);
               }
             }}
-            className="group relative mb-6 cursor-pointer overflow-visible rounded-3xl bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
+            className="group relative mb-6 cursor-pointer overflow-visible rounded-3xl rounded-tl-lg bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-px"
           >
+            <div className="pointer-events-none absolute -top-3 left-5 h-5 w-28 rounded-t-2xl bg-[var(--hewie-accent,#64748b)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35" />
+            <div className="pointer-events-none absolute right-0 top-0 size-12 rounded-bl-3xl bg-white/16 shadow-inner ring-1 ring-white/15" />
+            <div className="pointer-events-none absolute right-1.5 top-1.5 size-7 rounded-bl-2xl bg-white/12" />
             <div className="relative z-10 flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold">Log Event</h2>
-                <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
+                <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to flip open a new note.</p>
               </div>
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/18 text-[var(--hewie-accent-text,#ffffff)]/80 ring-1 ring-white/20 transition group-hover:bg-white/25">
                 <ChevronDown className="size-4.5" strokeWidth={2.5} />
               </span>
             </div>
-            <div className="pointer-events-none absolute inset-x-6 -bottom-2 h-5 rounded-b-3xl bg-[var(--hewie-accent,#64748b)]/70 shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/25 transition group-hover:translate-y-0.5" />
-            <div className="pointer-events-none absolute inset-x-12 -bottom-4 h-4 rounded-b-3xl bg-[var(--hewie-accent,#64748b)]/35" />
           </section>
         )}
 
