@@ -8,11 +8,6 @@ export function ComingSoon() {
           <p className="mt-4 text-sm leading-6 text-zinc-600">
             Hewster&apos;s Notebook is getting ready. A polished pet care tracker is on the way.
           </p>
-          <p className="mt-6 border-t border-zinc-200 pt-5 text-xs leading-5 text-zinc-500">
-            We follow industry-standard privacy and security practices designed to support Canadian privacy requirements,
-            including Personal Information Protection and Electronic Documents Act (PIPEDA), as well as U.S. healthcare privacy
-            standards associated with Health Insurance Portability and Accountability Act (HIPAA).
-          </p>
         </div>
       </div>
     </main>
