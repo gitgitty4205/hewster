@@ -532,8 +532,17 @@ async function importBridgePayload(payload: HewsterBridgePayload) {
   await Promise.all(
     careImports.map(async ([kind, items]) => {
       if (!Array.isArray(items) || !items.length) return;
-      saveCareTemplates(kind, items);
-      await saveCareTemplatesToSupabase(kind, items);
+
+      const existingItems = loadCareTemplates(kind);
+      const merged = new Map<number, CareItemTemplate>();
+      existingItems.forEach((item) => merged.set(item.id, item));
+      items.forEach((item) => merged.set(item.id, item));
+      const nextItems = [...merged.values()];
+
+      if (nextItems.length < existingItems.length) return;
+
+      saveCareTemplates(kind, nextItems);
+      await saveCareTemplatesToSupabase(kind, nextItems);
     })
   ).catch(() => undefined);
 }

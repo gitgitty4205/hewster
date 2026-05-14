@@ -138,6 +138,15 @@ export function saveCareTemplates(kind: CareItemKind, templates: CareItemTemplat
   window.dispatchEvent(new CustomEvent("hewster:care-settings-updated", { detail: { kind } }));
 }
 
+function mergeCareTemplates(remoteTemplates: CareItemTemplate[], localTemplates: CareItemTemplate[]) {
+  const merged = new Map<number, CareItemTemplate>();
+
+  remoteTemplates.forEach((item) => merged.set(item.id, item));
+  localTemplates.forEach((item) => merged.set(item.id, item));
+
+  return [...merged.values()];
+}
+
 export async function loadCareTemplatesFromSupabase(kind: CareItemKind) {
   const localTemplates = loadCareTemplates(kind);
   const supabase = getSupabaseBrowserClient();
@@ -162,7 +171,13 @@ export async function loadCareTemplatesFromSupabase(kind: CareItemKind) {
   const items = (data as { items?: unknown }).items;
   if (!isCareItemTemplateArray(items, kind)) return localTemplates;
 
-  const templates = items.map((item) => normalizeCareItemTemplate(item, kind)).filter((item): item is CareItemTemplate => Boolean(item));
+  const remoteTemplates = items.map((item) => normalizeCareItemTemplate(item, kind)).filter((item): item is CareItemTemplate => Boolean(item));
+  const templates = mergeCareTemplates(remoteTemplates, localTemplates);
+
+  if (templates.length !== remoteTemplates.length) {
+    await saveCareTemplatesToSupabase(kind, templates).catch(() => undefined);
+  }
+
   saveCareTemplates(kind, templates);
   return templates;
 }
