@@ -94,6 +94,8 @@ export const MEAL_LOGS_STORAGE_KEY = "hewster.mealLogs";
 export const MANUAL_ALERTS_STORAGE_KEY = "hewster.manualAlerts";
 export const TODAY_KEY_STORAGE_KEY = "hewster.todayKey";
 
+const RETIRED_WEIGHT_LOG_IDS = new Set(["weight-1778383254313", "weight-1778383263011"]);
+
 type MealTemplateRow = {
   profile_slug: string;
   meal_id: number;
@@ -204,9 +206,9 @@ function readDeletedWeightLogIds() {
   try {
     const stored = window.localStorage.getItem(DELETED_WEIGHT_LOG_IDS_STORAGE_KEY);
     const parsed = stored ? JSON.parse(stored) : null;
-    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+    return new Set([...RETIRED_WEIGHT_LOG_IDS, ...(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [])]);
   } catch {
-    return new Set<string>();
+    return new Set(RETIRED_WEIGHT_LOG_IDS);
   }
 }
 
@@ -413,12 +415,16 @@ function mapActivityLogToRow(activity: ActivityLog): ActivityLogRow {
   };
 }
 
+function normalizeWeightText(weight: string) {
+  return weight.trim().replace(/\s*(kg|lb)\s*$/i, " $1").replace(/\s+/g, " ");
+}
+
 function mapWeightLogRowToWeight(row: WeightLogRow): WeightLog {
   return {
     id: row.id,
     profileSlug: row.profile_slug,
     date: row.log_date,
-    weight: row.weight,
+    weight: normalizeWeightText(row.weight),
     note: row.note ?? null,
     createdAt: row.created_at,
   };
@@ -429,7 +435,7 @@ function mapWeightLogToRow(weight: WeightLog): WeightLogRow {
     id: weight.id,
     profile_slug: HEWSTER_PROFILE_SLUG,
     log_date: weight.date,
-    weight: weight.weight,
+    weight: normalizeWeightText(weight.weight),
     note: weight.note ?? null,
   };
 }

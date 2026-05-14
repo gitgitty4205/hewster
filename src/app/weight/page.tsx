@@ -42,13 +42,13 @@ function formatWeightDate(date: string) {
 }
 
 function formatWeightWithUnit(weight: string, unit: PetProfile["weightUnit"]) {
-  const trimmed = weight.trim();
+  const trimmed = weight.trim().replace(/\s*(kg|lb)\s*$/i, " $1");
   if (/\s(?:lb|kg)$/i.test(trimmed)) return trimmed;
   return `${trimmed} ${unit}`;
 }
 
 function weightInputValue(weight: string) {
-  return weight.replace(/\s(?:lb|kg)$/i, "");
+  return weight.replace(/\s*(?:lb|kg)$/i, "");
 }
 
 export default function WeightPage() {
