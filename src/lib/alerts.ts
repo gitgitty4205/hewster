@@ -99,6 +99,15 @@ export function saveReminderAlertRules(rules: ReminderAlertRule[]) {
 
 function parsePlannedTimeToMinutes(value: string) {
   const normalized = value.trim().replace(/\s+/g, " ").toUpperCase();
+
+  const twentyFourHourParts = normalized.match(/^(\d{1,2})(?::(\d{2}))(?::\d{2})?$/);
+  if (twentyFourHourParts) {
+    const hours = Number(twentyFourHourParts[1]);
+    const minutes = Number(twentyFourHourParts[2]);
+    if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) return hours * 60 + minutes;
+    return null;
+  }
+
   const parts = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s?(AM|PM)$/i);
   if (!parts) return null;
 
@@ -177,7 +186,7 @@ export function resolveAlerts(
   reminderRules
     .filter((rule) => rule.active)
     .forEach((rule) => {
-      const ruleMinutes = parsePlannedTimeToMinutes(formatReminderTime(rule.time));
+      const ruleMinutes = parsePlannedTimeToMinutes(rule.time);
       if (ruleMinutes === null || currentMinutes < ruleMinutes) return;
 
       const hasLoggedActivity = activityLogs.some((activity) => {
@@ -223,8 +232,8 @@ export function resolveAlerts(
     })
     .filter((alert) => {
       if (!alert.time) return true;
-      const alertMinutes = parsePlannedTimeToMinutes(formatReminderTime(alert.time));
-      return alertMinutes === null || currentMinutes >= alertMinutes;
+      const alertMinutes = parsePlannedTimeToMinutes(alert.time);
+      return alertMinutes !== null && currentMinutes >= alertMinutes;
     })
     .forEach((alert) => {
       alerts.push({
