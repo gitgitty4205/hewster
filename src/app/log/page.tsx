@@ -477,6 +477,8 @@ export default function LogPage() {
 
   const [logEventOpen, setLogEventOpen] = useState(false);
 
+  const [logEventClosing, setLogEventClosing] = useState(false);
+
   const [detailActivityType, setDetailActivityType] = useState<ActivityType | null>(null);
 
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
@@ -869,6 +871,8 @@ export default function LogPage() {
 
     if (["potty", "activity", "outdoor", "food", "treat", "care", "wellness", "medication", "sick", "other"].includes(activityType)) {
 
+      setLogEventClosing(false);
+
       setLogEventOpen(true);
 
       setDetailActivityType(activityType);
@@ -974,7 +978,29 @@ export default function LogPage() {
     await saveActivity(activity, editingActivityId ? "update" : "create");
 
     resetEditor();
-    setLogEventOpen(false);
+    setLogEventClosing(true);
+    window.setTimeout(() => {
+      setLogEventOpen(false);
+      setLogEventClosing(false);
+    }, 220);
+
+  };
+
+
+
+  const collapseLogEvent = () => {
+
+    resetEditor();
+
+    setLogEventClosing(true);
+
+    window.setTimeout(() => {
+
+      setLogEventOpen(false);
+
+      setLogEventClosing(false);
+
+    }, 220);
 
   };
 
@@ -1113,7 +1139,7 @@ export default function LogPage() {
 
 
         {logEventOpen ? (
-          <div className="relative mb-7">
+          <div className={`relative mb-7 ${logEventClosing ? "log-event-curtain-close" : "log-event-curtain-open"}`}>
             <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
 
             {detailActivityType && !editingActivityId ? (
@@ -1150,10 +1176,7 @@ export default function LogPage() {
 
                 onSave={saveDetailedActivity}
 
-                onCancel={() => {
-                  resetEditor();
-                  setLogEventOpen(false);
-                }}
+                onCancel={collapseLogEvent}
 
                 saving={activityState === "saving"}
 
@@ -1164,10 +1187,7 @@ export default function LogPage() {
             </QuickLogCard>
             <button
               type="button"
-              onClick={() => {
-                resetEditor();
-                setLogEventOpen(false);
-              }}
+              onClick={collapseLogEvent}
               className="absolute inset-x-0 -bottom-4 flex justify-center"
               aria-label="Collapse Log Event"
             >
@@ -1180,9 +1200,15 @@ export default function LogPage() {
           <section
             role="button"
             tabIndex={0}
-            onClick={() => setLogEventOpen(true)}
+            onClick={() => {
+              setLogEventClosing(false);
+              setLogEventOpen(true);
+            }}
             onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") setLogEventOpen(true);
+              if (event.key === "Enter" || event.key === " ") {
+                setLogEventClosing(false);
+                setLogEventOpen(true);
+              }
             }}
             className="group relative mb-7 cursor-pointer overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
           >
