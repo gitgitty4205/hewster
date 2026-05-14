@@ -1168,13 +1168,15 @@ export default function LogPage() {
                 resetEditor();
                 setLogEventOpen(false);
               }}
-              className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-8 w-24 items-center justify-center rounded-b-3xl rounded-t-sm bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/90"
+              className="absolute inset-x-0 -bottom-4 flex justify-center"
               aria-label="Collapse Log Event"
             >
-              <div className="flex -space-x-1">
-                <ChevronUp className="size-4" strokeWidth={3} />
-                <ChevronUp className="size-4" strokeWidth={3} />
-                <ChevronUp className="size-4" strokeWidth={3} />
+              <div className="flex h-8 w-24 items-center justify-center rounded-b-3xl rounded-t-sm bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:translate-y-0.5">
+                <div className="flex -space-x-1">
+                  <ChevronUp className="size-4" strokeWidth={3} />
+                  <ChevronUp className="size-4" strokeWidth={3} />
+                  <ChevronUp className="size-4" strokeWidth={3} />
+                </div>
               </div>
             </button>
           </div>
