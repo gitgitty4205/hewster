@@ -49,6 +49,7 @@ import {
   careItemsForMeal,
   customScheduledCareItems,
   loadCareTemplates,
+  loadCareTemplatesFromSupabase,
   type CareItemKind,
   type CareItemTemplate,
 } from "@/lib/care-settings";
@@ -562,8 +563,12 @@ export default function HomeApp() {
         setActivityLogs(state.activityLogs);
         setManualAlerts(state.manualAlerts ?? []);
         setMealLogs(state.mealLogs ?? []);
-        setSupplementTemplates(loadCareTemplates("supplement"));
-        setMedicationTemplates(loadCareTemplates("medication"));
+        const [supplements, medications] = await Promise.all([
+          loadCareTemplatesFromSupabase("supplement"),
+          loadCareTemplatesFromSupabase("medication"),
+        ]);
+        setSupplementTemplates(supplements);
+        setMedicationTemplates(medications);
         setCustomCareStatus(loadCustomCareStatus());
         setReminderRules(loadReminderAlertRules());
         setTodayKey(state.todayKey);
@@ -604,6 +609,10 @@ export default function HomeApp() {
     const refreshCareSettings = () => {
       setSupplementTemplates(loadCareTemplates("supplement"));
       setMedicationTemplates(loadCareTemplates("medication"));
+      void Promise.all([loadCareTemplatesFromSupabase("supplement"), loadCareTemplatesFromSupabase("medication")]).then(([supplements, medications]) => {
+        setSupplementTemplates(supplements);
+        setMedicationTemplates(medications);
+      });
       setCustomCareStatus(loadCustomCareStatus());
     };
 

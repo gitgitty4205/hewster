@@ -16,7 +16,7 @@ import {
   type ReminderAlertEvent,
   type ReminderAlertRule,
 } from "@/lib/alerts";
-import { loadCareTemplates, type CareItemTemplate } from "@/lib/care-settings";
+import { loadCareTemplatesFromSupabase, type CareItemTemplate } from "@/lib/care-settings";
 import {
   type ActivityLog,
   type DailyMealState,
@@ -114,7 +114,11 @@ export default function AlertsPage() {
         setActivityLogs(state.activityLogs);
         setWeightLogs(state.weightLogs ?? []);
         setManualAlerts(state.manualAlerts ?? []);
-        setCareTemplates([...loadCareTemplates("supplement"), ...loadCareTemplates("medication")]);
+        const [supplements, medications] = await Promise.all([
+          loadCareTemplatesFromSupabase("supplement"),
+          loadCareTemplatesFromSupabase("medication"),
+        ]);
+        setCareTemplates([...supplements, ...medications]);
         setReminderRules(loadReminderAlertRules());
         setAlertMinuteKey(currentAlertMinuteKey());
       } finally {

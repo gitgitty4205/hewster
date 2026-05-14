@@ -1,4 +1,5 @@
 import type { MealTemplate } from "@/lib/meal-templates";
+import { getSupabaseBrowserClient, HEWSTER_PROFILE_SLUG } from "@/lib/supabase";
 
 export type CareScheduleKind = "meal" | "custom";
 export type CareItemKind = "supplement" | "medication";
@@ -135,6 +136,45 @@ export function loadCareTemplates(kind: CareItemKind): CareItemTemplate[] {
 export function saveCareTemplates(kind: CareItemKind, templates: CareItemTemplate[]) {
   window.localStorage.setItem(storageKeyForCareKind(kind), JSON.stringify(templates));
   window.dispatchEvent(new CustomEvent("hewster:care-settings-updated", { detail: { kind } }));
+}
+
+export async function loadCareTemplatesFromSupabase(kind: CareItemKind) {
+  const localTemplates = loadCareTemplates(kind);
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return localTemplates;
+
+  const { data, error } = await supabase
+    .from("care_item_templates")
+    .select("items")
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("kind", kind)
+    .maybeSingle();
+
+  if (error || !data) return localTemplates;
+
+  const items = (data as { items?: unknown }).items;
+  if (!isCareItemTemplateArray(items, kind)) return localTemplates;
+
+  const templates = items.map((item) => normalizeCareItemTemplate(item, kind)).filter((item): item is CareItemTemplate => Boolean(item));
+  saveCareTemplates(kind, templates);
+  return templates;
+}
+
+export async function saveCareTemplatesToSupabase(kind: CareItemKind, templates: CareItemTemplate[]) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return;
+
+  const { error } = await supabase.from("care_item_templates").upsert(
+    {
+      profile_slug: HEWSTER_PROFILE_SLUG,
+      kind,
+      items: templates,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "profile_slug,kind" }
+  );
+
+  if (error) throw error;
 }
 
 export function resetCareTemplates(kind: CareItemKind) {

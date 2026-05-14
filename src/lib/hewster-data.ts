@@ -627,7 +627,7 @@ export async function loadAppState(): Promise<HewsterAppState> {
     : [];
 
   const deletedWeightLogIds = readDeletedWeightLogIds();
-  const weightLogs = [...localState.weightLogs, ...remoteWeightLogs]
+  const weightLogs = [...remoteWeightLogs, ...localState.weightLogs]
     .filter((entry) => !deletedWeightLogIds.has(entry.id))
     .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));
 

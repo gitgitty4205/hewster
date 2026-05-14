@@ -14,9 +14,10 @@ import {
   type CareItemKind,
   type CareItemTemplate,
   initialCareTemplatesForKind,
-  loadCareTemplates,
+  loadCareTemplatesFromSupabase,
   resetCareTemplates,
   saveCareTemplates,
+  saveCareTemplatesToSupabase,
 } from "@/lib/care-settings";
 
 type Props = {
@@ -88,7 +89,7 @@ export function CareSettingsPage({
       const state = await loadAppState();
       if (cancelled) return;
       setMeals(state.templates);
-      setItems(loadCareTemplates(kind));
+      setItems(await loadCareTemplatesFromSupabase(kind));
       hydrated.current = true;
     }
 
@@ -105,7 +106,9 @@ export function CareSettingsPage({
     setItems(nextItems);
     saveCareTemplates(kind, nextItems);
     setSaveState("saving");
-    window.setTimeout(() => setSaveState("saved"), 220);
+    saveCareTemplatesToSupabase(kind, nextItems)
+      .then(() => setSaveState("saved"))
+      .catch(() => setSaveState("saved"));
     window.setTimeout(() => setSaveState("idle"), 1600);
   };
 

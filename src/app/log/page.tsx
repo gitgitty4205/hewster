@@ -61,7 +61,7 @@ import { compareActivitiesReverseChronological, formatActivityLabel, formatActiv
 
 import { initialTemplates, type MealStatus, type MealTemplate } from "@/lib/meal-templates";
 
-import { careItemsForMeal, loadCareTemplates, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
+import { careItemsForMeal, loadCareTemplates, loadCareTemplatesFromSupabase, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -533,9 +533,14 @@ export default function LogPage() {
 
         setDailyMealState(state.dailyMealState ?? []);
 
-        setSupplementTemplates(loadCareTemplates("supplement"));
+        const [supplements, medications] = await Promise.all([
+          loadCareTemplatesFromSupabase("supplement"),
+          loadCareTemplatesFromSupabase("medication"),
+        ]);
 
-        setMedicationTemplates(loadCareTemplates("medication"));
+        setSupplementTemplates(supplements);
+
+        setMedicationTemplates(medications);
 
       } finally {
 
@@ -573,6 +578,10 @@ export default function LogPage() {
     const refreshCareSettings = () => {
       setSupplementTemplates(loadCareTemplates("supplement"));
       setMedicationTemplates(loadCareTemplates("medication"));
+      void Promise.all([loadCareTemplatesFromSupabase("supplement"), loadCareTemplatesFromSupabase("medication")]).then(([supplements, medications]) => {
+        setSupplementTemplates(supplements);
+        setMedicationTemplates(medications);
+      });
     };
 
     window.addEventListener("focus", refreshCareSettings);

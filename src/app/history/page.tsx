@@ -32,7 +32,7 @@ import {
 } from "@/lib/hewster-data";
 
 import { compareActivitiesChronological, formatActivityLabel, formatActivityTime, renderActivityDetail, splitTreatDetailText } from "@/lib/activity";
-import { loadCareTemplates, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
+import { loadCareTemplatesFromSupabase, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 
 import type { MealTemplate } from "@/lib/meal-templates";
 
@@ -967,7 +967,12 @@ export default function HistoryPage() {
 
         setMealLogs(state.mealLogs ?? []);
 
-        setCareTemplates([...loadCareTemplates("supplement"), ...loadCareTemplates("medication")]);
+        const [supplements, medications] = await Promise.all([
+          loadCareTemplatesFromSupabase("supplement"),
+          loadCareTemplatesFromSupabase("medication"),
+        ]);
+
+        setCareTemplates([...supplements, ...medications]);
 
         setActivityLogs(state.activityLogs);
 

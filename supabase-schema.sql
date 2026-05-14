@@ -71,12 +71,21 @@ create table if not exists public.manual_alerts (
   resolved_at timestamptz
 );
 
+create table if not exists public.care_item_templates (
+  profile_slug text not null,
+  kind text not null check (kind in ('supplement', 'medication')),
+  items jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (profile_slug, kind)
+);
+
 alter table public.meal_templates enable row level security;
 alter table public.daily_meals enable row level security;
 alter table public.activity_logs enable row level security;
 alter table public.weight_logs enable row level security;
 alter table public.meal_logs enable row level security;
 alter table public.manual_alerts enable row level security;
+alter table public.care_item_templates enable row level security;
 
 drop policy if exists "public read meal templates" on public.meal_templates;
 drop policy if exists "public write meal templates" on public.meal_templates;
@@ -90,11 +99,17 @@ drop policy if exists "public update activity logs" on public.activity_logs;
 drop policy if exists "public delete activity logs" on public.activity_logs;
 drop policy if exists "public read weight logs" on public.weight_logs;
 drop policy if exists "public write weight logs" on public.weight_logs;
+drop policy if exists "public update weight logs" on public.weight_logs;
+drop policy if exists "public delete weight logs" on public.weight_logs;
 drop policy if exists "public read meal logs" on public.meal_logs;
 drop policy if exists "public write meal logs" on public.meal_logs;
+drop policy if exists "public delete meal logs" on public.meal_logs;
 drop policy if exists "public read manual alerts" on public.manual_alerts;
 drop policy if exists "public write manual alerts" on public.manual_alerts;
 drop policy if exists "public update manual alerts" on public.manual_alerts;
+drop policy if exists "public read care item templates" on public.care_item_templates;
+drop policy if exists "public write care item templates" on public.care_item_templates;
+drop policy if exists "public update care item templates" on public.care_item_templates;
 
 create policy "public read meal templates"
 on public.meal_templates
@@ -171,6 +186,19 @@ for insert
 to public
 with check (true);
 
+create policy "public update weight logs"
+on public.weight_logs
+for update
+to public
+using (true)
+with check (true);
+
+create policy "public delete weight logs"
+on public.weight_logs
+for delete
+to public
+using (true);
+
 create policy "public read meal logs"
 on public.meal_logs
 for select
@@ -182,6 +210,12 @@ on public.meal_logs
 for insert
 to public
 with check (true);
+
+create policy "public delete meal logs"
+on public.meal_logs
+for delete
+to public
+using (true);
 
 create policy "public read manual alerts"
 on public.manual_alerts
@@ -197,6 +231,25 @@ with check (true);
 
 create policy "public update manual alerts"
 on public.manual_alerts
+for update
+to public
+using (true)
+with check (true);
+
+create policy "public read care item templates"
+on public.care_item_templates
+for select
+to public
+using (true);
+
+create policy "public write care item templates"
+on public.care_item_templates
+for insert
+to public
+with check (true);
+
+create policy "public update care item templates"
+on public.care_item_templates
 for update
 to public
 using (true)
