@@ -1113,7 +1113,22 @@ export default function LogPage() {
 
 
         {logEventOpen ? (
-          <div className="relative mb-7">
+          <div className="relative mb-4 pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                resetEditor();
+                setLogEventOpen(false);
+              }}
+              className="absolute inset-x-0 top-0 z-10 mx-auto flex h-8 w-24 items-center justify-center rounded-t-3xl rounded-b-sm bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/80 shadow-sm ring-1 ring-white/25 transition hover:-translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]"
+              aria-label="Collapse Log Event"
+            >
+              <div className="flex -space-x-1">
+                <ChevronUp className="size-4" strokeWidth={3} />
+                <ChevronUp className="size-4" strokeWidth={3} />
+                <ChevronUp className="size-4" strokeWidth={3} />
+              </div>
+            </button>
             <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
 
             {detailActivityType && !editingActivityId ? (
@@ -1162,21 +1177,6 @@ export default function LogPage() {
             ) : null}
 
             </QuickLogCard>
-            <button
-              type="button"
-              onClick={() => {
-                resetEditor();
-                setLogEventOpen(false);
-              }}
-              className="absolute inset-x-0 -bottom-4 mx-auto flex h-8 w-24 items-center justify-center rounded-t-3xl rounded-b-sm bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:translate-y-[-1px] hover:text-[var(--hewie-accent-text,#ffffff)]/90"
-              aria-label="Collapse Log Event"
-            >
-              <div className="flex -space-x-1">
-                <ChevronUp className="size-4" strokeWidth={3} />
-                <ChevronUp className="size-4" strokeWidth={3} />
-                <ChevronUp className="size-4" strokeWidth={3} />
-              </div>
-            </button>
           </div>
         ) : (
           <section
