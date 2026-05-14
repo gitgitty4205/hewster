@@ -475,6 +475,8 @@ export default function LogPage() {
 
   const [activityState, setActivityState] = useState<"idle" | "saved" | "saving" | "error">("idle");
 
+  const [logEventOpen, setLogEventOpen] = useState(false);
+
   const [detailActivityType, setDetailActivityType] = useState<ActivityType | null>(null);
 
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
@@ -867,6 +869,8 @@ export default function LogPage() {
 
     if (["potty", "activity", "outdoor", "food", "treat", "care", "wellness", "medication", "sick", "other"].includes(activityType)) {
 
+      setLogEventOpen(true);
+
       setDetailActivityType(activityType);
 
       setEditingActivityId(null);
@@ -970,6 +974,7 @@ export default function LogPage() {
     await saveActivity(activity, editingActivityId ? "update" : "create");
 
     resetEditor();
+    setLogEventOpen(false);
 
   };
 
@@ -1089,7 +1094,7 @@ export default function LogPage() {
 
               </Link>
 
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Entries</h1>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Noted</h1>
 
             </div>
 
@@ -1107,51 +1112,68 @@ export default function LogPage() {
 
 
 
-        <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
+        {logEventOpen ? (
+          <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
 
-          {detailActivityType && !editingActivityId ? (
+            {detailActivityType && !editingActivityId ? (
 
-            <ActivityDetailForm
+              <ActivityDetailForm
 
-              activityType={detailActivityType}
+                activityType={detailActivityType}
 
-              detail={detailValue}
+                detail={detailValue}
 
-              notes={notesValue}
+                notes={notesValue}
 
-              extraNotes={extraNotesValue}
+                extraNotes={extraNotesValue}
 
-              happenedAt={happenedAtValue}
+                happenedAt={happenedAtValue}
 
-              embedded
+                embedded
 
-              onDetailChange={setDetailValue}
+                onDetailChange={setDetailValue}
 
-              onNotesChange={setNotesValue}
+                onNotesChange={setNotesValue}
 
-              onExtraNotesChange={setExtraNotesValue}
+                onExtraNotesChange={setExtraNotesValue}
 
-              attachmentNames={attachmentFiles.map((file) => file.name)}
+                attachmentNames={attachmentFiles.map((file) => file.name)}
 
-              onAttachmentsChange={setAttachmentFiles}
+                onAttachmentsChange={setAttachmentFiles}
 
-              recordTags={recordTags}
+                recordTags={recordTags}
 
-              onRecordTagsChange={setRecordTags}
+                onRecordTagsChange={setRecordTags}
 
-              onHappenedAtChange={setHappenedAtValue}
+                onHappenedAtChange={setHappenedAtValue}
 
-              onSave={saveDetailedActivity}
+                onSave={saveDetailedActivity}
 
-              onCancel={resetEditor}
+                onCancel={() => {
+                  resetEditor();
+                  setLogEventOpen(false);
+                }}
 
-              saving={activityState === "saving"}
+                saving={activityState === "saving"}
 
-            />
+              />
 
-          ) : null}
+            ) : null}
 
-        </QuickLogCard>
+          </QuickLogCard>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setLogEventOpen(true)}
+            className="mb-4 flex w-full items-center justify-between rounded-3xl bg-[var(--hewie-accent,#64748b)] p-4 text-left text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
+          >
+            <div>
+              <h2 className="text-lg font-semibold">Log Event</h2>
+              <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
+            </div>
+            <span className="rounded-full bg-white/18 px-3 py-1 text-xs font-semibold">Open</span>
+          </button>
+        )}
 
 
 

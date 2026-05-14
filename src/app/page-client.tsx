@@ -1668,7 +1668,7 @@ export default function HomeApp() {
 
           </section>
         ) : null}
-        <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title={null} iconOnly visibleTypes={["potty", "activity", "food", "treat"]}>
+        <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title={null} iconOnly>
           {detailActivityType ? (
             <ActivityDetailForm
               activityType={detailActivityType}

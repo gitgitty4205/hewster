@@ -116,19 +116,19 @@ export function QuickLogCard({ activityState, onQuickLog, includeOther = true, v
         </div>
       ) : null}
 
-      <div className={`grid gap-3 ${iconOnly ? "grid-cols-4" : visibleActions.length > 2 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"}`}>
+      <div className={iconOnly ? "-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : `grid gap-3 ${visibleActions.length > 2 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"}`}>
         {visibleActions.map((action) => {
           const Icon = action.icon;
           return (
             <Button
               key={action.type}
               variant="outline"
-              className={`${iconOnly ? "h-16 justify-center px-0 shadow-sm hover:shadow-md active:scale-[0.99]" : "h-16 justify-start gap-3 text-left shadow-sm"} w-full rounded-2xl border-0 transition hover:scale-[1.01] ${action.accent}`}
+              className={`${iconOnly ? "h-14 w-14 shrink-0 justify-center px-0 shadow-sm hover:shadow-md active:scale-[0.99]" : "h-16 w-full justify-start gap-3 text-left shadow-sm"} rounded-2xl border-0 transition hover:scale-[1.01] ${action.accent}`}
               onClick={() => onQuickLog(action.type)}
               aria-label={action.label}
             >
-              <span className={`flex shrink-0 items-center justify-center rounded-full ${iconOnly ? "size-11" : "size-9"} ${action.iconAccent}`}>
-                {Icon ? <Icon className={iconOnly ? "size-6" : "size-4.5"} /> : <span className={`inline-block ${iconOnly ? "text-2xl" : "text-lg"} ${"iconTextClass" in action ? action.iconTextClass : ""} leading-none`}>{action.iconText}</span>}
+              <span className={`flex shrink-0 items-center justify-center rounded-full ${iconOnly ? "size-10" : "size-9"} ${action.iconAccent}`}>
+                {Icon ? <Icon className={iconOnly ? "size-5.5" : "size-4.5"} /> : <span className={`inline-block ${iconOnly ? "text-[1.35rem]" : "text-lg"} ${"iconTextClass" in action ? action.iconTextClass : ""} leading-none`}>{action.iconText}</span>}
               </span>
               {iconOnly ? null : <span className="text-base font-semibold">{action.label}</span>}
             </Button>

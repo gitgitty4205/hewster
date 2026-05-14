@@ -26,7 +26,7 @@ const APP_BASE = "/hewie";
 
 const pages = [
   { label: "Today", href: `${APP_BASE}`, icon: CalendarDays },
-  { label: "Entries", href: `${APP_BASE}/log`, icon: ClipboardList },
+  { label: "Noted", href: `${APP_BASE}/log`, icon: ClipboardList },
   { label: "History", href: `${APP_BASE}/history`, icon: History },
   { label: "Medical", href: `${APP_BASE}/medical-records`, icon: FileHeart },
   { label: "Weight", href: `${APP_BASE}/weight`, icon: Scale },
