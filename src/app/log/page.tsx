@@ -4,7 +4,7 @@
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 
-import { Check, Clock3, Ellipsis, Tablets } from "lucide-react";
+import { Check, ChevronDown, Clock3, Ellipsis, Tablets } from "lucide-react";
 
 import Link from "next/link";
 
@@ -1171,7 +1171,9 @@ export default function LogPage() {
               <h2 className="text-lg font-semibold">Log Event</h2>
               <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
             </div>
-            <span className="rounded-full bg-white/18 px-3 py-1 text-xs font-semibold">Open</span>
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/18 text-[var(--hewie-accent-text,#ffffff)] ring-1 ring-white/20">
+              <ChevronDown className="size-5" strokeWidth={3} />
+            </span>
           </button>
         )}
 
