@@ -26,13 +26,16 @@ import {
   type DailyMealState,
   type ManualAlert,
   type MealLog,
+  type WeightLog,
   MEAL_LOGS_STORAGE_KEY,
+  WEIGHT_LOGS_STORAGE_KEY,
   loadAppState,
   persistLocalState,
   saveActivityLogToSupabase,
   saveDailyMealsToSupabase,
   saveMealLogToSupabase,
   saveTemplatesToSupabase,
+  saveWeightLogToSupabase,
   updateActivityLogInSupabase,
   updateManualAlertInSupabase,
   TODAY_KEY_STORAGE_KEY,
@@ -50,6 +53,8 @@ import {
   customScheduledCareItems,
   loadCareTemplates,
   loadCareTemplatesFromSupabase,
+  saveCareTemplates,
+  saveCareTemplatesToSupabase,
   type CareItemKind,
   type CareItemTemplate,
 } from "@/lib/care-settings";
@@ -480,6 +485,59 @@ function customCareActivityLog(occurrence: CustomCareOccurrence, status: "given"
   };
 }
 
+type HewsterBridgePayload = {
+  weightLogs?: WeightLog[];
+  supplementSettings?: CareItemTemplate[];
+  medicationSettings?: CareItemTemplate[];
+};
+
+const HEWSTER_BRIDGE_SOURCE = "https://lindy.b-average.com";
+
+function parseStoredArray<T>(value: string | null): T[] {
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function buildBridgePayload(): HewsterBridgePayload {
+  return {
+    weightLogs: parseStoredArray<WeightLog>(window.localStorage.getItem(WEIGHT_LOGS_STORAGE_KEY)),
+    supplementSettings: parseStoredArray<CareItemTemplate>(window.localStorage.getItem("hewster.supplementSettings")),
+    medicationSettings: parseStoredArray<CareItemTemplate>(window.localStorage.getItem("hewster.medicationSettings")),
+  };
+}
+
+async function importBridgePayload(payload: HewsterBridgePayload) {
+  const incomingWeights = Array.isArray(payload.weightLogs) ? payload.weightLogs : [];
+  const existingWeights = parseStoredArray<WeightLog>(window.localStorage.getItem(WEIGHT_LOGS_STORAGE_KEY));
+  const mergedWeights = [...incomingWeights, ...existingWeights]
+    .filter((entry) => entry && typeof entry.id === "string" && typeof entry.date === "string" && typeof entry.weight === "string")
+    .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));
+
+  if (mergedWeights.length > existingWeights.length) {
+    window.localStorage.setItem(WEIGHT_LOGS_STORAGE_KEY, JSON.stringify(mergedWeights));
+    await Promise.all(mergedWeights.map((entry) => saveWeightLogToSupabase(entry))).catch(() => undefined);
+  }
+
+  const careImports: Array<[CareItemKind, CareItemTemplate[] | undefined]> = [
+    ["supplement", payload.supplementSettings],
+    ["medication", payload.medicationSettings],
+  ];
+
+  await Promise.all(
+    careImports.map(async ([kind, items]) => {
+      if (!Array.isArray(items) || !items.length) return;
+      saveCareTemplates(kind, items);
+      await saveCareTemplatesToSupabase(kind, items);
+    })
+  ).catch(() => undefined);
+}
+
 export default function HomeApp() {
   const [templates, setTemplates] = useState<MealTemplate[]>(initialTemplates);
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>(
@@ -525,6 +583,44 @@ export default function HomeApp() {
   const previousTodayKeyRef = useRef<string | null>(null);
   const missedRolloverRef = useRef<string | null>(null);
   const supabaseReady = isSupabaseConfigured();
+
+  useEffect(() => {
+    const handleBridgeRequest = (event: MessageEvent) => {
+      if (event.data?.type !== "hewster:export-local-state") return;
+      if (event.origin !== "https://www.petnotebook.com" && event.origin !== "https://petnotebook.com") return;
+      event.source?.postMessage({ type: "hewster:local-state", payload: buildBridgePayload() }, { targetOrigin: event.origin });
+    };
+
+    if (window.parent !== window) {
+      window.addEventListener("message", handleBridgeRequest);
+      return () => window.removeEventListener("message", handleBridgeRequest);
+    }
+
+    if (window.location.hostname !== "www.petnotebook.com" && window.location.hostname !== "petnotebook.com") return;
+
+    const iframe = document.createElement("iframe");
+    iframe.src = `${HEWSTER_BRIDGE_SOURCE}/hewie?hewsterBridge=1`;
+    iframe.title = "Hewster local data bridge";
+    iframe.style.display = "none";
+
+    const handleBridgeResponse = (event: MessageEvent) => {
+      if (event.origin !== HEWSTER_BRIDGE_SOURCE || event.data?.type !== "hewster:local-state") return;
+      void importBridgePayload(event.data.payload as HewsterBridgePayload).then(() => {
+        window.dispatchEvent(new CustomEvent("hewster:care-settings-updated"));
+      });
+    };
+
+    iframe.addEventListener("load", () => {
+      iframe.contentWindow?.postMessage({ type: "hewster:export-local-state" }, HEWSTER_BRIDGE_SOURCE);
+    });
+    window.addEventListener("message", handleBridgeResponse);
+    document.body.appendChild(iframe);
+
+    return () => {
+      window.removeEventListener("message", handleBridgeResponse);
+      iframe.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
