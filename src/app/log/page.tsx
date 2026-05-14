@@ -1207,7 +1207,7 @@ export default function LogPage() {
             <button
               type="button"
               onClick={collapseLogEvent}
-              className="absolute inset-x-0 -bottom-3 z-10 mx-auto flex h-6 w-20 items-center justify-center rounded-b-2xl rounded-t-[0.2rem] bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/60 shadow-[0_5px_12px_rgba(15,23,42,0.10)] ring-1 ring-white/10 transition hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/85"
+              className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/60 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/85"
               aria-label="Collapse Log Event"
             >
               <ChevronUp className="size-4" strokeWidth={2.4} />
@@ -1227,8 +1227,8 @@ export default function LogPage() {
           >
             <h2 className="text-lg font-semibold">Log Event</h2>
             <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
-            <div className="pointer-events-none absolute inset-x-0 -bottom-3 flex justify-center">
-              <div className="flex h-6 w-20 items-center justify-center rounded-b-2xl rounded-t-[0.2rem] bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/60 shadow-[0_5px_12px_rgba(15,23,42,0.10)] ring-1 ring-white/10 transition group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/85">
+            <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
+              <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/60 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/85">
                 <ChevronDown className="size-4" strokeWidth={2.4} />
               </div>
             </div>
