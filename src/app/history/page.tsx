@@ -479,8 +479,6 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
 
         {skipped || missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{missed ? "Missed" : skipReason ? `Skipped — ${skipReason}` : "Skipped"}</span> : null}
 
-        {isLastDose ? <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
-
       </div>
 
       {giveDetail ? (
@@ -498,6 +496,8 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
             </span>
 
           ) : null}
+
+          {isLastDose ? <span className="rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
 
         </div>
 
