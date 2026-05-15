@@ -79,6 +79,7 @@ export function CareSettingsPage({
   const [items, setItems] = useState<CareItemTemplate[]>(() => initialCareTemplatesForKind(kind));
   const [meals, setMeals] = useState<MealTemplate[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [draftItems, setDraftItems] = useState<Record<number, CareItemTemplate>>({});
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving">("idle");
   const hydrated = useRef(false);
 
@@ -90,6 +91,8 @@ export function CareSettingsPage({
       if (cancelled) return;
       setMeals(state.templates);
       setItems(await loadCareTemplatesFromSupabase(kind));
+      setDraftItems({});
+      setEditingId(null);
       hydrated.current = true;
     }
 
@@ -113,7 +116,46 @@ export function CareSettingsPage({
   };
 
   const updateItem = (id: number, next: Partial<CareItemTemplate>) => {
+    if (editingId === id) {
+      setDraftItems((current) => {
+        const baseItem = current[id] ?? items.find((item) => item.id === id);
+        return baseItem ? { ...current, [id]: { ...baseItem, ...next } } : current;
+      });
+      return;
+    }
+
     commitItems(items.map((item) => (item.id === id ? { ...item, ...next } : item)));
+  };
+
+  const startEditing = (item: CareItemTemplate) => {
+    setDraftItems({
+      [item.id]: {
+        ...item,
+        mealIds: [...item.mealIds],
+        scheduleSteps: item.scheduleSteps.map((step) => ({ ...step })),
+      },
+    });
+    setEditingId(item.id);
+  };
+
+  const cancelEditing = (id: number) => {
+    setDraftItems((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setEditingId(null);
+  };
+
+  const saveEditing = (id: number) => {
+    const draft = draftItems[id];
+    if (!draft) {
+      setEditingId(null);
+      return;
+    }
+
+    commitItems(items.map((item) => (item.id === id ? draft : item)));
+    cancelEditing(id);
   };
 
   const toggleMeal = (item: CareItemTemplate, mealId: number) => {
@@ -149,12 +191,18 @@ export function CareSettingsPage({
 
   const deleteItem = (id: number) => {
     commitItems(items.filter((item) => item.id !== id));
+    setDraftItems((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
     setEditingId((current) => (current === id ? null : current));
   };
 
   const resetItems = () => {
     const nextItems = resetCareTemplates(kind);
     commitItems(nextItems);
+    setDraftItems({});
     setEditingId(null);
   };
 
@@ -209,8 +257,9 @@ export function CareSettingsPage({
               <div className={`rounded-2xl p-4 text-sm ring-1 ${accentClassName}`}>{emptyLabel}</div>
             ) : null}
 
-            {items.map((item) => {
-              const isEditing = editingId === item.id;
+            {items.map((savedItem) => {
+              const isEditing = editingId === savedItem.id;
+              const item = isEditing ? draftItems[savedItem.id] ?? savedItem : savedItem;
 
               return (
                 <article key={item.id} className="rounded-2xl bg-zinc-50 p-4 ring-1 ring-zinc-200">
@@ -219,13 +268,23 @@ export function CareSettingsPage({
                       <h3 className="font-medium text-zinc-900">{item.name || "Untitled"}</h3>
                       <p className="mt-1 text-sm text-zinc-500">{item.dose || "No Dose"} • {summarizeSchedule(item, meals)}</p>
                     </div>
-                    <Button
-                      variant={isEditing ? "default" : "outline"}
-                      className="rounded-full"
-                      onClick={() => setEditingId(isEditing ? null : item.id)}
-                    >
-                      {isEditing ? "Done" : "Edit"}
-                    </Button>
+                    {isEditing ? (
+                      <div className="flex shrink-0 gap-1.5">
+                        <Button
+                          className="rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90"
+                          onClick={() => saveEditing(item.id)}
+                        >
+                          Save
+                        </Button>
+                        <Button variant="outline" className="rounded-full px-3" onClick={() => cancelEditing(item.id)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button variant="outline" className="rounded-full" onClick={() => startEditing(item)}>
+                        Edit
+                      </Button>
+                    )}
                   </div>
 
                   <div className="space-y-3">
@@ -233,6 +292,7 @@ export function CareSettingsPage({
                       <input
                         type="checkbox"
                         checked={item.active}
+                        disabled={!isEditing}
                         onChange={(event) => updateItem(item.id, { active: event.target.checked })}
                         className="size-4 rounded border-zinc-300"
                       />
