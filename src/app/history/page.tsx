@@ -2296,27 +2296,33 @@ export default function HistoryPage() {
 
                 <div>
 
-                  <h3 className="mb-2 text-sm font-semibold text-violet-700">Alerts</h3>
+                  <h3 className="mb-2 text-sm font-semibold text-[#8f1739]">Alerts</h3>
 
                   <div className="space-y-2">
 
-                    {selectedDayAlerts.map((item) => (
+                    {selectedDayAlerts.map((item) => {
 
-                      <article key={item.key} className="rounded-2xl bg-violet-50/80 p-4 ring-1 ring-violet-200">
+                      const resolved = item.label.toLowerCase().includes("resolved");
 
-                        <div className="flex items-center justify-between gap-3">
+                      return (
 
-                          <p className="font-medium text-zinc-900">{item.label}</p>
+                        <article key={item.key} className={`rounded-2xl p-4 shadow-[0_8px_18px_rgba(255,27,90,0.08)] ring-1 ${resolved ? "bg-[#fff8f8] ring-[#ead4d8]" : "bg-gradient-to-r from-[#fff0f1] to-[#fcebed] ring-[#e6c8ce]/80"}`}>
 
-                          <p className="text-sm text-zinc-500">{item.time}</p>
+                          <div className="flex items-center justify-between gap-3">
 
-                        </div>
+                            <p className={`font-medium ${resolved ? "text-[#8f1739]/75" : "text-[#8f1739]"}`}>{item.label}</p>
 
-                        <p className="mt-1 text-sm text-zinc-600">{item.detail}</p>
+                            <p className={`text-sm ${resolved ? "text-[#b71f48]/45" : "text-[#b71f48]/60"}`}>{item.time}</p>
 
-                      </article>
+                          </div>
 
-                    ))}
+                          <p className={`mt-1 whitespace-pre-wrap text-sm ${resolved ? "text-[#b71f48]/55" : "text-[#b71f48]/72"}`}>{item.detail}</p>
+
+                        </article>
+
+                      );
+
+                    })}
 
                   </div>
 
