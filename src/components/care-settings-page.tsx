@@ -14,11 +14,19 @@ import {
   type CareItemKind,
   type CareItemTemplate,
   initialCareTemplatesForKind,
+  loadCareTemplates,
   loadCareTemplatesFromSupabase,
   resetCareTemplates,
   saveCareTemplates,
   saveCareTemplatesToSupabase,
 } from "@/lib/care-settings";
+
+const HEWSTER_BRIDGE_SOURCE = "https://lindy.b-average.com";
+
+type BridgeCarePayload = {
+  supplementSettings?: CareItemTemplate[];
+  medicationSettings?: CareItemTemplate[];
+};
 
 type Props = {
   kind: CareItemKind;
@@ -82,6 +90,46 @@ export function CareSettingsPage({
   const [draftItems, setDraftItems] = useState<Record<number, CareItemTemplate>>({});
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving">("idle");
   const hydrated = useRef(false);
+
+  useEffect(() => {
+    if (window.location.hostname !== "www.petnotebook.com" && window.location.hostname !== "petnotebook.com") return;
+
+    const iframe = document.createElement("iframe");
+    iframe.src = `${HEWSTER_BRIDGE_SOURCE}/hewie?hewsterBridge=1`;
+    iframe.title = "Hewster care settings bridge";
+    iframe.style.display = "none";
+
+    const handleBridgeResponse = (event: MessageEvent) => {
+      if (event.origin !== HEWSTER_BRIDGE_SOURCE || event.data?.type !== "hewster:local-state") return;
+
+      const payload = event.data.payload as BridgeCarePayload;
+      const incomingItems = kind === "supplement" ? payload.supplementSettings : payload.medicationSettings;
+      if (!Array.isArray(incomingItems) || !incomingItems.length) return;
+
+      const existingItems = loadCareTemplates(kind);
+      const merged = new Map<number, CareItemTemplate>();
+      existingItems.forEach((item) => merged.set(item.id, item));
+      incomingItems.forEach((item) => merged.set(item.id, item));
+      const nextItems = [...merged.values()];
+
+      if (nextItems.length < existingItems.length) return;
+
+      saveCareTemplates(kind, nextItems);
+      setItems(nextItems);
+      void saveCareTemplatesToSupabase(kind, nextItems).catch(() => undefined);
+    };
+
+    iframe.addEventListener("load", () => {
+      iframe.contentWindow?.postMessage({ type: "hewster:export-local-state" }, HEWSTER_BRIDGE_SOURCE);
+    });
+    window.addEventListener("message", handleBridgeResponse);
+    document.body.appendChild(iframe);
+
+    return () => {
+      window.removeEventListener("message", handleBridgeResponse);
+      iframe.remove();
+    };
+  }, [kind]);
 
   useEffect(() => {
     let cancelled = false;

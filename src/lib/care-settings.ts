@@ -218,8 +218,8 @@ export function saveCareTemplates(kind: CareItemKind, templates: CareItemTemplat
 function mergeCareTemplates(remoteTemplates: CareItemTemplate[], localTemplates: CareItemTemplate[]) {
   const merged = new Map<number, CareItemTemplate>();
 
-  remoteTemplates.forEach((item) => merged.set(item.id, item));
   localTemplates.forEach((item) => merged.set(item.id, item));
+  remoteTemplates.forEach((item) => merged.set(item.id, item));
 
   return [...merged.values()];
 }
