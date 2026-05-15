@@ -1021,33 +1021,28 @@ export default function HomeApp() {
       .sort((a, b) => a.sortAt.getTime() - b.sortAt.getTime() || a.sortKey.localeCompare(b.sortKey));
     if (!sortedCards.length) return sortedCards;
 
-    const now = new Date();
-    const hourMs = 60 * 60 * 1000;
-    const carePairingWindowMs = 2 * hourMs;
-    const previewEnd = now.getTime() + 4 * hourMs;
-    const hasMealBetween = (startTime: number, endTime: number) =>
-      sortedCards.some((card) => card.type === "meal" && card.sortAt.getTime() > startTime && card.sortAt.getTime() <= endTime);
-
-    const mainPreviewCards = sortedCards.filter((card) => card.sortAt.getTime() <= previewEnd);
+    const laneWindowMs = 60 * 60 * 1000;
     const nextMealCard = sortedCards.find((card) => card.type === "meal");
-    const nextCareCard = sortedCards.find((card) => card.type === "custom-care");
-    const nextMealTime = nextMealCard?.sortAt.getTime() ?? null;
-    const nextCareTime = nextCareCard?.sortAt.getTime() ?? null;
-    const laneCards = sortedCards.filter((card) => {
-      const cardTime = card.sortAt.getTime();
-      return (card.type === "meal" && cardTime === nextMealTime) || (card.type === "custom-care" && cardTime === nextCareTime);
+    const nextMedicationCard = sortedCards.find((card) => card.type === "custom-care" && card.occurrence.item.kind === "medication");
+    const nextSupplementCard = sortedCards.find((card) => card.type === "custom-care" && card.occurrence.item.kind === "supplement");
+
+    const laneCards = [nextMealCard, nextMedicationCard, nextSupplementCard].flatMap((laneStart) => {
+      if (!laneStart) return [];
+      const laneStartTime = laneStart.sortAt.getTime();
+      if (laneStart.type === "meal") {
+        return sortedCards.filter((card) => card.type === "meal" && card.sortAt.getTime() >= laneStartTime && card.sortAt.getTime() <= laneStartTime + laneWindowMs);
+      }
+
+      return sortedCards.filter(
+        (card) =>
+          card.type === "custom-care" &&
+          card.occurrence.item.kind === laneStart.occurrence.item.kind &&
+          card.sortAt.getTime() >= laneStartTime &&
+          card.sortAt.getTime() <= laneStartTime + laneWindowMs
+      );
     });
 
-    const pairedCareCards = nextMealTime === null
-      ? []
-      : sortedCards.filter((card) => {
-        if (card.type !== "custom-care") return false;
-        const cardTime = card.sortAt.getTime();
-        return cardTime >= nextMealTime && cardTime <= nextMealTime + carePairingWindowMs && !hasMealBetween(nextMealTime, cardTime);
-      });
-
-    const cardsToShow = mainPreviewCards.length ? [...mainPreviewCards, ...laneCards, ...pairedCareCards] : [...laneCards, ...pairedCareCards];
-    const uniqueCards = Array.from(new Map(cardsToShow.map((card) => [card.sortKey, card])).values());
+    const uniqueCards = Array.from(new Map(laneCards.map((card) => [card.sortKey, card])).values());
 
     return uniqueCards.sort((a, b) => a.sortAt.getTime() - b.sortAt.getTime() || a.sortKey.localeCompare(b.sortKey));
   }, [alertMinuteKey, allMealsDone, customCareOccurrences, dailyMeals, missedMealIds, nextMeal]);
