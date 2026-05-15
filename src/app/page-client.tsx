@@ -1641,7 +1641,10 @@ export default function HomeApp() {
                     <MedicationPillIcon className="size-4 shrink-0 text-sky-600" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{title}</p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="truncate text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{title}</p>
+                      {card.type === "custom-care" && card.occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
+                    </div>
                     {detail ? <p className="truncate text-xs leading-4 text-[var(--hewie-active-text,#334155)]/60">{detail}</p> : null}
                   </div>
                   <div className="flex shrink-0 gap-1">
