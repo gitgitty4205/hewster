@@ -113,6 +113,52 @@ function isCareItemTemplateArray(value: unknown, kind: CareItemKind): value is C
   return Array.isArray(value) && value.every((item) => normalizeCareItemTemplate(item, kind));
 }
 
+function dateFromDateTimeLocal(value: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function validCustomScheduleSteps(item: CareItemTemplate) {
+  const steps = item.scheduleSteps.length ? item.scheduleSteps : [{ id: 1, everyHours: item.repeatEveryHours, forDays: item.repeatForDays }];
+
+  return steps
+    .map((step) => ({
+      everyHours: Number.parseInt(step.everyHours, 10),
+      forDays: Number.parseInt(step.forDays, 10),
+    }))
+    .filter((step) => Number.isFinite(step.everyHours) && step.everyHours > 0 && Number.isFinite(step.forDays) && step.forDays > 0);
+}
+
+export function finalCustomCareDoseAt(item: CareItemTemplate) {
+  if (item.scheduleKind !== "custom") return null;
+
+  const startAt = dateFromDateTimeLocal(item.startDateTime);
+  if (!startAt) return null;
+
+  const offsets = validCustomScheduleSteps(item).flatMap((step) => {
+    const doseCount = Math.ceil((step.forDays * 24) / step.everyHours);
+    return Array.from({ length: doseCount }, (_, index) => index * step.everyHours);
+  });
+
+  if (!offsets.length) return null;
+
+  return new Date(startAt.getTime() + Math.max(...offsets) * 60 * 60 * 1000);
+}
+
+export function isCareItemScheduleComplete(item: CareItemTemplate, now = new Date()) {
+  const finalDoseAt = finalCustomCareDoseAt(item);
+  return Boolean(finalDoseAt && finalDoseAt.getTime() < now.getTime());
+}
+
+export function isCareItemCurrentlyActive(item: CareItemTemplate, now = new Date()) {
+  return item.active && !isCareItemScheduleComplete(item, now);
+}
+
+export function markCompletedCareItemsInactive(templates: CareItemTemplate[], now = new Date()) {
+  return templates.map((item) => (item.active && isCareItemScheduleComplete(item, now) ? { ...item, active: false } : item));
+}
+
 export function storageKeyForCareKind(kind: CareItemKind) {
   return kind === "supplement" ? SUPPLEMENT_SETTINGS_STORAGE_KEY : MEDICATION_SETTINGS_STORAGE_KEY;
 }
@@ -128,7 +174,8 @@ export function loadCareTemplates(kind: CareItemKind): CareItemTemplate[] {
     const stored = window.localStorage.getItem(storageKeyForCareKind(kind));
     const parsed = stored ? JSON.parse(stored) : null;
     if (!isCareItemTemplateArray(parsed, kind)) return initialCareTemplatesForKind(kind);
-    return parsed.map((item) => normalizeCareItemTemplate(item, kind)).filter((item): item is CareItemTemplate => Boolean(item));
+    const templates = parsed.map((item) => normalizeCareItemTemplate(item, kind)).filter((item): item is CareItemTemplate => Boolean(item));
+    return markCompletedCareItemsInactive(templates);
   } catch {
     return initialCareTemplatesForKind(kind);
   }
@@ -202,9 +249,11 @@ export async function loadCareTemplatesFromSupabase(kind: CareItemKind) {
   if (!isCareItemTemplateArray(items, kind)) return localTemplates;
 
   const remoteTemplates = items.map((item) => normalizeCareItemTemplate(item, kind)).filter((item): item is CareItemTemplate => Boolean(item));
-  const templates = mergeCareTemplates(remoteTemplates, localTemplates);
+  const mergedTemplates = mergeCareTemplates(remoteTemplates, localTemplates);
+  const templates = markCompletedCareItemsInactive(mergedTemplates);
+  const templatesChanged = JSON.stringify(templates) !== JSON.stringify(remoteTemplates);
 
-  if (templates.length !== remoteTemplates.length) {
+  if (templates.length !== remoteTemplates.length || templatesChanged) {
     await saveCareTemplatesToSupabase(kind, templates).catch(() => undefined);
   }
 
@@ -236,9 +285,9 @@ export function resetCareTemplates(kind: CareItemKind) {
 }
 
 export function careItemsForMeal(items: CareItemTemplate[], mealId: MealTemplate["id"]) {
-  return items.filter((item) => item.active && item.scheduleKind === "meal" && item.mealIds.includes(mealId));
+  return items.filter((item) => isCareItemCurrentlyActive(item) && item.scheduleKind === "meal" && item.mealIds.includes(mealId));
 }
 
 export function customScheduledCareItems(items: CareItemTemplate[]) {
-  return items.filter((item) => item.active && item.scheduleKind === "custom");
+  return items.filter((item) => isCareItemCurrentlyActive(item) && item.scheduleKind === "custom");
 }
