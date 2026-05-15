@@ -616,9 +616,10 @@ export async function loadAppState(): Promise<HewsterAppState> {
     ? (activityLogsResult.data as ActivityLogRow[]).map(mapActivityLogRowToActivity)
     : [];
 
-  const activityLogs = [...remoteActivityLogs, ...localState.activityLogs]
-    .sort(compareActivitiesReverseChronological)
-    .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));
+  const activityLogsById = new Map(localState.activityLogs.map((entry) => [entry.id, entry]));
+  remoteActivityLogs.forEach((entry) => activityLogsById.set(entry.id, entry));
+
+  const activityLogs = [...activityLogsById.values()].sort(compareActivitiesReverseChronological);
 
   const remoteWeightLogs = !weightLogsResult.error && weightLogsResult.data?.length
     ? (weightLogsResult.data as WeightLogRow[]).map(mapWeightLogRowToWeight)
