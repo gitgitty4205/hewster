@@ -477,8 +477,6 @@ export default function LogPage() {
 
   const [logEventOpen, setLogEventOpen] = useState(false);
 
-  const [logEventClosing, setLogEventClosing] = useState(false);
-
   const [detailActivityType, setDetailActivityType] = useState<ActivityType | null>(null);
 
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
@@ -880,8 +878,6 @@ export default function LogPage() {
 
     if (["potty", "activity", "outdoor", "food", "treat", "care", "wellness", "medication", "sick", "other"].includes(activityType)) {
 
-      setLogEventClosing(false);
-
       setLogEventOpen(true);
 
       setDetailActivityType(activityType);
@@ -987,19 +983,13 @@ export default function LogPage() {
     await saveActivity(activity, editingActivityId ? "update" : "create");
 
     resetEditor();
-    setLogEventClosing(true);
-    window.setTimeout(() => {
-      setLogEventOpen(false);
-      setLogEventClosing(false);
-    }, 220);
+    setLogEventOpen(false);
 
   };
 
 
 
   const openLogEvent = () => {
-
-    setLogEventClosing(false);
 
     setLogEventOpen(true);
 
@@ -1011,15 +1001,7 @@ export default function LogPage() {
 
     resetEditor();
 
-    setLogEventClosing(true);
-
-    window.setTimeout(() => {
-
-      setLogEventOpen(false);
-
-      setLogEventClosing(false);
-
-    }, 220);
+    setLogEventOpen(false);
 
   };
 
@@ -1158,7 +1140,7 @@ export default function LogPage() {
 
 
         {logEventOpen ? (
-          <div className={`relative mb-7 [&>section]:mb-0 ${logEventClosing ? "log-event-curtain-close" : "log-event-curtain-open"}`}>
+          <div className="relative mb-7 [&>section]:mb-0">
             <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log Event" accentBackground>
 
             {detailActivityType && !editingActivityId ? (
