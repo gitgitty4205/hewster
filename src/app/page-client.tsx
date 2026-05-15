@@ -491,6 +491,24 @@ function customCareActivityLog(occurrence: CustomCareOccurrence, status: "given"
   };
 }
 
+function activityHasLastDoseMarker(activity: ActivityLog) {
+  return activity.notes?.split("\n").some((line) => line.trim() === "Last Dose") ?? false;
+}
+
+function activityMatchesLastDoseOccurrence(activity: ActivityLog, occurrence: CustomCareOccurrence) {
+  return (
+    occurrence.isLastDose &&
+    (activity.id === occurrence.key || activity.id === `${occurrence.key}-skipped` || activity.id === `${occurrence.key}-missed` || activityMatchesCustomCareOccurrence(activity, occurrence))
+  );
+}
+
+function withLastDoseMarker(activity: ActivityLog) {
+  return {
+    ...activity,
+    notes: [activity.notes, "Last Dose"].filter(Boolean).join("\n"),
+  };
+}
+
 type HewsterBridgePayload = {
   weightLogs?: WeightLog[];
   supplementSettings?: CareItemTemplate[];
@@ -937,6 +955,27 @@ export default function HomeApp() {
 
     return [...todayOccurrences, ...tomorrowOccurrences];
   }, [activityLogs, careTemplates, customCareStatus, todayKey, alertMinuteKey]);
+
+  useEffect(() => {
+    if (!hydrated || !initialLoadComplete.current || !careTemplates.length || !activityLogs.length) return;
+
+    const patchedActivities = activityLogs.map((activity) => {
+      if (!["medication", "supplement"].includes(activity.activityType) || activityHasLastDoseMarker(activity)) return activity;
+      const activityDayKey = dayKeyFromDate(new Date(activity.happenedAt));
+      const lastDoseOccurrence = customCareOccurrencesForDay(careTemplates, activityDayKey).find((occurrence) => activityMatchesLastDoseOccurrence(activity, occurrence));
+      return lastDoseOccurrence ? withLastDoseMarker(activity) : activity;
+    });
+
+    const changedActivities = patchedActivities.filter((activity, index) => activity !== activityLogs[index]);
+    if (!changedActivities.length) return;
+
+    window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(patchedActivities));
+    setActivityLogs(patchedActivities);
+
+    if (supabaseReady) {
+      void Promise.all(changedActivities.map((activity) => updateActivityLogInSupabase(activity))).catch(() => setActivityState("error"));
+    }
+  }, [activityLogs, careTemplates, hydrated, supabaseReady]);
 
   useEffect(() => {
     if (!hydrated || !todayKey) return;
