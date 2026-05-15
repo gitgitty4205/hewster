@@ -152,26 +152,15 @@
   animation: contentFadeIn 220ms ease-out;
 }
 
-@keyframes logEventTabSheen {
-  0% {
-    transform: translateX(-140%);
+@keyframes logEventChevronSheen {
+  0%, 100% {
+    opacity: 0.68;
+    filter: drop-shadow(0 0 0 transparent);
   }
-  58%, 100% {
-    transform: translateX(140%);
+  45% {
+    opacity: 1;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.42));
   }
-}
-
-.log-event-pull-tab {
-  overflow: hidden;
-}
-
-.log-event-pull-tab::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  background: linear-gradient(100deg, transparent 16%, rgba(255, 255, 255, 0.24) 48%, transparent 78%);
-  animation: logEventTabSheen 2.8s ease-in-out infinite;
-  pointer-events: none;
 }
 
 .log-event-pull-chevrons {
@@ -183,8 +172,13 @@
   gap: 0;
 }
 
+.log-event-pull-chevrons svg {
+  animation: logEventChevronSheen 1.9s ease-in-out infinite;
+}
+
 .log-event-pull-chevrons svg + svg {
   margin-top: -0.55rem;
+  animation-delay: 120ms;
 }
 
 @keyframes logEventCurtainOpen {
