@@ -1229,7 +1229,6 @@ export default function LogPage() {
             className="group relative mb-7 cursor-pointer overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
           >
             <h2 className="text-lg font-semibold">Log Event</h2>
-            <p className="mt-0.5 text-sm text-[var(--hewie-accent-text,#ffffff)]/70">Tap to add a new note.</p>
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
               <div className="log-event-pull-tab flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90">
                 <span className="log-event-pull-chevrons" aria-hidden="true">
