@@ -447,6 +447,8 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
 
   const careLines = lines.filter((line) => line !== attachmentLine && !line.startsWith("Skip Note: ") && line !== "Missed");
 
+  const isLastDose = careLines.includes("Last Dose");
+
   const timingLine = careLines.find((line) => line === "With Food" || line === "Empty Stomach") ?? null;
 
   const giveLine = careLines.find((line) => line.startsWith("Give ")) ?? null;
@@ -476,6 +478,8 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
         {name ? <p className="font-semibold text-zinc-800">{name}</p> : null}
 
         {skipped || missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{missed ? "Missed" : skipReason ? `Skipped — ${skipReason}` : "Skipped"}</span> : null}
+
+        {isLastDose ? <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
 
       </div>
 

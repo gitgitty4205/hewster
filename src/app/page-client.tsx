@@ -486,7 +486,7 @@ function customCareActivityLog(occurrence: CustomCareOccurrence, status: "given"
     activityType: item.kind,
     happenedAt: occurrence.scheduledAt.toISOString(),
     detail: `${item.name}${item.dose && status === "given" ? ` • ${item.dose}` : ""}${statusDetail}`,
-    notes: [customCareGiveText(item), occurrence.frequencyText, customCareTimingLabel(item), item.kind === "medication" ? medicationTypeLabel(item) : null, statusNote, item.notes ? `Notes: ${item.notes}` : ""].filter(Boolean).join("\n") || null,
+    notes: [customCareGiveText(item), occurrence.frequencyText, occurrence.isLastDose ? "Last Dose" : null, customCareTimingLabel(item), item.kind === "medication" ? medicationTypeLabel(item) : null, statusNote, item.notes ? `Notes: ${item.notes}` : ""].filter(Boolean).join("\n") || null,
     createdAt: new Date().toISOString(),
   };
 }
