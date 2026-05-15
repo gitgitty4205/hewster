@@ -21,8 +21,9 @@ function formatDayLabel(isoString: string) {
 
 function isActualPoopRecord(activity: ActivityLog) {
   const detail = activity.detail?.trim() ?? "";
+  if (detail === "Pee") return false;
+  if (detail === "No Poop") return activity.activityType === "poop" || activity.activityType === "potty";
   if (activity.activityType !== "poop") return false;
-  if (detail === "No Poop" || detail === "Pee") return false;
   return detail === "Poop" || detail === "Pee & Poop" || detail.includes("• Type ") || detail.startsWith("Type ");
 }
 
