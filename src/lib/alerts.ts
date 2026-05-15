@@ -149,9 +149,18 @@ function manualAlertAppliesToday(alert: ManualAlert, todayKey: string) {
     const todayDate = dateFromDayKey(todayKey);
     if (!startDate || !todayDate) return true;
     const daysSinceStart = Math.floor((todayDate.getTime() - startDate.getTime()) / 86400000);
-    return daysSinceStart % 2 === 0;
+    return daysSinceStart >= 0 && daysSinceStart % 2 === 0;
   }
   return (alert.createdDayKey ?? todayKey) === todayKey;
+}
+
+function manualAlertRepeats(alert: ManualAlert) {
+  return ["ongoing", "every-other-day", "certain-days"].includes(alert.scope ?? "today");
+}
+
+function manualAlertResolvedForToday(alert: ManualAlert, todayKey: string) {
+  if (!manualAlertRepeats(alert) || !alert.resolvedAt) return false;
+  return dayKeyFromDate(new Date(alert.resolvedAt)) === todayKey;
 }
 
 export function resolveAlerts(
@@ -228,6 +237,7 @@ export function resolveAlerts(
   manualAlerts
     .filter((alert) => {
       if (alert.resolved) return false;
+      if (manualAlertResolvedForToday(alert, todayKey)) return false;
       return manualAlertAppliesToday(alert, todayKey);
     })
     .filter((alert) => {

@@ -1259,15 +1259,16 @@ export default function HomeApp() {
   };
 
   const resolveManualAlert = async (alertId: string) => {
-    const nextAlerts = manualAlerts.map((alert) =>
-      alert.id === alertId
-        ? {
-            ...alert,
-            resolved: true,
-            resolvedAt: new Date().toISOString(),
-          }
-        : alert
-    );
+    const nowIso = new Date().toISOString();
+    const nextAlerts = manualAlerts.map((alert) => {
+      if (alert.id !== alertId) return alert;
+      const repeats = ["ongoing", "every-other-day", "certain-days"].includes(alert.scope ?? "today");
+      return {
+        ...alert,
+        resolved: repeats ? false : true,
+        resolvedAt: nowIso,
+      };
+    });
 
     setManualAlerts(nextAlerts);
 
