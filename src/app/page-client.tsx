@@ -217,6 +217,7 @@ function CustomCareCard({
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               <p className="text-sm font-normal leading-5 text-current/68">{customCareGiveText(item)}</p>
               {timingLabel ? <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${timingBadgeClassName}`}>{timingLabel}</span> : null}
+              {occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
             </div>
           </div>
           {isSkipOpen ? <p className="mt-0.5 text-sm text-current/45">{occurrence.frequencyText}</p> : null}
@@ -363,6 +364,7 @@ type CustomCareOccurrence = {
   scheduledAt: Date;
   timeLabel: string;
   frequencyText: string;
+  isLastDose: boolean;
 };
 
 type CustomCareStatusValue = "given" | "skipped" | "missed" | { status: "given" | "skipped" | "missed"; note?: string };
@@ -423,6 +425,7 @@ function customCareOccurrencesForDay(items: CareItemTemplate[], targetDayKey: st
     const scheduleCreatedAt = dateFromDateTimeLocal(item.customScheduleCreatedAt) ?? new Date(Date.now() - 3 * 60 * 60 * 1000);
     const offsets = customCareDoseOffsets(item);
     const effectiveOffsets = offsets.length ? offsets : [{ offsetHours: 0, stepIndex: 0, doseIndex: 0, frequencyText: customCareFrequencyText(item) }];
+    const lastOffsetHours = Math.max(...effectiveOffsets.map((offset) => offset.offsetHours));
 
     return effectiveOffsets.flatMap((offset) => {
       const scheduledAt = new Date(startAt.getTime() + offset.offsetHours * 60 * 60 * 1000);
@@ -435,6 +438,7 @@ function customCareOccurrencesForDay(items: CareItemTemplate[], targetDayKey: st
           scheduledAt,
           timeLabel: formatActivityTime(scheduledAt.toISOString()),
           frequencyText: offset.frequencyText,
+          isLastDose: offset.offsetHours === lastOffsetHours,
         },
       ];
     });
@@ -1778,6 +1782,7 @@ export default function HomeApp() {
                           {customCareTimingLabel(card.occurrence.item)}
                         </span>
                       ) : null}
+                      {card.occurrence.isLastDose ? <span className="mt-2 inline-flex rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
                       <p className="mt-1 text-xs font-normal text-current/45">{card.occurrence.frequencyText}</p>
                       {customCareSkipKey === card.occurrence.key ? (
                         <div className="mt-3 rounded-2xl bg-white/60 p-2.5 ring-1 ring-current/15">
