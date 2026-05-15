@@ -485,19 +485,23 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
 
         <div className="flex flex-wrap items-center gap-2 text-zinc-600">
 
-          <p>{giveDetail}</p>
+          <p className="min-w-0">{giveDetail}</p>
 
-          {timingLine ? (
+          <div className="inline-flex shrink-0 items-center gap-2">
 
-            <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${activity.activityType === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : "bg-sky-100/80 text-sky-700/60"}`}>
+            {timingLine ? (
 
-              {timingLine}
+              <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${activity.activityType === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : "bg-sky-100/80 text-sky-700/60"}`}>
 
-            </span>
+                {timingLine}
 
-          ) : null}
+              </span>
 
-          {isLastDose ? <span className="rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
+            ) : null}
+
+            {isLastDose ? <span className="rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
+
+          </div>
 
         </div>
 
@@ -851,6 +855,30 @@ function isVetVisitOrProcedure(activity: ActivityLog) {
 
 }
 
+function hiddenDuplicateMissedCareActivityIds(activities: ActivityLog[]) {
+
+  const givenCareActivityIds = new Set(
+
+    activities
+
+      .filter((activity) => ["medication", "supplement"].includes(activity.activityType) && !activity.id.endsWith("-missed"))
+
+      .map((activity) => activity.id)
+
+  );
+
+  return new Set(
+
+    activities
+
+      .filter((activity) => ["medication", "supplement"].includes(activity.activityType) && activity.id.endsWith("-missed") && givenCareActivityIds.has(activity.id.replace(/-missed$/, "")))
+
+      .map((activity) => activity.id)
+
+  );
+
+}
+
 function activityMatchesHistoryFilter(activity: ActivityLog, activeFilter: HistoryFilter) {
 
   if (activeFilter === "all") return true;
@@ -1173,7 +1201,11 @@ export default function HistoryPage() {
 
 
 
+    const hiddenMissedCareActivityIds = hiddenDuplicateMissedCareActivityIds(activityLogs);
+
     activityLogs.forEach((activity) => {
+
+      if (hiddenMissedCareActivityIds.has(activity.id)) return;
 
       const day = historyDayKeyFromDate(new Date(activity.happenedAt));
 
