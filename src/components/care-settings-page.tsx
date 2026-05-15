@@ -107,10 +107,12 @@ export function CareSettingsPage({
       if (!Array.isArray(incomingItems) || !incomingItems.length) return;
 
       const existingItems = loadCareTemplates(kind);
+      const incomingHasRealSupplement = incomingItems.some((item) => item.kind === "supplement" && item.name.trim().toLowerCase() !== "daily supplements");
+      const existingOnlyPlaceholder = existingItems.every((item) => item.kind !== "supplement" || item.name.trim().toLowerCase() === "daily supplements");
       const merged = new Map<number, CareItemTemplate>();
       existingItems.forEach((item) => merged.set(item.id, item));
       incomingItems.forEach((item) => merged.set(item.id, item));
-      const nextItems = [...merged.values()];
+      const nextItems = incomingHasRealSupplement && existingOnlyPlaceholder ? incomingItems : [...merged.values()];
 
       if (nextItems.length < existingItems.length) return;
 

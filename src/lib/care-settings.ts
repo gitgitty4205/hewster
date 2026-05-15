@@ -215,11 +215,32 @@ export function saveCareTemplates(kind: CareItemKind, templates: CareItemTemplat
   window.dispatchEvent(new CustomEvent("hewster:care-settings-updated", { detail: { kind } }));
 }
 
+function isDefaultSupplementPlaceholder(item: CareItemTemplate) {
+  return (
+    item.kind === "supplement" &&
+    item.name.trim().toLowerCase() === "daily supplements" &&
+    item.dose.trim().toLowerCase() === "as directed"
+  );
+}
+
+function isMoreSpecificCareItem(candidate: CareItemTemplate, current: CareItemTemplate) {
+  if (isDefaultSupplementPlaceholder(current) && !isDefaultSupplementPlaceholder(candidate)) return true;
+  if (isDefaultSupplementPlaceholder(candidate) && !isDefaultSupplementPlaceholder(current)) return false;
+
+  const candidateScore = [candidate.name, candidate.dose, candidate.notes, candidate.mealIds.join(",")].join("|").length;
+  const currentScore = [current.name, current.dose, current.notes, current.mealIds.join(",")].join("|").length;
+  return candidateScore > currentScore;
+}
+
 function mergeCareTemplates(remoteTemplates: CareItemTemplate[], localTemplates: CareItemTemplate[]) {
   const merged = new Map<number, CareItemTemplate>();
 
-  localTemplates.forEach((item) => merged.set(item.id, item));
-  remoteTemplates.forEach((item) => merged.set(item.id, item));
+  [...remoteTemplates, ...localTemplates].forEach((item) => {
+    const current = merged.get(item.id);
+    if (!current || isMoreSpecificCareItem(item, current)) {
+      merged.set(item.id, item);
+    }
+  });
 
   return [...merged.values()];
 }
