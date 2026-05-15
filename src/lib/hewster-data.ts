@@ -495,6 +495,10 @@ function mapManualAlertToRow(alert: ManualAlert): ManualAlertRow {
   };
 }
 
+function manualAlertRepeats(alert: Pick<ManualAlert, "scope">) {
+  return ["ongoing", "every-other-day", "certain-days"].includes(alert.scope ?? "today");
+}
+
 export async function loadAppState(): Promise<HewsterAppState> {
   const localState = loadLocalState();
 
@@ -688,12 +692,17 @@ export async function loadAppState(): Promise<HewsterAppState> {
   const manualAlerts = [...remoteManualAlerts, ...localState.manualAlerts]
     .map((entry) => {
       const localMatch = localState.manualAlerts.find((candidate) => candidate.id === entry.id);
+      const scope = localMatch?.scope ?? (["today", "tomorrow", "date", "ongoing", "every-other-day", "certain-days"].includes(entry.scope ?? "") ? entry.scope : "today");
+      const repeats = manualAlertRepeats({ scope });
+
       return {
         ...entry,
-        scope: localMatch?.scope ?? (["today", "tomorrow", "date", "ongoing", "every-other-day", "certain-days"].includes(entry.scope ?? "") ? entry.scope : "today"),
+        scope,
         weekdays: localMatch?.weekdays ?? entry.weekdays,
         time: localMatch?.time ?? entry.time,
         createdDayKey: localMatch?.createdDayKey ?? entry.createdDayKey,
+        resolved: repeats && localMatch ? localMatch.resolved : entry.resolved,
+        resolvedAt: repeats && localMatch ? localMatch.resolvedAt ?? entry.resolvedAt : entry.resolvedAt,
       };
     })
     .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));

@@ -161,7 +161,6 @@ export default function AlertsPage() {
     return resolveAlerts(templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates);
   }, [templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates, alertMinuteKey]);
   const alertCards = alerts.filter((alert) => alert.kind !== "reminder");
-  const activeManualAlerts = manualAlerts.filter((alert) => !alert.resolved);
 
   const todayKey = dayKeyFromDate(new Date());
   const tomorrowKey = addDays(todayKey, 1);
@@ -179,6 +178,9 @@ export default function AlertsPage() {
     if (scope === "certain-days" && !weekdays.length) return "Choose at least one day.";
     return null;
   };
+
+  const manualAlertRepeats = (alert: Pick<ManualAlert, "scope">) => ["ongoing", "every-other-day", "certain-days"].includes(alert.scope ?? "today");
+  const savedManualAlerts = manualAlerts.filter((alert) => !alert.resolved || manualAlertRepeats(alert));
 
   const alertScopeLabel = (alert: Pick<ManualAlert, "scope" | "createdDayKey">) => {
     const scope = alert.scope ?? "today";
@@ -377,7 +379,7 @@ export default function AlertsPage() {
     const nowIso = new Date().toISOString();
     const nextAlerts = manualAlerts.map((alert) => {
       if (alert.id !== alertId) return alert;
-      const repeats = ["ongoing", "every-other-day", "certain-days"].includes(alert.scope ?? "today");
+      const repeats = manualAlertRepeats(alert);
       return {
         ...alert,
         resolved: repeats ? false : true,
@@ -530,10 +532,10 @@ export default function AlertsPage() {
               </div>
             )}
 
-            {activeManualAlerts.length ? (
+            {savedManualAlerts.length ? (
               <div className="space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-3">
                 <h3 className="text-sm font-semibold text-[#8f1739]/80">Saved Alerts</h3>
-                {activeManualAlerts.map((alert) => (
+                {savedManualAlerts.map((alert) => (
                 <article key={alert.id} className="rounded-2xl bg-white/75 p-4 ring-1 ring-[#e6c8ce]/70">
                   {editingAlertId === alert.id ? (
                     <div className="space-y-3">
