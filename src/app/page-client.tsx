@@ -1044,7 +1044,7 @@ export default function HomeApp() {
 
     const uniqueCards = Array.from(new Map(laneCards.map((card) => [card.sortKey, card])).values());
 
-    return uniqueCards.sort((a, b) => a.sortAt.getTime() - b.sortAt.getTime() || a.sortKey.localeCompare(b.sortKey));
+    return uniqueCards.sort((a, b) => a.sortAt.getTime() - b.sortAt.getTime() || a.sortKey.localeCompare(b.sortKey)).slice(0, 6);
   }, [alertMinuteKey, allMealsDone, customCareOccurrences, dailyMeals, missedMealIds, nextMeal]);
   const groupedUpcomingScheduleCards = upcomingScheduleCards;
   const priorityScheduleTime = groupedUpcomingScheduleCards[0]?.sortAt.getTime() ?? null;
