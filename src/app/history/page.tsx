@@ -1407,6 +1407,36 @@ export default function HistoryPage() {
 
   };
 
+  const clearFilters = () => {
+
+    setActiveFilter("all");
+
+    setDraftFilter("all");
+
+    setStartDate("");
+
+    setEndDate("");
+
+    setDraftStartDate("");
+
+    setDraftEndDate("");
+
+    setShowFilters(false);
+
+    const latestDay = historyDays[0]?.day;
+
+    if (latestDay) {
+
+      setSelectedDay(latestDay);
+
+      const [year, month] = latestDay.split("-").map(Number);
+
+      setCalendarMonth(new Date(year, month - 1, 1));
+
+    }
+
+  };
+
   const calendarCells = useMemo(() => {
 
     const year = calendarMonth.getFullYear();
@@ -1799,6 +1829,28 @@ export default function HistoryPage() {
                 </div>
 
                 <p className="text-xs text-zinc-500">PDF copy will be available once account email is set up.</p>
+
+              </div>
+
+            </div>
+
+          ) : null}
+
+
+
+          {isFilteredView ? (
+
+            <div className="border-b border-[var(--hewie-ring,#cbd5e1)]/70 bg-white/45 px-5 py-3">
+
+              <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+
+                <p className="text-xs font-semibold text-[var(--hewie-active-text,#334155)]/70">Filtered results</p>
+
+                <Button type="button" variant="outline" className="h-8 rounded-full px-3 text-xs font-bold" onClick={clearFilters}>
+
+                  Clear Filters
+
+                </Button>
 
               </div>
 
