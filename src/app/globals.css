@@ -154,12 +154,16 @@
 
 @keyframes logEventChevronSheen {
   0%, 100% {
-    opacity: 0.68;
+    opacity: 0.62;
     filter: drop-shadow(0 0 0 transparent);
   }
-  45% {
+  42% {
     opacity: 1;
-    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.42));
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.75)) drop-shadow(0 0 9px rgba(255, 255, 255, 0.45));
+  }
+  56% {
+    opacity: 0.92;
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.55));
   }
 }
 
@@ -173,7 +177,7 @@
 }
 
 .log-event-pull-chevrons svg {
-  animation: logEventChevronSheen 1.9s ease-in-out infinite;
+  animation: logEventChevronSheen 1.55s ease-in-out infinite;
 }
 
 .log-event-pull-chevrons svg + svg {
