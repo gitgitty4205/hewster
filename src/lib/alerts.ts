@@ -192,7 +192,7 @@ export function resolveAlerts(
       const hasLoggedActivity = activityLogs.some((activity) => {
         const happened = new Date(activity.happenedAt);
         if (dayKeyFromDate(happened) !== todayKey) return false;
-        if (rule.eventType === "potty") return activity.activityType === "pee" || activity.activityType === "poop";
+        if (rule.eventType === "potty") return activity.activityType === "potty" || activity.activityType === "pee" || activity.activityType === "poop";
         if (rule.eventType === "meal") return activity.activityType === "food";
         return activity.activityType === rule.eventType;
       });
