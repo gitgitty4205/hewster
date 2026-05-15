@@ -515,7 +515,8 @@ export default function AlertsPage() {
                 ) : null}
                 <textarea
                   value={messageValue}
-                  onChange={(event) => setMessageValue(event.target.value)}
+                  onChange={(event) => setMessageValue(event.target.value.slice(0, 180))}
+                  maxLength={180}
                   rows={3}
                   placeholder="Alert Details / Message For Myself And Other Caretakers"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
@@ -598,7 +599,8 @@ export default function AlertsPage() {
                       ) : null}
                       <textarea
                         value={editingMessageValue}
-                        onChange={(event) => setEditingMessageValue(event.target.value)}
+                        onChange={(event) => setEditingMessageValue(event.target.value.slice(0, 180))}
+                        maxLength={180}
                         rows={3}
                         placeholder="Alert Details / Message For Myself And Other Caretakers"
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"

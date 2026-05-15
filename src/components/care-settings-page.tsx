@@ -421,7 +421,8 @@ export function CareSettingsPage({
                       <textarea
                         value={item.notes}
                         disabled={!isEditing}
-                        onChange={(event) => updateItem(item.id, { notes: event.target.value })}
+                        onChange={(event) => updateItem(item.id, { notes: event.target.value.slice(0, 180) })}
+                        maxLength={180}
                         rows={1}
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />

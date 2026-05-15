@@ -286,7 +286,8 @@ export default function ProfilePage() {
                     <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Memory Notes</span>
                     <textarea
                       value={profile.memorialNotes}
-                      onChange={(event) => updateProfile({ memorialNotes: event.target.value })}
+                      onChange={(event) => updateProfile({ memorialNotes: event.target.value.slice(0, 180) })}
+                      maxLength={180}
                       rows={3}
                       placeholder="A favorite memory, nickname, or note"
                       className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
@@ -318,7 +319,8 @@ export default function ProfilePage() {
               <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Personality</span>
               <textarea
                 value={profile.personality}
-                onChange={(event) => updateProfile({ personality: event.target.value })}
+                onChange={(event) => updateProfile({ personality: event.target.value.slice(0, 180) })}
+                maxLength={180}
                 rows={2}
                 placeholder="e.g. Shy at first, playful once comfortable"
                 className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
@@ -330,7 +332,8 @@ export default function ProfilePage() {
                 <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Likes</span>
                 <textarea
                   value={profile.likes}
-                  onChange={(event) => updateProfile({ likes: event.target.value })}
+                  onChange={(event) => updateProfile({ likes: event.target.value.slice(0, 180) })}
+                  maxLength={180}
                   rows={2}
                   placeholder="Treats, toys, routines"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
@@ -340,7 +343,8 @@ export default function ProfilePage() {
                 <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Dislikes</span>
                 <textarea
                   value={profile.dislikes}
-                  onChange={(event) => updateProfile({ dislikes: event.target.value })}
+                  onChange={(event) => updateProfile({ dislikes: event.target.value.slice(0, 180) })}
+                  maxLength={180}
                   rows={2}
                   placeholder="Sounds, handling, foods"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
@@ -352,7 +356,8 @@ export default function ProfilePage() {
               <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Care Preferences</span>
               <textarea
                 value={profile.carePreferences}
-                onChange={(event) => updateProfile({ carePreferences: event.target.value })}
+                onChange={(event) => updateProfile({ carePreferences: event.target.value.slice(0, 180) })}
+                maxLength={180}
                 rows={3}
                 placeholder="Feeding quirks, walking style, bedtime routine"
                 className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"

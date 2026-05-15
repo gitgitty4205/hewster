@@ -93,7 +93,8 @@ export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote
         <span className="mb-1 block font-medium text-zinc-700">Notes</span>
         <textarea
           value={fedNote}
-          onChange={(event) => onFedNoteChange(event.target.value)}
+          onChange={(event) => onFedNoteChange(event.target.value.slice(0, 180))}
+          maxLength={180}
           rows={3}
           placeholder={`Notes for ${mealName}`}
           className="w-full resize-none rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"

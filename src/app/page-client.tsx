@@ -226,7 +226,8 @@ function CustomCareCard({
               <p className="text-sm font-semibold text-current/85">Skip {careKindLabel(item.kind)}</p>
               <textarea
                 value={skipNote}
-                onChange={(event) => onSkipNoteChange(occurrence, event.target.value)}
+                onChange={(event) => onSkipNoteChange(occurrence, event.target.value.slice(0, 180))}
+                maxLength={180}
                 placeholder="Notes / Reasons"
                 rows={2}
                 className="mt-1 w-full rounded-2xl border border-current/15 bg-white/80 px-3 py-2 text-sm text-inherit outline-none placeholder:text-current/40 focus:ring-2 focus:ring-current/15"
@@ -588,6 +589,7 @@ export default function HomeApp() {
   const [poopRecordsWindowDays, setPoopRecordsWindowDays] = useState<3 | 7>(3);
   const [customCareSkipKey, setCustomCareSkipKey] = useState<string | null>(null);
   const [customCareSkipNotes, setCustomCareSkipNotes] = useState<Record<string, string>>({});
+  const [expandedAlertIds, setExpandedAlertIds] = useState<Set<string>>(() => new Set());
   const initialLoadComplete = useRef(false);
   const previousTodayKeyRef = useRef<string | null>(null);
   const missedRolloverRef = useRef<string | null>(null);
@@ -1564,26 +1566,56 @@ export default function HomeApp() {
 
         {alertCards.length ? (
           <section className="mb-3 space-y-2">
-            {alertCards.slice(0, 3).map((alert) => (
-              <div key={alert.id} className="flex min-h-12 items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#fff0f1] to-[#fcebed] px-3.5 py-2 text-[#d91f56] shadow-[0_8px_18px_rgba(255,27,90,0.10)] ring-1 ring-[#e6c8ce]/80">
-                <div className="flex min-w-0 items-start gap-2">
-                  <TriangleAlert className="size-4 shrink-0 self-center text-[#8f1739]" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold leading-4 text-[#8f1739]">{alert.title}</p>
-                    <p className="line-clamp-1 text-xs leading-4 text-[#b71f48]/65">{alert.detail}</p>
+            {alertCards.slice(0, 3).map((alert) => {
+              const expanded = expandedAlertIds.has(alert.id);
+              return (
+                <div
+                  key={alert.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    setExpandedAlertIds((current) => {
+                      const next = new Set(current);
+                      if (next.has(alert.id)) next.delete(alert.id);
+                      else next.add(alert.id);
+                      return next;
+                    });
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setExpandedAlertIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(alert.id)) next.delete(alert.id);
+                        else next.add(alert.id);
+                        return next;
+                      });
+                    }
+                  }}
+                  className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#fff0f1] to-[#fcebed] px-3.5 py-2 text-[#d91f56] shadow-[0_8px_18px_rgba(255,27,90,0.10)] ring-1 ring-[#e6c8ce]/80 transition active:translate-y-px"
+                >
+                  <div className="flex min-w-0 items-start gap-2">
+                    <TriangleAlert className="size-4 shrink-0 self-center text-[#8f1739]" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold leading-4 text-[#8f1739]">{alert.title}</p>
+                      <p className={`${expanded ? "whitespace-pre-wrap" : "line-clamp-1"} text-xs leading-4 text-[#b71f48]/65`}>{alert.detail}</p>
+                    </div>
                   </div>
+                  {alert.kind === "manual" ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void resolveManualAlert(alert.id);
+                      }}
+                      className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-[11px] font-semibold text-[var(--hewie-accent-text,#ffffff)] shadow-sm shadow-slate-400/20 ring-1 ring-white/30 transition hover:opacity-90 active:translate-y-px"
+                    >
+                      Done
+                    </button>
+                  ) : null}
                 </div>
-                {alert.kind === "manual" ? (
-                  <button
-                    type="button"
-                    onClick={() => resolveManualAlert(alert.id)}
-                    className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-[11px] font-semibold text-[var(--hewie-accent-text,#ffffff)] shadow-sm shadow-slate-400/20 ring-1 ring-white/30 transition hover:opacity-90 active:translate-y-px"
-                  >
-                    Done
-                  </button>
-                ) : null}
-              </div>
-            ))}
+              );
+            })}
           </section>
         ) : null}
 
@@ -1720,7 +1752,7 @@ export default function HomeApp() {
                         skipNote={customCareSkipNotes[card.occurrence.key] ?? ""}
                         onGiven={markCustomCareGiven}
                         onSkip={openCustomCareSkipNote}
-                        onSkipNoteChange={updateCustomCareSkipNote}
+                        onSkipNoteChange={(occurrence, note) => updateCustomCareSkipNote(occurrence, note.slice(0, 180))}
                         onConfirmSkip={markCustomCareSkipped}
                         onCancelSkip={cancelCustomCareSkip}
                       />
@@ -1750,7 +1782,8 @@ export default function HomeApp() {
                         <div className="mt-3 rounded-2xl bg-white/60 p-2.5 ring-1 ring-current/15">
                           <textarea
                             value={customCareSkipNotes[card.occurrence.key] ?? ""}
-                            onChange={(event) => updateCustomCareSkipNote(card.occurrence, event.target.value)}
+                            onChange={(event) => updateCustomCareSkipNote(card.occurrence, event.target.value.slice(0, 180))}
+                            maxLength={180}
                             placeholder="Notes / Reasons"
                             rows={2}
                             className="w-full rounded-xl border border-current/15 bg-white/80 px-3 py-2 text-sm text-inherit outline-none placeholder:text-current/40 focus:ring-2 focus:ring-current/15"
