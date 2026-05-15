@@ -152,6 +152,41 @@
   animation: contentFadeIn 220ms ease-out;
 }
 
+@keyframes logEventTabSheen {
+  0% {
+    transform: translateX(-140%);
+  }
+  58%, 100% {
+    transform: translateX(140%);
+  }
+}
+
+.log-event-pull-tab {
+  overflow: hidden;
+}
+
+.log-event-pull-tab::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(100deg, transparent 16%, rgba(255, 255, 255, 0.24) 48%, transparent 78%);
+  animation: logEventTabSheen 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.log-event-pull-chevrons {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.log-event-pull-chevrons svg + svg {
+  margin-top: -0.55rem;
+}
+
 @keyframes logEventCurtainOpen {
   from {
     opacity: 0;
