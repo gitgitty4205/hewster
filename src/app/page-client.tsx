@@ -1029,40 +1029,27 @@ export default function HomeApp() {
       sortedCards.some((card) => card.type === "meal" && card.sortAt.getTime() > startTime && card.sortAt.getTime() <= endTime);
 
     const mainPreviewCards = sortedCards.filter((card) => card.sortAt.getTime() <= previewEnd);
-    if (!mainPreviewCards.length) {
-      const nextMealCard = sortedCards.find((card) => card.type === "meal");
-      if (!nextMealCard) {
-        const nextCardTime = sortedCards[0].sortAt.getTime();
-        return sortedCards.filter((card) => card.sortAt.getTime() === nextCardTime);
-      }
+    const nextMealCard = sortedCards.find((card) => card.type === "meal");
+    const nextCareCard = sortedCards.find((card) => card.type === "custom-care");
+    const nextMealTime = nextMealCard?.sortAt.getTime() ?? null;
+    const nextCareTime = nextCareCard?.sortAt.getTime() ?? null;
+    const laneCards = sortedCards.filter((card) => {
+      const cardTime = card.sortAt.getTime();
+      return (card.type === "meal" && cardTime === nextMealTime) || (card.type === "custom-care" && cardTime === nextCareTime);
+    });
 
-      const nextMealTime = nextMealCard.sortAt.getTime();
-      const nextMealCards = sortedCards.filter((card) => card.type === "meal" && card.sortAt.getTime() === nextMealTime);
-      const nextCareCard = sortedCards.find((card) => card.type === "custom-care");
-      const nextCareTime = nextCareCard?.sortAt.getTime() ?? null;
-      const pairedCareCards = sortedCards.filter((card) => {
+    const pairedCareCards = nextMealTime === null
+      ? []
+      : sortedCards.filter((card) => {
         if (card.type !== "custom-care") return false;
         const cardTime = card.sortAt.getTime();
-        if (nextCareTime !== null && nextCareTime < nextMealTime) return cardTime === nextCareTime;
         return cardTime >= nextMealTime && cardTime <= nextMealTime + carePairingWindowMs && !hasMealBetween(nextMealTime, cardTime);
       });
 
-      return [...nextMealCards, ...pairedCareCards].sort((a, b) => a.sortAt.getTime() - b.sortAt.getTime() || a.sortKey.localeCompare(b.sortKey));
-    }
+    const cardsToShow = mainPreviewCards.length ? [...mainPreviewCards, ...laneCards, ...pairedCareCards] : [...laneCards, ...pairedCareCards];
+    const uniqueCards = Array.from(new Map(cardsToShow.map((card) => [card.sortKey, card])).values());
 
-    const latestMainPreviewTime = Math.max(...mainPreviewCards.map((card) => card.sortAt.getTime()));
-    const extraCarePreviewEnd = latestMainPreviewTime + carePairingWindowMs;
-    const extraCareCards = sortedCards.filter((card) => {
-      const cardTime = card.sortAt.getTime();
-      return (
-        card.type === "custom-care" &&
-        cardTime > latestMainPreviewTime &&
-        cardTime <= extraCarePreviewEnd &&
-        !hasMealBetween(latestMainPreviewTime, cardTime)
-      );
-    });
-
-    return [...mainPreviewCards, ...extraCareCards].sort((a, b) => a.sortAt.getTime() - b.sortAt.getTime() || a.sortKey.localeCompare(b.sortKey));
+    return uniqueCards.sort((a, b) => a.sortAt.getTime() - b.sortAt.getTime() || a.sortKey.localeCompare(b.sortKey));
   }, [alertMinuteKey, allMealsDone, customCareOccurrences, dailyMeals, missedMealIds, nextMeal]);
   const groupedUpcomingScheduleCards = upcomingScheduleCards;
   const priorityScheduleTime = groupedUpcomingScheduleCards[0]?.sortAt.getTime() ?? null;
