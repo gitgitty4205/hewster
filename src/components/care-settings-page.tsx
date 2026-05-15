@@ -268,19 +268,7 @@ export function CareSettingsPage({
                       <h3 className="font-medium text-zinc-900">{item.name || "Untitled"}</h3>
                       <p className="mt-1 text-sm text-zinc-500">{item.dose || "No Dose"} • {summarizeSchedule(item, meals)}</p>
                     </div>
-                    {isEditing ? (
-                      <div className="flex shrink-0 gap-1.5">
-                        <Button
-                          className="rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90"
-                          onClick={() => saveEditing(item.id)}
-                        >
-                          Save
-                        </Button>
-                        <Button variant="outline" className="rounded-full px-3" onClick={() => cancelEditing(item.id)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
+                    {isEditing ? null : (
                       <Button variant="outline" className="rounded-full" onClick={() => startEditing(item)}>
                         Edit
                       </Button>
@@ -489,14 +477,25 @@ export function CareSettingsPage({
                     </label>
 
                     {isEditing ? (
-                      <Button
-                        variant="outline"
-                        className="rounded-full border-rose-200 text-rose-600 hover:bg-rose-50"
-                        onClick={() => deleteItem(item.id)}
-                      >
-                        <Trash2 className="size-4" />
-                        Delete
-                      </Button>
+                      <div className="grid grid-cols-[1fr_1fr_auto] gap-2 pt-1">
+                        <Button
+                          className="rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90"
+                          onClick={() => saveEditing(item.id)}
+                        >
+                          Save
+                        </Button>
+                        <Button variant="outline" className="rounded-full px-3" onClick={() => cancelEditing(item.id)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="rounded-full border-rose-200 px-3 text-rose-600 hover:bg-rose-50"
+                          onClick={() => deleteItem(item.id)}
+                        >
+                          <Trash2 className="size-4" />
+                          Delete
+                        </Button>
+                      </div>
                     ) : null}
                   </div>
                 </article>
