@@ -1229,15 +1229,15 @@ export default function LogPage() {
             className="group relative mb-7 cursor-pointer overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
           >
             <h2 className="text-lg font-semibold">Log Event</h2>
-            <div className="pointer-events-none mt-3 h-8 overflow-hidden">
-              <div className="grid grid-cols-2 gap-3 opacity-85">
-                <div className="flex h-14 items-center gap-2.5 rounded-2xl bg-[#fff7dc] px-3 text-[#8a6200] shadow-sm">
+            <div className="pointer-events-none mt-3 h-5 overflow-hidden">
+              <div className="grid grid-cols-2 gap-3 opacity-80">
+                <div className="flex h-14 items-start gap-2.5 rounded-2xl bg-[#fff7dc] px-3 pt-2 text-[#8a6200] shadow-sm">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/60 text-base leading-none">🚽</span>
-                  <span className="text-sm font-semibold">Potty</span>
+                  <span className="sr-only">Potty</span>
                 </div>
-                <div className="flex h-14 items-center gap-2.5 rounded-2xl bg-emerald-50 px-3 text-emerald-700 shadow-sm">
+                <div className="flex h-14 items-start gap-2.5 rounded-2xl bg-emerald-50 px-3 pt-2 text-emerald-700 shadow-sm">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-base leading-none">🌳</span>
-                  <span className="text-sm font-semibold">Activity</span>
+                  <span className="sr-only">Activity</span>
                 </div>
               </div>
             </div>
