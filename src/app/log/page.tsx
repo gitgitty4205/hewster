@@ -1185,7 +1185,7 @@ export default function LogPage() {
 
                 saving={activityState === "saving"}
 
-                savedCareItems={careTemplates.filter((item) => item.asNeeded && item.kind === detailActivityType)}
+                savedCareItems={careTemplates.filter((item) => item.asNeeded && (item.kind === detailActivityType || (detailActivityType === "wellness" && item.kind === "medication")))}
 
               />
 
@@ -1302,7 +1302,7 @@ export default function LogPage() {
 
                     saving={activityState === "saving"}
 
-                    savedCareItems={careTemplates.filter((item) => item.asNeeded && item.kind === detailActivityType)}
+                    savedCareItems={careTemplates.filter((item) => item.asNeeded && (item.kind === detailActivityType || (detailActivityType === "wellness" && item.kind === "medication")))}
 
                   />
 

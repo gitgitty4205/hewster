@@ -932,6 +932,18 @@ export function ActivityDetailForm({
 
   const requiresTitleDetail = activityType === "other" || activityType === "sick";
 
+  const visibleSavedCareItems = savedCareItems.filter((item) => {
+
+    if (activityType === item.kind) return true;
+
+    if (activityType !== "wellness" || item.kind !== "medication") return false;
+
+    const normalizedDetail = detail.toLowerCase();
+
+    return normalizedDetail === "medication" || normalizedDetail.includes("medication");
+
+  });
+
   const saveDisabled =
 
     saving ||
@@ -972,7 +984,7 @@ export function ActivityDetailForm({
 
 
 
-      {savedCareItems.length ? (
+      {visibleSavedCareItems.length ? (
 
         <div className="mb-4 rounded-2xl bg-sky-50/60 p-3 ring-1 ring-sky-100">
 
@@ -980,25 +992,31 @@ export function ActivityDetailForm({
 
           <div className="flex flex-wrap gap-2">
 
-            {savedCareItems.map((item) => (
+            {visibleSavedCareItems.map((item) => {
 
-              <button
+              const label = `${item.name.trim() || formatActivityLabel(item.kind)}${item.dose ? ` • ${item.dose}` : ""}`;
 
-                key={`${item.kind}-${item.id}`}
+              return (
 
-                type="button"
+                <button
 
-                className="rounded-full bg-white px-3 py-2 text-sm font-medium text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-50"
+                  key={`${item.kind}-${item.id}`}
 
-                onClick={() => onDetailChange(`${item.name.trim()}${item.dose ? ` • ${item.dose}` : ""}`)}
+                  type="button"
 
-              >
+                  className="rounded-full bg-white px-3 py-2 text-sm font-medium text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-50"
 
-                {item.name.trim() || formatActivityLabel(item.kind)}{item.dose ? ` • ${item.dose}` : ""}
+                  onClick={() => onDetailChange(activityType === "wellness" ? `Medication: ${label}` : label)}
 
-              </button>
+                >
 
-            ))}
+                  {label}
+
+                </button>
+
+              );
+
+            })}
 
           </div>
 
