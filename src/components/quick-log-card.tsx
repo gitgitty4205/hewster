@@ -40,8 +40,8 @@ const quickActions = [
     type: "food" as const,
     icon: null,
     iconText: "\u{1F969}",
-    accent: "bg-rose-50 text-rose-700",
-    iconAccent: "bg-rose-100 text-rose-600",
+    accent: "bg-[#f4eadf]/90 text-[#6b3f22]",
+    iconAccent: "bg-[#9a6940]/70 text-white",
     iconTextClass: "scale-95"
   },
   {
@@ -67,8 +67,8 @@ const quickActions = [
     type: "wellness" as const,
     icon: null,
     iconText: "\u{1F33F}",
-    accent: "bg-[#f4eadf]/90 text-[#6b3f22]",
-    iconAccent: "bg-[#9a6940]/70 text-white",
+    accent: "bg-rose-50 text-rose-700",
+    iconAccent: "bg-rose-100 text-rose-600",
     iconTextClass: "scale-95",
   },
   {

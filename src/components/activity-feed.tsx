@@ -153,9 +153,9 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
       return {
         icon: null,
         iconText: "\u{1F33F}",
-        card: "bg-[#ead8c5]/80 ring-[#caa57f]",
-        iconWrap: "bg-[#8a5a35]/75 text-white",
-        dot: "bg-[#8a5a35]/80",
+        card: "bg-rose-50/80 ring-rose-200",
+        iconWrap: "bg-rose-100 text-rose-600",
+        dot: "bg-rose-400",
       };
     case "hike":
       return {
@@ -177,17 +177,17 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
       return {
         icon: null,
         iconText: "\u{1F969}",
-        card: "bg-rose-50/80 ring-rose-200",
-        iconWrap: "bg-rose-100 text-rose-600",
-        dot: "bg-rose-400",
+        card: "bg-[#ead8c5]/80 ring-[#caa57f]",
+        iconWrap: "bg-[#8a5a35]/75 text-white",
+        dot: "bg-amber-900",
       };
     case "supplement":
       return {
         icon: Tablets,
         iconText: null,
-        card: "bg-[#ead8c5]/80 ring-[#caa57f]",
-        iconWrap: "bg-[#8a5a35]/75 text-white ring-1 ring-[#caa57f]",
-        dot: "bg-[#8a5a35]/80 ring-1 ring-[#caa57f]",
+        card: "bg-rose-50/80 ring-rose-200",
+        iconWrap: "bg-rose-100 text-rose-600 ring-1 ring-rose-200",
+        dot: "bg-rose-100 ring-1 ring-rose-200",
       };
     case "medication":
       return {
@@ -238,7 +238,7 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
       };
     case "wellness":
       return {
-        dot: "bg-[#8a5a35]/80 ring-1 ring-[#8a5a35]/20",
+        dot: "bg-rose-100 ring-1 ring-rose-200",
         icon: <span className="text-[0.7rem] leading-none">🌿</span>,
       };
     case "hike":
@@ -253,13 +253,13 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
       };
     case "food":
       return {
-        dot: "bg-rose-400",
+        dot: "bg-amber-900",
         icon: null,
       };
     case "supplement":
       return {
-        dot: "bg-[#8a5a35]/80 ring-1 ring-[#8a5a35]/20",
-        icon: <Tablets className="size-3 text-white" />,
+        dot: "bg-rose-100 ring-1 ring-rose-200",
+        icon: <Tablets className="size-3 text-rose-600" />,
       };
     case "medication":
       return {
