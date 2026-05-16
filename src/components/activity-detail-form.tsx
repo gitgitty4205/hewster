@@ -390,7 +390,7 @@ function activityPresetClasses(activityType: ActivityType, selected: boolean) {
 
     case "wellness":
 
-      return "bg-rose-50 text-rose-700 ring-rose-200";
+      return "bg-[#ead8c5] text-[#6b3f22] ring-[#caa57f]";
 
     case "medication":
 
@@ -398,7 +398,7 @@ function activityPresetClasses(activityType: ActivityType, selected: boolean) {
 
     case "supplement":
 
-      return "bg-rose-50 text-rose-700 ring-rose-200";
+      return "bg-[#ead8c5] text-[#6b3f22] ring-[#caa57f]";
 
     case "treat":
 
@@ -406,7 +406,7 @@ function activityPresetClasses(activityType: ActivityType, selected: boolean) {
 
     case "food":
 
-      return "bg-[#ead8c5] text-[#6b3f22] ring-[#caa57f]";
+      return "bg-rose-50 text-rose-700 ring-rose-200";
 
     case "sick":
 
