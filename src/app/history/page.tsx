@@ -2,7 +2,7 @@
 
 
 
-import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, PillBottle, SlidersHorizontal, Tablets, TriangleAlert } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, Leaf, SlidersHorizontal, Tablets, TriangleAlert } from "lucide-react";
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
@@ -643,7 +643,7 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
 
       return {
 
-        icon: PillBottle,
+        icon: Leaf,
 
         iconText: null,
 
