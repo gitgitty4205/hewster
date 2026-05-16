@@ -1,6 +1,6 @@
 "use client";
 
-import { Ellipsis } from "lucide-react";
+import { Ellipsis, PillBottle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { ActivityType } from "@/lib/hewster-data";
@@ -56,8 +56,8 @@ const quickActions = [
   {
     label: "Wellness",
     type: "wellness" as const,
-    icon: null,
-    iconText: "\u{1F6C1}",
+    icon: PillBottle,
+    iconText: null,
     accent: "bg-rose-50 text-rose-700",
     iconAccent: "bg-rose-100 text-rose-600",
     iconTextClass: "scale-95",
