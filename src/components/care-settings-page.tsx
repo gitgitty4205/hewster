@@ -419,14 +419,13 @@ export function CareSettingsPage({
 
                     {item.scheduleKind === "custom" ? (
                       <div className="space-y-2 rounded-2xl bg-white p-3 text-sm ring-1 ring-zinc-200">
-                        {item.scheduleSteps.map((step, index) => {
-                          const hasAnotherSchedule = index < item.scheduleSteps.length - 1;
+                        <div className="space-y-1.5">
+                          {item.scheduleSteps.map((step, index) => {
+                            const hasAnotherSchedule = index < item.scheduleSteps.length - 1;
+                            const durationLocked = item.ongoing || item.asNeeded;
 
-                          const durationLocked = item.ongoing || item.asNeeded;
-
-                          return (
-                            <div key={step.id} className="space-y-2 rounded-xl bg-zinc-50/70 p-2 ring-1 ring-zinc-100">
-                              <div className="flex flex-wrap items-center gap-1 text-sm font-medium text-zinc-700">
+                            return (
+                              <div key={step.id} className="flex flex-wrap items-center gap-1 text-sm font-medium text-zinc-700">
                                 <span>Every</span>
                                 <input
                                   aria-label={`Schedule ${index + 1} every how many hours`}
@@ -451,15 +450,15 @@ export function CareSettingsPage({
                                 />
                                 <span>days{hasAnotherSchedule ? "," : ""}</span>
                                 {item.scheduleSteps.length > 1 ? (
-                                <Button
-                                  variant="outline"
-                                  className="size-8 rounded-full p-0 text-rose-600"
-                                  disabled={!isEditing}
-                                  onClick={() => deleteScheduleStep(item, step.id)}
-                                  aria-label="Delete schedule row"
-                                >
-                                  <Trash2 className="size-3.5" />
-                                </Button>
+                                  <Button
+                                    variant="outline"
+                                    className="size-8 rounded-full p-0 text-rose-600"
+                                    disabled={!isEditing}
+                                    onClick={() => deleteScheduleStep(item, step.id)}
+                                    aria-label="Delete schedule row"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
                                 ) : null}
                                 {index === item.scheduleSteps.length - 1 ? (
                                   <Button variant="outline" className="size-8 rounded-full p-0" disabled={!isEditing} onClick={() => addScheduleStep(item)} aria-label="Add another schedule row">
@@ -467,40 +466,40 @@ export function CareSettingsPage({
                                   </Button>
                                 ) : null}
                               </div>
+                            );
+                          })}
+                        </div>
 
-                              <div className="flex flex-wrap gap-2 pl-0.5 text-xs font-medium text-zinc-600">
-                                <label className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ring-1 ${item.ongoing ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-white text-zinc-600 ring-zinc-200"}`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={item.ongoing}
-                                    disabled={!isEditing}
-                                    onChange={(event) => updateItem(item.id, {
-                                      ongoing: event.target.checked,
-                                      asNeeded: event.target.checked ? false : item.asNeeded,
-                                      scheduleSteps: item.scheduleSteps.map((scheduleStep) => scheduleStep.id === step.id ? { ...scheduleStep, forDays: event.target.checked ? "" : scheduleStep.forDays } : scheduleStep),
-                                    })}
-                                    className="size-3.5 rounded border-zinc-300"
-                                  />
-                                  Ongoing
-                                </label>
-                                <label className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ring-1 ${item.asNeeded ? "bg-sky-50 text-sky-700 ring-sky-200" : "bg-white text-zinc-600 ring-zinc-200"}`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={item.asNeeded}
-                                    disabled={!isEditing}
-                                    onChange={(event) => updateItem(item.id, {
-                                      asNeeded: event.target.checked,
-                                      ongoing: event.target.checked ? false : item.ongoing,
-                                      scheduleSteps: item.scheduleSteps.map((scheduleStep) => scheduleStep.id === step.id ? { ...scheduleStep, forDays: event.target.checked ? "" : scheduleStep.forDays } : scheduleStep),
-                                    })}
-                                    className="size-3.5 rounded border-zinc-300"
-                                  />
-                                  As needed
-                                </label>
-                              </div>
-                            </div>
-                          );
-                        })}
+                        <div className="flex flex-wrap gap-2 border-t border-zinc-100 pt-2 text-xs font-medium text-zinc-600">
+                          <label className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ring-1 ${item.ongoing ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-white text-zinc-600 ring-zinc-200"}`}>
+                            <input
+                              type="checkbox"
+                              checked={item.ongoing}
+                              disabled={!isEditing}
+                              onChange={(event) => updateItem(item.id, {
+                                ongoing: event.target.checked,
+                                asNeeded: event.target.checked ? false : item.asNeeded,
+                                scheduleSteps: item.scheduleSteps.map((scheduleStep) => ({ ...scheduleStep, forDays: event.target.checked ? "" : scheduleStep.forDays })),
+                              })}
+                              className="size-3.5 rounded border-zinc-300"
+                            />
+                            Ongoing
+                          </label>
+                          <label className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ring-1 ${item.asNeeded ? "bg-sky-50 text-sky-700 ring-sky-200" : "bg-white text-zinc-600 ring-zinc-200"}`}>
+                            <input
+                              type="checkbox"
+                              checked={item.asNeeded}
+                              disabled={!isEditing}
+                              onChange={(event) => updateItem(item.id, {
+                                asNeeded: event.target.checked,
+                                ongoing: event.target.checked ? false : item.ongoing,
+                                scheduleSteps: item.scheduleSteps.map((scheduleStep) => ({ ...scheduleStep, forDays: event.target.checked ? "" : scheduleStep.forDays })),
+                              })}
+                              className="size-3.5 rounded border-zinc-300"
+                            />
+                            As needed
+                          </label>
+                        </div>
                       </div>
                     ) : null}
 
