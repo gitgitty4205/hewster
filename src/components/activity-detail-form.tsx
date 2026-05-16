@@ -941,13 +941,13 @@ export function ActivityDetailForm({
 
   const showExtraNotesField = (activityType === "treat" || activityType === "food") && onExtraNotesChange;
 
-  const showAttachmentField = (activityType === "wellness" || activityType === "sick") && onAttachmentsChange;
+  const showAttachmentField = activityType === "sick" && onAttachmentsChange;
 
   const isPottyLog = ["potty", "pee", "poop"].includes(activityType);
 
-  const showRecordTags = (activityType === "wellness" || activityType === "sick") && onRecordTagsChange;
+  const showRecordTags = activityType === "sick" && onRecordTagsChange;
 
-  const attachmentLabel = activityType === "sick" ? "Upload Health Documents" : "Upload Documents";
+  const attachmentLabel = "Upload Health Documents";
 
   const attachmentAccept = "image/*,.pdf,application/pdf";
 
