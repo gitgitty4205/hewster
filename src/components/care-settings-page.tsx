@@ -54,6 +54,8 @@ function defaultTemplate(kind: CareItemKind, count: number): CareItemTemplate {
     repeatEveryHours: "24",
     repeatForDays: "1",
     scheduleSteps: [{ id: Date.now() + 1, everyHours: "24", forDays: "1" }],
+    ongoing: false,
+    asNeeded: false,
     notes: "",
     active: true,
   };
@@ -62,11 +64,11 @@ function defaultTemplate(kind: CareItemKind, count: number): CareItemTemplate {
 function summarizeSchedule(item: CareItemTemplate, meals: MealTemplate[]) {
   if (item.scheduleKind === "custom") {
     const timing = item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food";
-    const validSteps = item.scheduleSteps.filter((step) => step.everyHours && step.forDays);
+    const validSteps = item.scheduleSteps.filter((step) => step.everyHours && (step.forDays || item.ongoing || item.asNeeded));
     const schedule = validSteps.length > 1
-      ? `${validSteps.length} Schedules`
+      ? `${validSteps.length} Schedules${item.ongoing ? " • Ongoing" : item.asNeeded ? " • As Needed" : ""}`
       : validSteps[0]
-        ? `Every ${validSteps[0].everyHours} Hours For ${validSteps[0].forDays} Days`
+        ? `Every ${validSteps[0].everyHours} Hours${item.ongoing ? " • Ongoing" : item.asNeeded ? " • As Needed" : ` For ${validSteps[0].forDays} Days`}`
         : "Schedule Needed";
     return [item.startDateTime || "Start Date & Time", schedule, timing].join(" • ");
   }
@@ -420,32 +422,35 @@ export function CareSettingsPage({
                         {item.scheduleSteps.map((step, index) => {
                           const hasAnotherSchedule = index < item.scheduleSteps.length - 1;
 
+                          const durationLocked = item.ongoing || item.asNeeded;
+
                           return (
-                            <div key={step.id} className="flex flex-wrap items-center gap-1 text-sm font-medium text-zinc-700">
-                              <span>Every</span>
-                              <input
-                                aria-label={`Schedule ${index + 1} every how many hours`}
-                                value={step.everyHours}
-                                disabled={!isEditing}
-                                inputMode="numeric"
-                                maxLength={2}
-                                onChange={(event) => updateScheduleStep(item, step.id, { everyHours: event.target.value })}
-                                placeholder={index === 0 ? "12" : "24"}
-                                className="w-10 rounded-lg border border-zinc-200 bg-white px-1.5 py-1.5 text-center text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
-                              />
-                              <span>hours for</span>
-                              <input
-                                aria-label={`Schedule ${index + 1} for how many days`}
-                                value={step.forDays}
-                                disabled={!isEditing}
-                                inputMode="numeric"
-                                maxLength={2}
-                                onChange={(event) => updateScheduleStep(item, step.id, { forDays: event.target.value })}
-                                placeholder={index === 0 ? "7" : "2"}
-                                className="w-10 rounded-lg border border-zinc-200 bg-white px-1.5 py-1.5 text-center text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
-                              />
-                              <span>days{hasAnotherSchedule ? "," : ""}</span>
-                              {item.scheduleSteps.length > 1 ? (
+                            <div key={step.id} className="space-y-2 rounded-xl bg-zinc-50/70 p-2 ring-1 ring-zinc-100">
+                              <div className="flex flex-wrap items-center gap-1 text-sm font-medium text-zinc-700">
+                                <span>Every</span>
+                                <input
+                                  aria-label={`Schedule ${index + 1} every how many hours`}
+                                  value={step.everyHours}
+                                  disabled={!isEditing}
+                                  inputMode="numeric"
+                                  maxLength={2}
+                                  onChange={(event) => updateScheduleStep(item, step.id, { everyHours: event.target.value })}
+                                  placeholder={index === 0 ? "12" : "24"}
+                                  className="w-10 rounded-lg border border-zinc-200 bg-white px-1.5 py-1.5 text-center text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                                />
+                                <span>hours for</span>
+                                <input
+                                  aria-label={`Schedule ${index + 1} for how many days`}
+                                  value={durationLocked ? "" : step.forDays}
+                                  disabled={!isEditing || durationLocked}
+                                  inputMode="numeric"
+                                  maxLength={2}
+                                  onChange={(event) => updateScheduleStep(item, step.id, { forDays: event.target.value })}
+                                  placeholder={durationLocked ? "—" : index === 0 ? "7" : "2"}
+                                  className="w-10 rounded-lg border border-zinc-200 bg-white px-1.5 py-1.5 text-center text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-400"
+                                />
+                                <span>days{hasAnotherSchedule ? "," : ""}</span>
+                                {item.scheduleSteps.length > 1 ? (
                                 <Button
                                   variant="outline"
                                   className="size-8 rounded-full p-0 text-rose-600"
@@ -455,12 +460,44 @@ export function CareSettingsPage({
                                 >
                                   <Trash2 className="size-3.5" />
                                 </Button>
-                              ) : null}
-                              {index === item.scheduleSteps.length - 1 ? (
-                                <Button variant="outline" className="size-8 rounded-full p-0" disabled={!isEditing} onClick={() => addScheduleStep(item)} aria-label="Add another schedule row">
-                                  <Plus className="size-4" />
-                                </Button>
-                              ) : null}
+                                ) : null}
+                                {index === item.scheduleSteps.length - 1 ? (
+                                  <Button variant="outline" className="size-8 rounded-full p-0" disabled={!isEditing} onClick={() => addScheduleStep(item)} aria-label="Add another schedule row">
+                                    <Plus className="size-4" />
+                                  </Button>
+                                ) : null}
+                              </div>
+
+                              <div className="flex flex-wrap gap-2 pl-0.5 text-xs font-medium text-zinc-600">
+                                <label className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ring-1 ${item.ongoing ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-white text-zinc-600 ring-zinc-200"}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={item.ongoing}
+                                    disabled={!isEditing}
+                                    onChange={(event) => updateItem(item.id, {
+                                      ongoing: event.target.checked,
+                                      asNeeded: event.target.checked ? false : item.asNeeded,
+                                      scheduleSteps: item.scheduleSteps.map((scheduleStep) => scheduleStep.id === step.id ? { ...scheduleStep, forDays: event.target.checked ? "" : scheduleStep.forDays } : scheduleStep),
+                                    })}
+                                    className="size-3.5 rounded border-zinc-300"
+                                  />
+                                  Ongoing
+                                </label>
+                                <label className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ring-1 ${item.asNeeded ? "bg-sky-50 text-sky-700 ring-sky-200" : "bg-white text-zinc-600 ring-zinc-200"}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={item.asNeeded}
+                                    disabled={!isEditing}
+                                    onChange={(event) => updateItem(item.id, {
+                                      asNeeded: event.target.checked,
+                                      ongoing: event.target.checked ? false : item.ongoing,
+                                      scheduleSteps: item.scheduleSteps.map((scheduleStep) => scheduleStep.id === step.id ? { ...scheduleStep, forDays: event.target.checked ? "" : scheduleStep.forDays } : scheduleStep),
+                                    })}
+                                    className="size-3.5 rounded border-zinc-300"
+                                  />
+                                  As needed
+                                </label>
+                              </div>
                             </div>
                           );
                         })}

@@ -28,6 +28,8 @@ export type CareItemTemplate = {
   repeatEveryHours: string;
   repeatForDays: string;
   scheduleSteps: CareScheduleStep[];
+  ongoing: boolean;
+  asNeeded: boolean;
   notes: string;
   active: boolean;
 };
@@ -52,6 +54,8 @@ export const initialSupplementTemplates: CareItemTemplate[] = [
     repeatEveryHours: "",
     repeatForDays: "",
     scheduleSteps: [{ id: 1, everyHours: "", forDays: "" }],
+    ongoing: false,
+    asNeeded: false,
     notes: "Add with dinner unless directed otherwise.",
     active: true,
   },
@@ -104,6 +108,8 @@ function normalizeCareItemTemplate(item: unknown, kind: CareItemKind): CareItemT
             };
           })
       : [{ id: 1, everyHours: typeof candidate.repeatEveryHours === "string" ? candidate.repeatEveryHours : "", forDays: typeof candidate.repeatForDays === "string" ? candidate.repeatForDays : "" }],
+    ongoing: candidate.ongoing === true,
+    asNeeded: candidate.asNeeded === true,
     notes: candidate.notes,
     active: candidate.active,
   };
@@ -131,7 +137,7 @@ function validCustomScheduleSteps(item: CareItemTemplate) {
 }
 
 export function finalCustomCareDoseAt(item: CareItemTemplate) {
-  if (item.scheduleKind !== "custom") return null;
+  if (item.scheduleKind !== "custom" || item.ongoing || item.asNeeded) return null;
 
   const startAt = dateFromDateTimeLocal(item.startDateTime);
   if (!startAt) return null;

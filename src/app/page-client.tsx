@@ -116,7 +116,11 @@ function customCareFrequencyText(item: CareItemTemplate) {
     return `${steps.length} Schedules`;
   }
 
-  if (steps[0]) return `Every ${steps[0].everyHours} Hours For ${steps[0].forDays} Days`;
+  if (steps[0]) {
+    if (item.ongoing) return `Every ${steps[0].everyHours} Hours • Ongoing`;
+    if (item.asNeeded) return `Every ${steps[0].everyHours} Hours • As Needed`;
+    return `Every ${steps[0].everyHours} Hours For ${steps[0].forDays} Days`;
+  }
   return "Schedule Needed";
 }
 
@@ -390,7 +394,11 @@ function customCareScheduleSteps(item: CareItemTemplate) {
       everyHours: Number.parseInt(step.everyHours, 10),
       forDays: Number.parseInt(step.forDays, 10),
     }))
-    .filter((step) => Number.isFinite(step.everyHours) && step.everyHours > 0 && Number.isFinite(step.forDays) && step.forDays > 0);
+    .filter((step) => {
+      const hasFrequency = Number.isFinite(step.everyHours) && step.everyHours > 0;
+      if (item.ongoing || item.asNeeded) return hasFrequency;
+      return hasFrequency && Number.isFinite(step.forDays) && step.forDays > 0;
+    });
 }
 
 function customCareDoseOffsets(item: CareItemTemplate) {
@@ -420,9 +428,40 @@ function dateFromDateTimeLocal(value: string) {
 
 function customCareOccurrencesForDay(items: CareItemTemplate[], targetDayKey: string): CustomCareOccurrence[] {
   return customScheduledCareItems(items).flatMap((item) => {
+    if (item.asNeeded) return [];
+
     const startAt = dateFromDateTimeLocal(item.startDateTime);
     if (!startAt) return [];
     const scheduleCreatedAt = dateFromDateTimeLocal(item.customScheduleCreatedAt) ?? new Date(Date.now() - 3 * 60 * 60 * 1000);
+
+    if (item.ongoing) {
+      const [year, month, day] = targetDayKey.split("-").map(Number);
+      const dayStart = new Date(year, month - 1, day);
+      const dayEnd = new Date(year, month - 1, day + 1);
+
+      return customCareScheduleSteps(item).flatMap((step, stepIndex) => {
+        const firstOffset = Math.max(0, Math.ceil((dayStart.getTime() - startAt.getTime()) / (step.everyHours * 60 * 60 * 1000)));
+        const occurrences: CustomCareOccurrence[] = [];
+
+        for (let doseIndex = firstOffset; ; doseIndex += 1) {
+          const scheduledAt = new Date(startAt.getTime() + doseIndex * step.everyHours * 60 * 60 * 1000);
+          if (scheduledAt >= dayEnd) break;
+          if (scheduledAt < dayStart || scheduledAt < scheduleCreatedAt) continue;
+
+          occurrences.push({
+            key: `${item.kind}-${item.id}-schedule-${stepIndex + 1}-dose-${doseIndex + 1}-${scheduledAt.toISOString()}`,
+            item,
+            scheduledAt,
+            timeLabel: formatActivityTime(scheduledAt.toISOString()),
+            frequencyText: `Every ${step.everyHours} Hours • Ongoing`,
+            isLastDose: false,
+          });
+        }
+
+        return occurrences;
+      });
+    }
+
     const offsets = customCareDoseOffsets(item);
     const effectiveOffsets = offsets.length ? offsets : [{ offsetHours: 0, stepIndex: 0, doseIndex: 0, frequencyText: customCareFrequencyText(item) }];
     const lastOffsetHours = Math.max(...effectiveOffsets.map((offset) => offset.offsetHours));
