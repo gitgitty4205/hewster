@@ -213,9 +213,13 @@ function careNotesForSave(originalNotes: string | null, status: string, editable
 
 function careDetailForSave(originalDetail: string | null, status: string) {
 
-  const name = careNameFromDetail(originalDetail) || "Medication";
+  const name = careNameFromDetail(originalDetail);
 
-  return status === "Given" ? name : `${name} ${status}`;
+  if (status === "Given") return name || "Medication";
+
+  if (!name && !["Skipped", "Missed"].includes(status)) return status;
+
+  return `${name || "Medication"} ${status}`;
 
 }
 
@@ -1181,6 +1185,8 @@ export default function LogPage() {
 
                 saving={activityState === "saving"}
 
+                savedCareItems={careTemplates.filter((item) => item.asNeeded && item.kind === detailActivityType)}
+
               />
 
             ) : null}
@@ -1295,6 +1301,8 @@ export default function LogPage() {
                     onDelete={editingActivityId ? deleteActivity : undefined}
 
                     saving={activityState === "saving"}
+
+                    savedCareItems={careTemplates.filter((item) => item.asNeeded && item.kind === detailActivityType)}
 
                   />
 

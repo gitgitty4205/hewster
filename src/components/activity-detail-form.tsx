@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 
 import type { ActivityType } from "@/lib/hewster-data";
 
+import type { CareItemTemplate } from "@/lib/care-settings";
+
 import { formatActivityLabel } from "@/lib/activity";
 
 import {
@@ -59,6 +61,8 @@ type Props = {
   onDelete?: () => void;
 
   saving: boolean;
+
+  savedCareItems?: CareItemTemplate[];
 
 };
 
@@ -858,6 +862,8 @@ export function ActivityDetailForm({
 
   saving,
 
+  savedCareItems = [],
+
 }: Props) {
 
   const profileSnapshot = useSyncExternalStore(
@@ -965,6 +971,40 @@ export function ActivityDetailForm({
       </div>
 
 
+
+      {savedCareItems.length ? (
+
+        <div className="mb-4 rounded-2xl bg-sky-50/60 p-3 ring-1 ring-sky-100">
+
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-500">Saved As Needed</p>
+
+          <div className="flex flex-wrap gap-2">
+
+            {savedCareItems.map((item) => (
+
+              <button
+
+                key={`${item.kind}-${item.id}`}
+
+                type="button"
+
+                className="rounded-full bg-white px-3 py-2 text-sm font-medium text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-50"
+
+                onClick={() => onDetailChange(`${item.name.trim()}${item.dose ? ` • ${item.dose}` : ""}`)}
+
+              >
+
+                {item.name.trim() || formatActivityLabel(item.kind)}{item.dose ? ` • ${item.dose}` : ""}
+
+              </button>
+
+            ))}
+
+          </div>
+
+        </div>
+
+      ) : null}
 
       {presetGroups ? (
 

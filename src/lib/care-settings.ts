@@ -312,7 +312,7 @@ export function resetCareTemplates(kind: CareItemKind) {
 }
 
 export function careItemsForMeal(items: CareItemTemplate[], mealId: MealTemplate["id"]) {
-  return items.filter((item) => isCareItemCurrentlyActive(item) && item.scheduleKind === "meal" && item.mealIds.includes(mealId));
+  return items.filter((item) => isCareItemCurrentlyActive(item) && !item.asNeeded && item.scheduleKind === "meal" && item.mealIds.includes(mealId));
 }
 
 export function customScheduledCareItems(items: CareItemTemplate[]) {
