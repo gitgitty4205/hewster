@@ -1475,7 +1475,7 @@ export function ActivityDetailForm({
 
           maxLength={180}
 
-          rows={activityType === "medication" || activityType === "supplement" ? 1 : isPottyLog ? 2 : 3}
+          rows={activityType === "medication" || activityType === "supplement" ? 1 : activityType === "wellness" || isPottyLog ? 2 : 3}
 
           placeholder={notesPlaceholders[activityType]}
 
