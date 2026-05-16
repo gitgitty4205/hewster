@@ -152,7 +152,7 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
     case "wellness":
       return {
         icon: null,
-        iconText: "\u{1F9FC}",
+        iconText: "\u{1F6C1}",
         card: "bg-rose-50/80 ring-rose-200",
         iconWrap: "bg-rose-100 text-rose-600",
         dot: "bg-rose-400",

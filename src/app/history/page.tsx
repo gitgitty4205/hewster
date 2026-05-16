@@ -645,7 +645,7 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
 
         icon: null,
 
-        iconText: "\u{1F9FC}",
+        iconText: "\u{1F6C1}",
 
         card: "bg-rose-50/80 ring-rose-200",
 

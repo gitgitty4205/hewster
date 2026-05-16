@@ -57,7 +57,7 @@ const quickActions = [
     label: "Wellness",
     type: "wellness" as const,
     icon: null,
-    iconText: "\u{1F9FC}",
+    iconText: "\u{1F6C1}",
     accent: "bg-rose-50 text-rose-700",
     iconAccent: "bg-rose-100 text-rose-600",
     iconTextClass: "scale-95",
