@@ -1199,8 +1199,10 @@ export default function LogPage() {
               aria-label="Collapse Log Event"
             >
               <span className="log-event-pull-chevrons" aria-hidden="true">
-                <ChevronUp className="size-3.5" strokeWidth={2.5} />
-                <ChevronUp className="size-3.5" strokeWidth={2.5} />
+                <ChevronUp className="size-4" strokeWidth={2.5} />
+                <ChevronUp className="size-4" strokeWidth={2.5} />
+                <ChevronUp className="size-4" strokeWidth={2.5} />
+                <ChevronUp className="size-4" strokeWidth={2.5} />
               </span>
             </button>
           </div>
@@ -1232,8 +1234,10 @@ export default function LogPage() {
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
               <div className="log-event-pull-tab flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90">
                 <span className="log-event-pull-chevrons" aria-hidden="true">
-                  <ChevronDown className="size-3.5" strokeWidth={2.5} />
-                  <ChevronDown className="size-3.5" strokeWidth={2.5} />
+                  <ChevronDown className="size-4" strokeWidth={2.5} />
+                  <ChevronDown className="size-4" strokeWidth={2.5} />
+                  <ChevronDown className="size-4" strokeWidth={2.5} />
+                  <ChevronDown className="size-4" strokeWidth={2.5} />
                 </span>
               </div>
             </div>
