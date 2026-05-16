@@ -645,11 +645,11 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
 
         icon: null,
 
-        iconText: "\u{1FA7A}",
+        iconText: "\u{1F9FC}",
 
-        card: "bg-sky-50/80 ring-sky-200",
+        card: "bg-emerald-50/80 ring-emerald-200",
 
-        iconWrap: "bg-sky-100 text-sky-600",
+        iconWrap: "bg-emerald-100 text-emerald-600",
 
       };
 
@@ -729,11 +729,11 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
 
         icon: null,
 
-        iconText: "\u{1F912}",
+        iconText: "\u{1FA7A}",
 
-        card: "bg-rose-50/80 ring-rose-200",
+        card: "bg-sky-50/80 ring-sky-200",
 
-        iconWrap: "bg-rose-100 text-rose-600",
+        iconWrap: "bg-sky-100 text-sky-600",
 
       };
 
@@ -768,9 +768,9 @@ function getEventFeedDot(activityType: ActivityLog["activityType"] | "meal" | "m
 
   if (["activity", "outdoor", "hike"].includes(activityType)) return "bg-emerald-500";
 
-  if (["wellness", "medication", "supplement", "care"].includes(activityType)) return "bg-sky-500";
+  if (["wellness", "supplement", "care"].includes(activityType)) return "bg-emerald-500";
 
-  if (activityType === "sick") return "bg-rose-500";
+  if (["sick", "medication"].includes(activityType)) return "bg-sky-500";
 
   if (["food", "treat"].includes(activityType)) return "bg-orange-400";
 
@@ -816,7 +816,7 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
 
 type HistoryFilter = "all" | "allFood" | "potty" | "activity" | "medical" | "wellness" | "care" | "other" | "uploads" | "medicalRecords" | "vetProcedures";
 
-const medicalWellnessDetails = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Medication", "Procedure", "Other Medical"];
+const medicalWellnessDetails = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Medication", "Flea & Tick", "Deworming", "Procedure", "Other Medical"];
 
 function isMedicalWellnessDetail(detail: string | null) {
   const normalized = detail ?? "";
@@ -1399,7 +1399,7 @@ export default function HistoryPage() {
 
     { id: "activity", label: "Activity" },
 
-    { id: "medical", label: "Medical" },
+    { id: "medical", label: "Health" },
 
     { id: "wellness", label: "Wellness" },
 
@@ -1493,9 +1493,9 @@ export default function HistoryPage() {
 
       const day = historyDaysByKey.get(key);
 
-      const hasSickRecord = day?.activities.some((activity) => activity.activityType === "sick") ?? false;
+      const hasMedicalRecord = day?.activities.some((activity) => ["sick", "medication"].includes(activity.activityType) || (activity.activityType === "wellness" && isMedicalWellnessDetail(activity.detail))) ?? false;
 
-      const hasMedicalRecord = day?.activities.some((activity) => ["wellness", "medication", "supplement", "care"].includes(activity.activityType)) ?? false;
+      const hasWellnessRecord = day?.activities.some((activity) => activity.activityType === "supplement" || (activity.activityType === "wellness" && !isMedicalWellnessDetail(activity.detail)) || activity.activityType === "care") ?? false;
 
       const hasOtherRecord = day?.activities.some((activity) => activity.activityType === "other") ?? false;
 
@@ -1503,9 +1503,9 @@ export default function HistoryPage() {
 
         ? [
 
-          hasSickRecord ? "bg-rose-500" : null,
-
           hasMedicalRecord ? "bg-sky-500" : null,
+
+          hasWellnessRecord ? "bg-emerald-500" : null,
 
           hasOtherRecord ? "bg-[#8f8f98]" : null,
 

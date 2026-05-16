@@ -152,10 +152,10 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
     case "wellness":
       return {
         icon: null,
-        iconText: "\u{1FA7A}",
-        card: "bg-sky-50/80 ring-sky-200",
-        iconWrap: "bg-sky-100 text-sky-600",
-        dot: "bg-sky-400",
+        iconText: "\u{1F9FC}",
+        card: "bg-emerald-50/80 ring-emerald-200",
+        iconWrap: "bg-emerald-100 text-emerald-600",
+        dot: "bg-emerald-400",
       };
     case "hike":
       return {
@@ -200,10 +200,10 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
     case "sick":
       return {
         icon: null,
-        iconText: "\u{1F912}",
-        card: "bg-rose-50/80 ring-rose-200",
-        iconWrap: "bg-rose-100 text-rose-600",
-        dot: "bg-rose-400",
+        iconText: "\u{1FA7A}",
+        card: "bg-sky-50/80 ring-sky-200",
+        iconWrap: "bg-sky-100 text-sky-600",
+        dot: "bg-sky-400",
       };
     case "other":
       return {
@@ -238,7 +238,7 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
       };
     case "wellness":
       return {
-        dot: "bg-sky-400",
+        dot: "bg-emerald-400",
         icon: null,
       };
     case "hike":
@@ -268,7 +268,7 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
       };
     case "sick":
       return {
-        dot: "bg-rose-400",
+        dot: "bg-sky-400",
         icon: null,
       };
     case "other":

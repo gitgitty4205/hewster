@@ -26,7 +26,7 @@ export function formatActivityLabel(activityType: ActivityType) {
     case "medication":
       return "Medication";
     case "sick":
-      return "Sick";
+      return "Health";
     case "other":
       return "Other";
     default:

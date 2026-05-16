@@ -100,7 +100,7 @@ const presets: Record<ActivityType, string[]> = {
 
   care: ["Daycare", "Boarding"],
 
-  wellness: ["Vet Visit", "Medication", "Supplements", "Grooming", "Bath", "Nail Trim", "Dental Care", "Ear Cleaning", "Flea & Tick Prevention", "Deworming"],
+  wellness: ["Supplements", "Grooming", "Bath", "Nail Trim", "Dental Care", "Ear Cleaning"],
 
   hike: ["Short Hiking", "Long Hike"],
 
@@ -198,17 +198,9 @@ const groupedPresets: Partial<Record<ActivityType, Array<{ label: string; option
 
     {
 
-      label: "Routine Care",
+      label: "Wellness Care",
 
-      options: ["Supplements", "Dental Care", "Grooming / Bath", "Nail Trim", "Ear Cleaning", "Flea & Tick Prevention", "Deworming", "Other"],
-
-    },
-
-    {
-
-      label: "Medical / Vet",
-
-      options: ["Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Medication", "Procedure", "Other Medical"],
+      options: ["Supplements", "Dental Care", "Grooming / Bath", "Nail Trim", "Ear Cleaning", "Other"],
 
     },
 
@@ -233,6 +225,14 @@ const groupedPresets: Partial<Record<ActivityType, Array<{ label: string; option
       label: "Symptom Type",
 
       options: ["Digestive", "Respiratory", "Skin / Ear / Rear", "Urinary", "Mobility / Pain", "Neurological", "Behavior", "Other"],
+
+    },
+
+    {
+
+      label: "Medical / Vet",
+
+      options: ["Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Medication", "Flea & Tick", "Deworming", "Procedure", "Other Medical"],
 
     },
 
@@ -288,7 +288,7 @@ const notesPlaceholders: Record<ActivityType, string> = {
 
   care: "Daycare/Boarding Details, Pickup/Dropoff Notes, Or Anything Notable",
 
-  wellness: "Routine Care Or Vet Notes, Dose/Schedule, Follow-Up, Insurance Claim, Records, Or Invoice Details",
+  wellness: "Supplements, Grooming, Dental Care, Ear Cleaning, Or Other Routine Wellness Care",
 
   hike: "Route, Weather, Duration, Behavior, Or Anything Notable",
 
@@ -300,7 +300,7 @@ const notesPlaceholders: Record<ActivityType, string> = {
 
   medication: "Medication Name, Dose, Schedule, Skip Reason, Or Vet Instructions",
 
-  sick: "Severity, Time Noticed, Notes, Contacted Vet?, And Resolved/Ongoing Status",
+  sick: "Symptoms, Vet Notes, Medication, Prevention, Follow-Up, Records, Or Invoice Details",
 
   other: "Add any details or context you want to remember",
 
@@ -390,6 +390,8 @@ function activityPresetClasses(activityType: ActivityType, selected: boolean) {
 
     case "wellness":
 
+      return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+
     case "medication":
 
     case "supplement":
@@ -406,7 +408,7 @@ function activityPresetClasses(activityType: ActivityType, selected: boolean) {
 
     case "sick":
 
-      return "bg-rose-50 text-rose-700 ring-rose-200";
+      return "bg-sky-50 text-sky-700 ring-sky-200";
 
     case "other":
 
@@ -598,7 +600,7 @@ function bristolScaleFromDetail(value: string) {
 
 function isPresetSelected(activityType: ActivityType, preset: string, detail: string) {
 
-  if (activityType === "wellness" && preset === "Procedure") {
+  if ((activityType === "wellness" || activityType === "sick") && preset === "Procedure") {
 
     return detail === preset || detail.startsWith(`${preset}: `);
 
@@ -629,6 +631,8 @@ function nextDetailValue(activityType: ActivityType, preset: string, detail: str
   if (activityType === "sick" && preset === "Other") return "Other";
 
   if (activityType === "wellness") return preset;
+
+  if (activityType === "sick") return preset;
 
   if (activityType !== "potty") return preset;
 
@@ -939,17 +943,13 @@ export function ActivityDetailForm({
 
   const isPottyLog = ["potty", "pee", "poop"].includes(activityType);
 
-  const showRecordTags = activityType === "wellness" && onRecordTagsChange;
+  const showRecordTags = (activityType === "wellness" || activityType === "sick") && onRecordTagsChange;
 
-  const attachmentLabel = activityType === "sick" ? "Upload Photo" : "Upload Documents";
+  const attachmentLabel = activityType === "sick" ? "Upload Health Documents" : "Upload Documents";
 
-  const attachmentAccept = activityType === "sick" ? "image/*" : "image/*,.pdf,application/pdf";
+  const attachmentAccept = "image/*,.pdf,application/pdf";
 
-  const attachmentHelp = activityType === "sick"
-
-    ? "Add a photo or screenshot if helpful."
-
-    : "Photos, screenshots, PDFs, medical records, invoices, vaccine certificates, or insurance docs.";
+  const attachmentHelp = "Photos, screenshots, PDFs, medical records, invoices, vaccine certificates, or insurance docs.";
 
   const showDetailField = activityType === "other" || (activityType === "sick" && sickSymptomFromDetail(detail) === "Other");
 
@@ -965,7 +965,13 @@ export function ActivityDetailForm({
 
     if (activityType === item.kind) return true;
 
-    if (activityType !== "wellness" || item.kind !== "medication") return false;
+    if (activityType === "wellness" && item.kind === "supplement") {
+
+      return detail.toLowerCase().includes("supplement");
+
+    }
+
+    if (activityType !== "sick" || item.kind !== "medication") return false;
 
     const normalizedDetail = detail.toLowerCase();
 
@@ -1017,7 +1023,7 @@ export function ActivityDetailForm({
 
         <div className="mb-4 rounded-2xl bg-sky-50/60 p-3 ring-1 ring-sky-100">
 
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-500">{activityType === "supplement" ? "Saved Supplement" : "Saved Medication"}</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-500">{visibleSavedCareItems.some((item) => item.kind === "supplement") ? "Saved Supplement" : "Saved Medication"}</p>
 
           <div className="flex flex-wrap gap-2">
 
@@ -1037,7 +1043,7 @@ export function ActivityDetailForm({
 
                   onClick={() => {
 
-                    onDetailChange(activityType === "wellness" ? "Medication" : label);
+                    onDetailChange(activityType === "sick" ? "Medication" : activityType === "wellness" && item.kind === "supplement" ? "Supplements" : label);
 
                     onNotesChange(savedCareItemNotes(item));
 
@@ -1103,7 +1109,7 @@ export function ActivityDetailForm({
 
                 </div>
 
-                {activityType === "wellness" && group.label === "Medical / Vet" && isMedicalVisitWithAddOns(detail) ? (
+                {activityType === "sick" && group.label === "Medical / Vet" && isMedicalVisitWithAddOns(detail) ? (
 
                   <div className="mt-3 rounded-2xl bg-sky-50/70 p-3 ring-1 ring-sky-100">
 
@@ -1135,7 +1141,7 @@ export function ActivityDetailForm({
 
                 ) : null}
 
-                {activityType === "wellness" && group.label === "Medical / Vet" && isProcedureDetail(detail) ? (
+                {activityType === "sick" && group.label === "Medical / Vet" && isProcedureDetail(detail) ? (
 
                   <div className="mt-3 rounded-2xl bg-sky-50/70 p-3 ring-1 ring-sky-100">
 
@@ -1175,7 +1181,7 @@ export function ActivityDetailForm({
 
                 ) : null}
 
-                {activityType === "wellness" && group.label === "Medical / Vet" && isDentalProcedureDetail(detail) ? (
+                {activityType === "sick" && group.label === "Medical / Vet" && isDentalProcedureDetail(detail) ? (
 
                   <div className="mt-3 rounded-2xl bg-sky-50/70 p-3 ring-1 ring-sky-100">
 
@@ -1245,7 +1251,7 @@ export function ActivityDetailForm({
 
                 ) : null}
 
-                {activityType === "wellness" && group.label === "Medical / Vet" && isSpayNeuterDetail(detail) ? (
+                {activityType === "sick" && group.label === "Medical / Vet" && isSpayNeuterDetail(detail) ? (
 
                   <div className="mt-3 rounded-2xl bg-sky-50/70 p-3 ring-1 ring-sky-100">
 

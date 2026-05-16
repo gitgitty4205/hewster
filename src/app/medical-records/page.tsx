@@ -9,7 +9,20 @@ import { BottomNav } from "@/components/bottom-nav";
 import { formatActivityTime, formatActivityLabel } from "@/lib/activity";
 import { type ActivityLog, loadAppState } from "@/lib/hewster-data";
 
-const filters = ["All", "Vet Visits", "Sick Logs", "Vaccines", "Invoices", "Insurance", "Photos"];
+const filters = ["All", "Vet Visits", "Health Logs", "Vaccines", "Invoices", "Insurance", "Photos"];
+
+const medicalDetailKeywords = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Medication", "Flea & Tick", "Deworming", "Procedure", "Other Medical"];
+const vetVisitKeywords = ["Vet Visit", "Wellness Exam", "Sick Consult", "Procedure"];
+
+function isMedicalDetail(detail: string | null) {
+  const normalized = detail ?? "";
+  return medicalDetailKeywords.some((value) => normalized.includes(value));
+}
+
+function isVetVisitDetail(detail: string | null) {
+  const normalized = detail ?? "";
+  return vetVisitKeywords.some((value) => normalized.includes(value));
+}
 
 function dayKeyFromDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -33,8 +46,8 @@ function recordTags(activity: ActivityLog) {
   const inferred = new Set(explicitTags);
   const detail = activity.detail ?? "";
 
-  if (activity.activityType === "wellness") inferred.add("Vet Visit");
-  if (activity.activityType === "sick") inferred.add("Sick Log");
+  if (activity.activityType === "wellness" && isMedicalDetail(detail)) inferred.add("Vet Visit");
+  if (activity.activityType === "sick") inferred.add("Health Log");
   if (detail.includes("Vaccine")) inferred.add("Vaccines");
   if (detail.includes("Procedure")) inferred.add("Procedure");
   if (noteLines(activity.notes).some((line) => line.startsWith("Attachments: "))) inferred.add("Attachment");
@@ -58,8 +71,8 @@ function matchesFilter(activity: ActivityLog, filter: string) {
 
   switch (filter) {
     case "Vet Visits":
-      return activity.activityType === "wellness";
-    case "Sick Logs":
+      return isVetVisitDetail(activity.detail);
+    case "Health Logs":
       return activity.activityType === "sick";
     case "Vaccines":
       return tags.includes("Vaccines") || tags.includes("Vaccine Certificate") || (activity.detail ?? "").includes("Vaccine");
@@ -95,7 +108,7 @@ export default function MedicalRecordsPage() {
 
   const medicalRecords = useMemo(
     () => activityLogs
-      .filter((activity) => activity.activityType === "wellness" || activity.activityType === "sick")
+      .filter((activity) => activity.activityType === "sick" || (activity.activityType === "wellness" && isMedicalDetail(activity.detail)))
       .filter((activity) => matchesFilter(activity, activeFilter)),
     [activityLogs, activeFilter]
   );
