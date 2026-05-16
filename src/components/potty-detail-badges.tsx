@@ -5,7 +5,7 @@ function poopBadgeClasses(detail: string | null) {
 
   switch (normalized) {
     case "no poop":
-      return "bg-zinc-100 text-zinc-800 ring-1 ring-zinc-300";
+      return "bg-zinc-100 text-zinc-800 ring-1 ring-zinc-600";
     case "type 1: very firm, small pieces":
     case "type 2: firm, slightly uneven log":
       return "bg-stone-200 text-stone-900 ring-1 ring-stone-400/80";

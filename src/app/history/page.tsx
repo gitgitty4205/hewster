@@ -223,7 +223,7 @@ function poopBadgeClasses(detail: string | null) {
 
     case "no poop":
 
-      return "bg-zinc-50 text-zinc-700 ring-1 ring-zinc-200/80";
+      return "bg-zinc-50 text-zinc-700 ring-1 ring-zinc-600";
 
     case "type 1: very firm, small pieces":
 

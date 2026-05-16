@@ -330,7 +330,7 @@ function bristolScaleClasses(value: string, selected: boolean) {
 
     case "no poop":
 
-      return selected ? "bg-zinc-200 text-zinc-900 ring-zinc-400 shadow-sm" : "bg-zinc-50/70 text-zinc-700 ring-zinc-200/60 hover:bg-zinc-50";
+      return selected ? "bg-zinc-200 text-zinc-900 ring-zinc-600 shadow-sm" : "bg-zinc-50/70 text-zinc-700 ring-zinc-600/80 hover:bg-zinc-50";
 
     case "type 1: very firm, small pieces":
 
