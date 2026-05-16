@@ -288,7 +288,7 @@ const notesPlaceholders: Record<ActivityType, string> = {
 
   care: "Daycare/Boarding Details, Pickup/Dropoff Notes, Or Anything Notable",
 
-  wellness: "Supplements, Dental Care, Bath/Grooming, Nail Trim, Ear Cleaning, Eye Care, Or Other Routine Wellness Care",
+  wellness: "Optional Notes Or Anything Notable",
 
   hike: "Route, Weather, Duration, Behavior, Or Anything Notable",
 
@@ -1479,7 +1479,7 @@ export function ActivityDetailForm({
 
           placeholder={notesPlaceholders[activityType]}
 
-          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+          className={`w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 ${activityType === "wellness" ? "resize-none overflow-hidden" : ""}`}
 
         />
 
