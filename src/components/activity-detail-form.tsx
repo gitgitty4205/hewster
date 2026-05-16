@@ -820,6 +820,35 @@ function displayDetailValue(activityType: ActivityType, detail: string) {
 
 }
 
+function savedCareItemLabel(item: CareItemTemplate) {
+
+  return `${item.name.trim() || formatActivityLabel(item.kind)}${item.dose ? ` • ${item.dose}` : ""}`;
+
+}
+
+function savedCareItemNotes(item: CareItemTemplate) {
+
+  const medicationType = item.kind === "medication"
+    ? item.medicationType === "topical"
+      ? "Topical"
+      : item.medicationType === "injection"
+        ? "Injection"
+        : item.medicationType === "other"
+          ? "Other"
+          : "Oral"
+    : null;
+  const frequency = item.scheduleSteps.find((step) => step.everyHours)?.everyHours;
+
+  return [
+    `Give ${item.dose || "as directed"}${medicationType ? ` (${medicationType})` : ""}`,
+    frequency ? `Every ${frequency} Hours • As Needed` : "As Needed",
+    item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food",
+    medicationType,
+    item.notes ? `Notes: ${item.notes.trim()}` : "",
+  ].filter(Boolean).join("\n");
+
+}
+
 
 
 export function ActivityDetailForm({
@@ -988,13 +1017,13 @@ export function ActivityDetailForm({
 
         <div className="mb-4 rounded-2xl bg-sky-50/60 p-3 ring-1 ring-sky-100">
 
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-500">Saved As Needed</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-500">{activityType === "supplement" ? "Saved Supplement" : "Saved Medication"}</p>
 
           <div className="flex flex-wrap gap-2">
 
             {visibleSavedCareItems.map((item) => {
 
-              const label = `${item.name.trim() || formatActivityLabel(item.kind)}${item.dose ? ` • ${item.dose}` : ""}`;
+              const label = savedCareItemLabel(item);
 
               return (
 
@@ -1006,7 +1035,13 @@ export function ActivityDetailForm({
 
                   className="rounded-full bg-white px-3 py-2 text-sm font-medium text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-50"
 
-                  onClick={() => onDetailChange(activityType === "wellness" ? `Medication: ${label}` : label)}
+                  onClick={() => {
+
+                    onDetailChange(activityType === "wellness" ? "Medication" : label);
+
+                    onNotesChange(savedCareItemNotes(item));
+
+                  }}
 
                 >
 
