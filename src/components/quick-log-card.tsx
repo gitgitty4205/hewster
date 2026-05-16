@@ -54,21 +54,21 @@ const quickActions = [
     iconTextClass: "scale-90"
   },
   {
-    label: "Wellness",
-    type: "wellness" as const,
-    icon: null,
-    iconText: "\u{1F33F}",
-    accent: "bg-rose-50 text-rose-700",
-    iconAccent: "bg-rose-100 text-rose-600",
-    iconTextClass: "scale-95",
-  },
-  {
     label: "Health",
     type: "sick" as const,
     icon: null,
     iconText: "\u{1FA7A}",
     accent: "bg-sky-50 text-sky-700",
     iconAccent: "bg-sky-100 text-sky-600",
+    iconTextClass: "scale-95",
+  },
+  {
+    label: "Wellness",
+    type: "wellness" as const,
+    icon: null,
+    iconText: "\u{1F33F}",
+    accent: "bg-rose-50 text-rose-700",
+    iconAccent: "bg-rose-100 text-rose-600",
     iconTextClass: "scale-95",
   },
   {
