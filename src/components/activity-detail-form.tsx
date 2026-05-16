@@ -943,8 +943,6 @@ export function ActivityDetailForm({
 
   const showAttachmentField = activityType === "sick" && onAttachmentsChange;
 
-  const isPottyLog = ["potty", "pee", "poop"].includes(activityType);
-
   const showRecordTags = activityType === "sick" && onRecordTagsChange;
 
   const attachmentLabel = "Upload Health Documents";
@@ -1475,7 +1473,7 @@ export function ActivityDetailForm({
 
           maxLength={180}
 
-          rows={activityType === "medication" || activityType === "supplement" ? 1 : isPottyLog ? 2 : 3}
+          rows={activityType === "medication" || activityType === "supplement" ? 1 : 2}
 
           placeholder={notesPlaceholders[activityType]}
 
