@@ -390,13 +390,15 @@ function activityPresetClasses(activityType: ActivityType, selected: boolean) {
 
     case "wellness":
 
-      return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+      return "bg-rose-50 text-rose-700 ring-rose-200";
 
     case "medication":
 
+      return "bg-sky-50 text-sky-700 ring-sky-200";
+
     case "supplement":
 
-      return "bg-sky-50 text-sky-700 ring-sky-200";
+      return "bg-rose-50 text-rose-700 ring-rose-200";
 
     case "treat":
 

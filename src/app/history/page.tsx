@@ -647,9 +647,9 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
 
         iconText: "\u{1F9FC}",
 
-        card: "bg-emerald-50/80 ring-emerald-200",
+        card: "bg-rose-50/80 ring-rose-200",
 
-        iconWrap: "bg-emerald-100 text-emerald-600",
+        iconWrap: "bg-rose-100 text-rose-600",
 
       };
 
@@ -703,9 +703,9 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
 
         iconText: "\u{1F48A}",
 
-        card: "bg-violet-50/80 ring-violet-200",
+        card: "bg-rose-50/80 ring-rose-200",
 
-        iconWrap: "bg-violet-100 text-violet-600",
+        iconWrap: "bg-rose-100 text-rose-600",
 
       };
 
@@ -768,7 +768,9 @@ function getEventFeedDot(activityType: ActivityLog["activityType"] | "meal" | "m
 
   if (["activity", "outdoor", "hike"].includes(activityType)) return "bg-emerald-500";
 
-  if (["wellness", "supplement", "care"].includes(activityType)) return "bg-emerald-500";
+  if (["wellness", "supplement"].includes(activityType)) return "bg-rose-500";
+
+  if (activityType === "care") return "bg-purple-500";
 
   if (["sick", "medication"].includes(activityType)) return "bg-sky-500";
 
@@ -781,7 +783,7 @@ function getEventFeedDot(activityType: ActivityLog["activityType"] | "meal" | "m
 function EventFeedMarker({ activityType }: { activityType: ActivityLog["activityType"] | "meal" | "manual" }) {
   if (activityType === "supplement") {
     return (
-      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]">
+      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600 ring-1 ring-rose-200">
         <Tablets className="size-3" />
       </span>
     );
@@ -1495,7 +1497,7 @@ export default function HistoryPage() {
 
       const hasMedicalRecord = day?.activities.some((activity) => ["sick", "medication"].includes(activity.activityType) || (activity.activityType === "wellness" && isMedicalWellnessDetail(activity.detail))) ?? false;
 
-      const hasWellnessRecord = day?.activities.some((activity) => activity.activityType === "supplement" || (activity.activityType === "wellness" && !isMedicalWellnessDetail(activity.detail)) || activity.activityType === "care") ?? false;
+      const hasWellnessRecord = day?.activities.some((activity) => activity.activityType === "supplement" || (activity.activityType === "wellness" && !isMedicalWellnessDetail(activity.detail))) ?? false;
 
       const hasOtherRecord = day?.activities.some((activity) => activity.activityType === "other") ?? false;
 
@@ -1505,7 +1507,7 @@ export default function HistoryPage() {
 
           hasMedicalRecord ? "bg-sky-500" : null,
 
-          hasWellnessRecord ? "bg-emerald-500" : null,
+          hasWellnessRecord ? "bg-rose-500" : null,
 
           hasOtherRecord ? "bg-[#8f8f98]" : null,
 

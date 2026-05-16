@@ -58,8 +58,8 @@ const quickActions = [
     type: "wellness" as const,
     icon: null,
     iconText: "\u{1F9FC}",
-    accent: "bg-emerald-50 text-emerald-700",
-    iconAccent: "bg-emerald-100 text-emerald-600",
+    accent: "bg-rose-50 text-rose-700",
+    iconAccent: "bg-rose-100 text-rose-600",
     iconTextClass: "scale-95",
   },
   {

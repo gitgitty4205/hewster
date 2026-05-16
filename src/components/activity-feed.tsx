@@ -153,9 +153,9 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
       return {
         icon: null,
         iconText: "\u{1F9FC}",
-        card: "bg-emerald-50/80 ring-emerald-200",
-        iconWrap: "bg-emerald-100 text-emerald-600",
-        dot: "bg-emerald-400",
+        card: "bg-rose-50/80 ring-rose-200",
+        iconWrap: "bg-rose-100 text-rose-600",
+        dot: "bg-rose-400",
       };
     case "hike":
       return {
@@ -185,9 +185,9 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
       return {
         icon: Tablets,
         iconText: null,
-        card: "bg-[#eaf0f8]/80 ring-[#b8c9dd]",
-        iconWrap: "bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]",
-        dot: "bg-[#eaf0f8] ring-1 ring-[#b8c9dd]",
+        card: "bg-rose-50/80 ring-rose-200",
+        iconWrap: "bg-rose-100 text-rose-600 ring-1 ring-rose-200",
+        dot: "bg-rose-100 ring-1 ring-rose-200",
       };
     case "medication":
       return {
@@ -238,7 +238,7 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
       };
     case "wellness":
       return {
-        dot: "bg-emerald-400",
+        dot: "bg-rose-400",
         icon: null,
       };
     case "hike":
@@ -258,8 +258,8 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
       };
     case "supplement":
       return {
-        dot: "bg-[#eaf0f8] ring-1 ring-[#b8c9dd]",
-        icon: <Tablets className="size-3 text-[#1f3d5c]" />,
+        dot: "bg-rose-100 ring-1 ring-rose-200",
+        icon: <Tablets className="size-3 text-rose-600" />,
       };
     case "medication":
       return {
