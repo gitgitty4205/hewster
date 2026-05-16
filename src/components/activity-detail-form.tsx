@@ -100,7 +100,7 @@ const presets: Record<ActivityType, string[]> = {
 
   care: ["Daycare", "Boarding"],
 
-  wellness: ["Supplements", "Grooming", "Bath", "Nail Trim", "Dental Care", "Ear Cleaning"],
+  wellness: ["Supplements", "Grooming", "Bath", "Nail Trim", "Ear Cleaning"],
 
   hike: ["Short Hiking", "Long Hike"],
 
@@ -200,7 +200,7 @@ const groupedPresets: Partial<Record<ActivityType, Array<{ label: string; option
 
       label: "Wellness Care",
 
-      options: ["Supplements", "Dental Care", "Grooming / Bath", "Nail Trim", "Ear Cleaning", "Other"],
+      options: ["Supplements", "Grooming", "Bath", "Nail Trim", "Ear Cleaning", "Other"],
 
     },
 
@@ -288,7 +288,7 @@ const notesPlaceholders: Record<ActivityType, string> = {
 
   care: "Daycare/Boarding Details, Pickup/Dropoff Notes, Or Anything Notable",
 
-  wellness: "Supplements, Grooming, Dental Care, Ear Cleaning, Or Other Routine Wellness Care",
+  wellness: "Supplements, Grooming, Bath, Nail Trim, Ear Cleaning, Or Other Routine Wellness Care",
 
   hike: "Route, Weather, Duration, Behavior, Or Anything Notable",
 
