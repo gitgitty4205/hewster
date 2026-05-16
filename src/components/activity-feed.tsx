@@ -185,9 +185,9 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
       return {
         icon: Tablets,
         iconText: null,
-        card: "bg-rose-50/80 ring-rose-200",
-        iconWrap: "bg-rose-100 text-rose-600 ring-1 ring-rose-200",
-        dot: "bg-rose-100 ring-1 ring-rose-200",
+        card: "bg-[#eaf0f8]/80 ring-[#b8c9dd]",
+        iconWrap: "bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]",
+        dot: "bg-[#eaf0f8] ring-1 ring-[#b8c9dd]",
       };
     case "medication":
       return {
@@ -258,8 +258,8 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
       };
     case "supplement":
       return {
-        dot: "bg-rose-100 ring-1 ring-rose-200",
-        icon: <Tablets className="size-3 text-rose-600" />,
+        dot: "bg-[#eaf0f8] ring-1 ring-[#b8c9dd]",
+        icon: <Tablets className="size-3 text-[#1f3d5c]" />,
       };
     case "medication":
       return {

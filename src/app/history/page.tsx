@@ -703,9 +703,9 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
 
         iconText: "\u{1F48A}",
 
-        card: "bg-rose-50/80 ring-rose-200",
+        card: "bg-[#eaf0f8]/80 ring-[#b8c9dd]",
 
-        iconWrap: "bg-rose-100 text-rose-600",
+        iconWrap: "bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]",
 
       };
 
@@ -768,7 +768,9 @@ function getEventFeedDot(activityType: ActivityLog["activityType"] | "meal" | "m
 
   if (["activity", "outdoor", "hike"].includes(activityType)) return "bg-emerald-500";
 
-  if (["wellness", "supplement"].includes(activityType)) return "bg-rose-500";
+  if (activityType === "wellness") return "bg-rose-500";
+
+  if (activityType === "supplement") return "bg-[#b8c9dd]";
 
   if (activityType === "care") return "bg-purple-500";
 
@@ -783,7 +785,7 @@ function getEventFeedDot(activityType: ActivityLog["activityType"] | "meal" | "m
 function EventFeedMarker({ activityType }: { activityType: ActivityLog["activityType"] | "meal" | "manual" }) {
   if (activityType === "supplement") {
     return (
-      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600 ring-1 ring-rose-200">
+      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]">
         <Tablets className="size-3" />
       </span>
     );
