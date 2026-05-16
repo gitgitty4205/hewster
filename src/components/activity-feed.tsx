@@ -1,4 +1,4 @@
-import { Check, Droplets, Ellipsis, Sprout, Tablets, TriangleAlert } from "lucide-react";
+import { Check, Droplets, Ellipsis, Tablets, TriangleAlert } from "lucide-react";
 
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
 import { PottyDetailBadges, pottyDetailForBadge } from "@/components/potty-detail-badges";
@@ -151,8 +151,8 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
       };
     case "wellness":
       return {
-        icon: Sprout,
-        iconText: null,
+        icon: null,
+        iconText: "\u{1F33F}",
         card: "bg-rose-50/80 ring-rose-200",
         iconWrap: "bg-rose-100 text-rose-600",
         dot: "bg-rose-400",
@@ -239,7 +239,7 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
     case "wellness":
       return {
         dot: "bg-rose-100 ring-1 ring-rose-200",
-        icon: <Sprout className="size-3 text-rose-600" />,
+        icon: <span className="text-[0.7rem] leading-none">🌿</span>,
       };
     case "hike":
       return {
