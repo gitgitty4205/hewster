@@ -24,7 +24,7 @@ const quickActions = [
     iconText: "\u{1F6BD}",
     accent: "bg-[#fff7dc] text-[#8a6200]",
     iconAccent: "bg-white/60 text-[#8a6200]",
-    iconTextClass: "scale-110",
+    iconTextClass: "text-xl scale-110",
   },
   {
     label: "Activity",
@@ -33,7 +33,7 @@ const quickActions = [
     iconText: "\u{1F333}",
     accent: "bg-emerald-50 text-emerald-700",
     iconAccent: "bg-emerald-100 text-emerald-600",
-    iconTextClass: "scale-115",
+    iconTextClass: "text-xl scale-115",
   },
   {
     label: "Food",
@@ -42,7 +42,7 @@ const quickActions = [
     iconText: "\u{1F969}",
     accent: "bg-[#f4eadf]/90 text-[#6b3f22]",
     iconAccent: "bg-[#9a6940]/70 text-white",
-    iconTextClass: "scale-110"
+    iconTextClass: "text-xl scale-110"
   },
   {
     label: "Treat",
@@ -51,7 +51,7 @@ const quickActions = [
     iconText: "\u{1F9B4}",
     accent: "bg-orange-50 text-orange-600",
     iconAccent: "bg-orange-300 text-white",
-    iconTextClass: "scale-105"
+    iconTextClass: "text-xl scale-105"
   },
   {
     label: "Health",
@@ -60,7 +60,7 @@ const quickActions = [
     iconText: "\u{1FA7A}",
     accent: "bg-sky-50 text-sky-700",
     iconAccent: "bg-sky-100 text-sky-600",
-    iconTextClass: "scale-110",
+    iconTextClass: "text-xl scale-110",
   },
   {
     label: "Wellness",
@@ -78,7 +78,7 @@ const quickActions = [
     iconText: "\u{1F3E0}",
     accent: "bg-purple-50 text-purple-700",
     iconAccent: "bg-purple-200 text-purple-800",
-    iconTextClass: "scale-110",
+    iconTextClass: "text-xl scale-110",
   },
   {
     label: "Other",
