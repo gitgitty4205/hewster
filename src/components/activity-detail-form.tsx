@@ -390,7 +390,7 @@ function activityPresetClasses(activityType: ActivityType, selected: boolean) {
 
     case "wellness":
 
-      return "bg-rose-50 text-rose-700 ring-rose-200";
+      return "bg-rose-50 text-[#a44f68] ring-[#e0b4bf]";
 
     case "medication":
 
@@ -398,7 +398,7 @@ function activityPresetClasses(activityType: ActivityType, selected: boolean) {
 
     case "supplement":
 
-      return "bg-rose-50 text-rose-700 ring-rose-200";
+      return "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]";
 
     case "treat":
 
@@ -1023,15 +1023,17 @@ export function ActivityDetailForm({
 
       {visibleSavedCareItems.length ? (
 
-        <div className="mb-4 rounded-2xl bg-sky-50/60 p-3 ring-1 ring-sky-100">
+        <div className={`mb-4 rounded-2xl p-3 ring-1 ${visibleSavedCareItems.some((item) => item.kind === "supplement") ? "bg-rose-50/60 ring-[#e0b4bf]" : "bg-sky-50/60 ring-sky-100"}`}>
 
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-500">{visibleSavedCareItems.some((item) => item.kind === "supplement") ? "Saved Supplement" : "Saved Medication"}</p>
+          <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.16em] ${visibleSavedCareItems.some((item) => item.kind === "supplement") ? "text-[#a44f68]" : "text-sky-500"}`}>{visibleSavedCareItems.some((item) => item.kind === "supplement") ? "Saved Supplement" : "Saved Medication"}</p>
 
           <div className="flex flex-wrap gap-2">
 
             {visibleSavedCareItems.map((item) => {
 
               const label = savedCareItemLabel(item);
+
+              const isSupplementShortcut = item.kind === "supplement";
 
               return (
 
@@ -1041,7 +1043,7 @@ export function ActivityDetailForm({
 
                   type="button"
 
-                  className="rounded-full bg-white px-3 py-2 text-sm font-medium text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-50"
+                  className={`rounded-full bg-white px-3 py-2 text-sm font-medium ring-1 transition ${isSupplementShortcut ? "text-[#a44f68] ring-[#e0b4bf] hover:bg-rose-50" : "text-sky-700 ring-sky-200 hover:bg-sky-50"}`}
 
                   onClick={() => {
 
