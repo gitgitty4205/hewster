@@ -1188,7 +1188,7 @@ export default function HomeApp() {
           return {
             time: actualTime,
             label: skippedCare ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
-            detail: `${item.name}${item.dose ? (skippedCare ? ` ${item.dose}` : ` • ${item.dose}`) : ""}${!skippedCare && item.notes ? ` • ${item.notes}` : ""}`,
+            detail: `${item.name}${item.dose ? (skippedCare ? ` - ${item.dose}` : ` • ${item.dose}`) : ""}${!skippedCare && item.notes ? ` • ${item.notes}` : ""}`,
             activityType: item.kind,
             sortMinutes,
             sortKey: `meal-${meal.id}-${item.kind}-${item.id}${skippedCare ? "-skipped" : ""}`,

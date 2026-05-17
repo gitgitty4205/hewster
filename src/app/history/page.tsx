@@ -1215,7 +1215,7 @@ export default function HistoryPage() {
 
           label: item.skipped ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
 
-          detail: `${item.name}${item.dose ? (item.skipped ? ` ${item.dose}` : ` • ${item.dose}`) : ""}${!item.skipped && item.notes ? ` • ${item.notes}` : ""}`,
+          detail: `${item.name}${item.dose ? (item.skipped ? ` - ${item.dose}` : ` • ${item.dose}`) : ""}${!item.skipped && item.notes ? ` • ${item.notes}` : ""}`,
 
           activityType: item.kind,
 
