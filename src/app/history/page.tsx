@@ -207,7 +207,7 @@ function CareItemHistoryLine({ item }: { item: CareItemTemplate & { skipped: boo
         <span className={`font-medium ${item.skipped ? "text-rose-800" : "text-[#4f2f1b]"}`}>{item.name}</span>
         {item.dose ? ` — ${item.dose}` : ""}
         {item.notes ? ` (${item.notes})` : ""}
-        {item.skipped ? <span className="ml-1 font-bold text-rose-700">• Not Given</span> : null}
+        {item.skipped ? <span className="ml-1 font-bold text-rose-700">• Skipped</span> : null}
       </p>
     </div>
   );
@@ -1189,7 +1189,7 @@ export default function HistoryPage() {
 
           label: item.skipped ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
 
-          detail: `${item.name}${item.skipped ? " • Not Given" : item.dose ? ` • ${item.dose}` : ""}${!item.skipped && item.notes ? ` • ${item.notes}` : ""}`,
+          detail: `${item.name}${item.skipped ? " • Skipped" : item.dose ? ` • ${item.dose}` : ""}${!item.skipped && item.notes ? ` • ${item.notes}` : ""}`,
 
           activityType: item.kind,
 
@@ -2040,7 +2040,7 @@ export default function HistoryPage() {
                             <p className="font-medium text-zinc-900">{meal.name}</p>
 
                             {missedMeal ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Missed</span> : null}
-                            {skippedMeal ? <span className="rounded-full bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-700 ring-1 ring-zinc-200/80">Skipped</span> : null}
+                            {skippedMeal ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
 
                           </div>
 
@@ -2154,6 +2154,10 @@ export default function HistoryPage() {
 
                       const careActivity = item.activity && ["medication", "supplement"].includes(item.activityType) ? item.activity : null;
 
+                      const missed = item.label.toLowerCase().includes("missed");
+
+                      const skipped = item.label.toLowerCase().includes("skipped");
+
                       return (
 
                         <div key={item.key} className="grid grid-cols-[1.25rem_1fr] gap-3">
@@ -2164,11 +2168,19 @@ export default function HistoryPage() {
 
                           <div className="min-w-0">
 
-                            <p className="text-sm font-medium text-zinc-900">
+                            <div className="flex flex-wrap items-center gap-2">
 
-                              {item.label} <span className="font-normal text-zinc-500">At {item.time}</span>
+                              <p className="text-sm font-medium text-zinc-900">
 
-                            </p>
+                                {item.label} <span className="font-normal text-zinc-500">At {item.time}</span>
+
+                              </p>
+
+                              {missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Missed</span> : null}
+
+                              {skipped ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
+
+                            </div>
 
                             {careActivity ? (
 
@@ -2240,7 +2252,7 @@ export default function HistoryPage() {
                             <p className="font-medium text-zinc-900">{meal.name}</p>
 
                             {missedMeal ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Missed</span> : null}
-                            {skippedMeal ? <span className="rounded-full bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-700 ring-1 ring-zinc-200/80">Skipped</span> : null}
+                            {skippedMeal ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
 
                           </div>
 

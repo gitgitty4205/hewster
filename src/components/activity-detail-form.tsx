@@ -108,7 +108,7 @@ const presets: Record<ActivityType, string[]> = {
 
   food: [],
 
-  supplement: ["Supplement Name", "Given", "Missed", "Dose Change", "Reminder", "Refill Date"],
+  supplement: ["Supplement Name", "Given", "Skipped", "Missed", "Dose Change", "Reminder", "Refill Date"],
 
   medication: ["Given", "Skipped", "Missed"],
 

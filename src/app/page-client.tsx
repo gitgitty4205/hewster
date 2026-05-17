@@ -164,7 +164,7 @@ function CareItemLine({ item, skipped = false, tone = "meal" }: { item: CareItem
         {medicationTypeLabel(item) ? ` • ${medicationTypeLabel(item)}` : ""}
         {item.dose ? ` — ${item.dose}` : ""}
         {item.notes ? ` (${item.notes})` : ""}
-        {skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Not Given</span> : null}
+        {skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
       </p>
     </div>
   );
@@ -1188,7 +1188,7 @@ export default function HomeApp() {
           return {
             time: actualTime,
             label: skippedCare ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
-            detail: `${item.name}${skippedCare ? " • Not Given" : item.dose ? ` • ${item.dose}` : ""}${!skippedCare && item.notes ? ` • ${item.notes}` : ""}`,
+            detail: `${item.name}${skippedCare ? " • Skipped" : item.dose ? ` • ${item.dose}` : ""}${!skippedCare && item.notes ? ` • ${item.notes}` : ""}`,
             activityType: item.kind,
             sortMinutes,
             sortKey: `meal-${meal.id}-${item.kind}-${item.id}${skippedCare ? "-skipped" : ""}`,

@@ -362,7 +362,7 @@ export function ActivityFeed({
                         </span>
                         <p className="font-medium text-zinc-900">{item.label}</p>
                         {missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Missed</span> : null}
-                        {skipped ? <span className="rounded-full bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-700 ring-1 ring-zinc-200/80">Skipped</span> : null}
+                        {skipped ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
                       </div>
                       <p className="text-sm text-zinc-500">{item.time}</p>
                     </div>
@@ -451,10 +451,16 @@ export function ActivityFeed({
             const treatParts = item.activityType === "treat" ? splitTreatDetailText(item.detail) : null;
             const careActivity = item.activity && ["medication", "supplement"].includes(item.activityType ?? "") ? item.activity : null;
             const inlineEditor = item.activity && renderInlineEditor ? renderInlineEditor(item.activity) : null;
+            const missed = item.label.toLowerCase().includes("missed");
+            const skipped = item.label.toLowerCase().includes("skipped");
             const content = (
               <>
                 <div className="flex items-start justify-between gap-3">
-                  <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
+                    {missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Missed</span> : null}
+                    {skipped ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
+                  </div>
                   <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
                     {item.time}
                   </span>

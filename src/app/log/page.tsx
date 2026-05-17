@@ -303,7 +303,7 @@ function CareItemLine({ item, skipped = false }: { item: CareItemTemplate; skipp
         {medicationTypeLabel(item) ? ` • ${medicationTypeLabel(item)}` : ""}
         {item.dose ? ` — ${item.dose}` : ""}
         {item.notes ? ` (${item.notes})` : ""}
-        {skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Not Given</span> : null}
+        {skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
       </p>
     </div>
   );
@@ -376,7 +376,7 @@ function TodayMealPlanCard({
                         <Check className="size-3" strokeWidth={3} />
                       </span>
                     ) : skipped ? (
-                      <span className="mt-0.5 shrink-0 whitespace-nowrap rounded-full bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200/80">Skipped</span>
+                      <span className="mt-0.5 shrink-0 whitespace-nowrap rounded-full bg-rose-50/80 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200/70">Skipped</span>
                     ) : missed ? (
                       <span className="mt-0.5 shrink-0 whitespace-nowrap rounded-full bg-rose-50/80 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200/70">Missed</span>
                     ) : (
