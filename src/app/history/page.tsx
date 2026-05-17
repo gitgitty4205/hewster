@@ -1179,23 +1179,23 @@ export default function HistoryPage() {
 
 
 
-      mealCareItems.filter((item) => !item.skipped).forEach((item) => {
+      mealCareItems.forEach((item) => {
 
         targetDay.timelineItems.push({
 
-          key: `${meal.id}-${item.kind}-${item.id}`,
+          key: `${meal.id}-${item.kind}-${item.id}${item.skipped ? "-skipped" : ""}`,
 
           time: meal.actualTime,
 
-          label: careKindLabel(item.kind),
+          label: item.skipped ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
 
-          detail: `${item.name}${item.dose ? ` • ${item.dose}` : ""}${item.notes ? ` • ${item.notes}` : ""}`,
+          detail: `${item.name}${item.skipped ? " • Not Given" : item.dose ? ` • ${item.dose}` : ""}${!item.skipped && item.notes ? ` • ${item.notes}` : ""}`,
 
           activityType: item.kind,
 
           sortMinutes: parseClockMinutes(meal.actualTime),
 
-          sortKey: `meal-${meal.id}-${item.kind}-${item.id}`,
+          sortKey: `meal-${meal.id}-${item.kind}-${item.id}${item.skipped ? "-skipped" : ""}`,
 
         });
 

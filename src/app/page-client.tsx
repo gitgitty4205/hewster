@@ -1183,14 +1183,17 @@ export default function HomeApp() {
           sortKey: `meal-${meal.id}`,
         };
         const skippedCareItemIds = todayMealState.find((entry) => entry.mealId === meal.id)?.skippedCareItemIds ?? [];
-        const careItems = careItemsForMeal(careTemplates, meal.id).filter((item) => !skippedCareItemIds.includes(`${item.kind}-${item.id}`)).map((item) => ({
-          time: actualTime,
-          label: careKindLabel(item.kind),
-          detail: `${item.name}${item.dose ? ` • ${item.dose}` : ""}${item.notes ? ` • ${item.notes}` : ""}`,
-          activityType: item.kind,
-          sortMinutes,
-          sortKey: `meal-${meal.id}-${item.kind}-${item.id}`,
-        }));
+        const careItems = careItemsForMeal(careTemplates, meal.id).map((item) => {
+          const skippedCare = skippedCareItemIds.includes(`${item.kind}-${item.id}`);
+          return {
+            time: actualTime,
+            label: skippedCare ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
+            detail: `${item.name}${skippedCare ? " • Not Given" : item.dose ? ` • ${item.dose}` : ""}${!skippedCare && item.notes ? ` • ${item.notes}` : ""}`,
+            activityType: item.kind,
+            sortMinutes,
+            sortKey: `meal-${meal.id}-${item.kind}-${item.id}${skippedCare ? "-skipped" : ""}`,
+          };
+        });
 
         return [mealItem, ...careItems];
       });
