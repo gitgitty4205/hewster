@@ -207,7 +207,7 @@ function CareItemHistoryLine({ item }: { item: CareItemTemplate & { skipped: boo
         <span className={`font-medium ${item.skipped ? "text-rose-800" : "text-[#4f2f1b]"}`}>{item.name}</span>
         {item.dose ? ` — ${item.dose}` : ""}
         {item.notes ? ` (${item.notes})` : ""}
-        {item.skipped ? <span className="ml-1 font-bold text-rose-700">• Skipped</span> : null}
+        {item.skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
       </p>
     </div>
   );
@@ -1215,7 +1215,7 @@ export default function HistoryPage() {
 
           label: item.skipped ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
 
-          detail: `${item.name}${item.skipped ? "" : item.dose ? ` • ${item.dose}` : ""}${!item.skipped && item.notes ? ` • ${item.notes}` : ""}`,
+          detail: `${item.name}${item.dose ? (item.skipped ? ` ${item.dose}` : ` • ${item.dose}`) : ""}${!item.skipped && item.notes ? ` • ${item.notes}` : ""}`,
 
           activityType: item.kind,
 
