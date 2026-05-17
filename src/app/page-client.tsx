@@ -516,7 +516,7 @@ function activityMatchesCustomCareOccurrence(activity: ActivityLog, occurrence: 
 
 function customCareActivityLog(occurrence: CustomCareOccurrence, status: "given" | "skipped" | "missed", note = ""): ActivityLog {
   const { item } = occurrence;
-  const statusDetail = status === "given" ? "" : status === "skipped" ? " • Skipped" : " • Missed";
+  const statusDetail = status === "given" ? "" : status === "skipped" ? " Skipped" : " Missed";
   const statusNote = status === "given" ? "" : status === "skipped" ? (note ? `Skip Note: ${note}` : "") : "Missed";
 
   return {
@@ -1188,7 +1188,7 @@ export default function HomeApp() {
           return {
             time: actualTime,
             label: skippedCare ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
-            detail: `${item.name}${skippedCare ? " • Skipped" : item.dose ? ` • ${item.dose}` : ""}${!skippedCare && item.notes ? ` • ${item.notes}` : ""}`,
+            detail: `${item.name}${skippedCare ? "" : item.dose ? ` • ${item.dose}` : ""}${!skippedCare && item.notes ? ` • ${item.notes}` : ""}`,
             activityType: item.kind,
             sortMinutes,
             sortKey: `meal-${meal.id}-${item.kind}-${item.id}${skippedCare ? "-skipped" : ""}`,

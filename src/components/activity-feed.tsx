@@ -106,6 +106,32 @@ function displayActivityLabel(activity: ActivityLog) {
   return ["pee", "poop", "potty"].includes(activity.activityType) ? "Potty" : formatActivityLabel(activity.activityType);
 }
 
+function timelineStatusFor(item: TimelineItem) {
+  if (item.label.toLowerCase().includes("missed")) return "Missed";
+  if (item.label.toLowerCase().includes("skipped")) return "Skipped";
+  return null;
+}
+
+function cleanTimelineDetail(detail: string, status: "Skipped" | "Missed" | null) {
+  if (!status) return detail;
+  return detail.replace(new RegExp(`\\s*(?:[•·-]\\s*)?${status}\\b`, "i"), "").trim();
+}
+
+function TimelineStatusBadge({ status }: { status: "Skipped" | "Missed" | null }) {
+  return status ? <span className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{status}</span> : null;
+}
+
+function TimelineDetailText({ detail, status, className = "mt-1 text-sm leading-5 text-zinc-600" }: { detail: string; status: "Skipped" | "Missed" | null; className?: string }) {
+  const cleanDetail = cleanTimelineDetail(detail, status);
+
+  return (
+    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+      {cleanDetail ? <span>{cleanDetail}</span> : null}
+      <TimelineStatusBadge status={status} />
+    </div>
+  );
+}
+
 function getActivityStyle(activityType: ActivityLog["activityType"]) {
   switch (activityType) {
     case "potty":
@@ -351,8 +377,7 @@ export function ActivityFeed({
                   );
                 }
 
-                const missed = item.label.toLowerCase().includes("missed");
-                const skipped = item.label.toLowerCase().includes("skipped");
+                const status = timelineStatusFor(item);
                 return (
                   <div key={`${item.activityType ?? "item"}-${item.time}-${item.label}-${item.detail}-${index}`} className="rounded-2xl bg-[#f4eadf]/90 p-4 ring-1 ring-[#d8b895]">
                     <div className="flex items-center justify-between gap-3">
@@ -361,18 +386,17 @@ export function ActivityFeed({
                           <Check className="size-4.5" strokeWidth={3} />
                         </span>
                         <p className="font-medium text-zinc-900">{item.label}</p>
-                        {missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Missed</span> : null}
-                        {skipped ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
+
                       </div>
                       <p className="text-sm text-zinc-500">{item.time}</p>
                     </div>
                     {item.detail.includes(" • Notes: ") ? (
                       <>
-                        <p className="mt-2 text-sm text-zinc-600">{item.detail.split(" • Notes: ")[0]}</p>
+                        <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="mt-2 text-sm text-zinc-600" />
                         <p className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</p>
                       </>
                     ) : (
-                      <p className="mt-2 text-sm text-zinc-600">{item.detail}</p>
+                      <TimelineDetailText detail={item.detail} status={status} className="mt-2 text-sm text-zinc-600" />
                     )}
                   </div>
                 );
@@ -451,15 +475,13 @@ export function ActivityFeed({
             const treatParts = item.activityType === "treat" ? splitTreatDetailText(item.detail) : null;
             const careActivity = item.activity && ["medication", "supplement"].includes(item.activityType ?? "") ? item.activity : null;
             const inlineEditor = item.activity && renderInlineEditor ? renderInlineEditor(item.activity) : null;
-            const missed = item.label.toLowerCase().includes("missed");
-            const skipped = item.label.toLowerCase().includes("skipped");
+            const status = timelineStatusFor(item);
             const content = (
               <>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
-                    {missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Missed</span> : null}
-                    {skipped ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
+
                   </div>
                   <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
                     {item.time}
@@ -474,11 +496,11 @@ export function ActivityFeed({
                   </>
                 ) : item.detail.includes(" • Notes: ") ? (
                   <>
-                    <p className="mt-1 text-sm text-zinc-500">{item.detail.split(" • Notes: ")[0]}</p>
-                    <p className="mt-1 text-sm font-bold text-zinc-700">• Notes: {item.detail.split(" • Notes: ")[1]}</p>
+                    <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="mt-1 text-sm text-zinc-500" />
+                    <p className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</p>
                   </>
                 ) : (
-                  <p className="mt-1 text-sm leading-5 text-zinc-600">{item.detail}</p>
+                  <TimelineDetailText detail={item.detail} status={status} />
                 )}
               </>
             );

@@ -213,6 +213,32 @@ function CareItemHistoryLine({ item }: { item: CareItemTemplate & { skipped: boo
   );
 }
 
+function timelineStatusFor(item: HistoryDay["timelineItems"][number]) {
+  if (item.label.toLowerCase().includes("missed")) return "Missed";
+  if (item.label.toLowerCase().includes("skipped")) return "Skipped";
+  return null;
+}
+
+function cleanTimelineDetail(detail: string, status: "Skipped" | "Missed" | null) {
+  if (!status) return detail;
+  return detail.replace(new RegExp(`\\s*(?:[•·-]\\s*)?${status}\\b`, "i"), "").trim();
+}
+
+function TimelineStatusBadge({ status }: { status: "Skipped" | "Missed" | null }) {
+  return status ? <span className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{status}</span> : null;
+}
+
+function TimelineDetailText({ detail, status, className = "mt-1 text-sm text-zinc-500" }: { detail: string; status: "Skipped" | "Missed" | null; className?: string }) {
+  const cleanDetail = cleanTimelineDetail(detail, status);
+
+  return (
+    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+      {cleanDetail ? <span>{cleanDetail}</span> : null}
+      <TimelineStatusBadge status={status} />
+    </div>
+  );
+}
+
 function poopBadgeClasses(detail: string | null) {
 
   const normalized = detail?.trim().toLowerCase() ?? "";
@@ -1189,7 +1215,7 @@ export default function HistoryPage() {
 
           label: item.skipped ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
 
-          detail: `${item.name}${item.skipped ? " • Skipped" : item.dose ? ` • ${item.dose}` : ""}${!item.skipped && item.notes ? ` • ${item.notes}` : ""}`,
+          detail: `${item.name}${item.skipped ? "" : item.dose ? ` • ${item.dose}` : ""}${!item.skipped && item.notes ? ` • ${item.notes}` : ""}`,
 
           activityType: item.kind,
 
@@ -2154,9 +2180,7 @@ export default function HistoryPage() {
 
                       const careActivity = item.activity && ["medication", "supplement"].includes(item.activityType) ? item.activity : null;
 
-                      const missed = item.label.toLowerCase().includes("missed");
-
-                      const skipped = item.label.toLowerCase().includes("skipped");
+                      const status = timelineStatusFor(item);
 
                       return (
 
@@ -2176,9 +2200,7 @@ export default function HistoryPage() {
 
                               </p>
 
-                              {missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Missed</span> : null}
 
-                              {skipped ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
 
                             </div>
 
@@ -2200,15 +2222,15 @@ export default function HistoryPage() {
 
                               <>
 
-                                <p className="mt-1 text-sm text-zinc-500">{item.detail.split(" • Notes: ")[0]}</p>
+                                <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} />
 
-                                <p className="mt-1 text-sm font-bold text-zinc-700">• Notes: {item.detail.split(" • Notes: ")[1]}</p>
+                                <p className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</p>
 
                               </>
 
                             ) : item.detail ? (
 
-                              <p className="mt-1 text-sm text-zinc-500">{item.detail}</p>
+                              <TimelineDetailText detail={item.detail} status={status} />
 
                             ) : null}
 
