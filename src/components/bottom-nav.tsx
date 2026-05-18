@@ -16,6 +16,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { applyPetTheme, loadPetProfile } from "@/lib/pet-profile";
 
 type Props = {
@@ -70,7 +71,7 @@ export function BottomNav({ alertsCount = 0 }: Props) {
             <div className="absolute inset-0 bg-[var(--hewie-bg,#979ca7)]/34" aria-hidden="true" />
             <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg,#f1f5f9)]/92 px-6 py-5 text-[var(--hewie-active-text,#334155)] shadow-sm backdrop-blur-[1px]">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--hewie-active-text,#334155)]/70">Hewster’s Notebook</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--hewie-active-text,#334155)]/70"><PetNotebookTitle /></p>
                 <h2 className="text-2xl font-semibold text-[var(--hewie-active-text,#334155)]">Pages</h2>
               </div>
               <button

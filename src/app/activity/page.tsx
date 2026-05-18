@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
-
 import { BottomNav } from "@/components/bottom-nav";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { FitBarkActivityCard } from "@/components/fitbark-activity-card";
+import { PetNotebookTitle } from "@/components/pet-notebook-title";
 
 export default function ActivityPage() {
   return (
@@ -13,9 +12,7 @@ export default function ActivityPage() {
         <header className="mb-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
-                Hewster&apos;s Notebook
-              </Link>
+              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Fitness</h1>
             </div>
             <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />

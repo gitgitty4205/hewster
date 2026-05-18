@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { PottyDetailBadges } from "@/components/potty-detail-badges";
 import {
   type ActivityLog,
@@ -66,7 +67,7 @@ export default function PoopHistoryPage() {
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
-          <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]">Hewster</p>
+          <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]"><PetNotebookTitle /></p>
           <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Poop History</h1>
         </header>
 

@@ -2,12 +2,12 @@
 
 import { FileHeart } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { formatActivityTime, formatActivityLabel } from "@/lib/activity";
 import { type ActivityLog, loadAppState } from "@/lib/hewster-data";
+import { PetNotebookTitle } from "@/components/pet-notebook-title";
 
 const filters = ["All", "Vet Visits", "Health Logs", "Vaccines", "Invoices", "Insurance", "Photos"];
 
@@ -119,9 +119,7 @@ export default function MedicalRecordsPage() {
         <header className="mb-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
-                Hewster&apos;s Notebook
-              </Link>
+              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Medical Records</h1>
             </div>
             <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />

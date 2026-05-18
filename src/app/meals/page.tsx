@@ -4,6 +4,7 @@ import { Plus, RotateCcw, Save } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { Button } from "@/components/ui/button";
 import {
   loadAppState,
@@ -129,7 +130,7 @@ export default function MealsPage() {
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
-          <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]">Hewster</p>
+          <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]"><PetNotebookTitle /></p>
           <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Meals</h1>
           <p className="mt-2 text-sm leading-6 text-zinc-600">
             Edit The Saved Meal Plan That Rolls Into Each Day.

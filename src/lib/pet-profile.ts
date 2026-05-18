@@ -171,6 +171,7 @@ export function loadPetProfile() {
 
 export function savePetProfile(profile: PetProfile) {
   window.localStorage.setItem(PET_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+  window.dispatchEvent(new Event("pet-profile-updated"));
 }
 
 export function applyPetTheme(themeId: ThemeId) {

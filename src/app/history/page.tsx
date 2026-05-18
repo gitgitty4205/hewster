@@ -7,8 +7,6 @@ import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, SlidersHorizontal
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
 
-import Link from "next/link";
-
 import { useEffect, useMemo, useState } from "react";
 
 
@@ -35,6 +33,7 @@ import { compareActivitiesChronological, formatActivityLabel, formatActivityTime
 import { loadCareTemplatesFromSupabase, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 
 import type { MealTemplate } from "@/lib/meal-templates";
+import { PetNotebookTitle } from "@/components/pet-notebook-title";
 
 
 
@@ -1589,11 +1588,7 @@ export default function HistoryPage() {
 
               <div>
 
-                <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
-
-                  Hewster&apos;s Notebook
-
-                </Link>
+                <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
 
                 <div className="skeleton-pulse mt-1 h-10 w-36 rounded-xl bg-white/40" />
 
@@ -1645,11 +1640,7 @@ export default function HistoryPage() {
 
             <div>
 
-              <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
-
-                Hewster&apos;s Notebook
-
-              </Link>
+              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
 
               <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">History</h1>
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Hewster's Notebook",
+  title: "Pet Notebook",
   description: "A calm pet care tracker for meals, activity, alerts, and weight.",
 };
 

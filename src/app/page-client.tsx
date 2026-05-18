@@ -6,7 +6,6 @@ import {
   Tablets,
   TriangleAlert,
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ActivityDetailForm } from "@/components/activity-detail-form";
@@ -48,6 +47,7 @@ import {
 import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail } from "@/lib/activity";
 import { loadReminderAlertRules, resolveAlerts, type ReminderAlertRule } from "@/lib/alerts";
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import {
   careItemsForMeal,
   customScheduledCareItems,
@@ -1608,9 +1608,7 @@ export default function HomeApp() {
           <header className="relative mb-6">
             <div className="pr-24">
               <div>
-                <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
-                  Hewster&apos;s Notebook
-                </Link>
+                <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
                 <div className="skeleton-pulse mt-1 h-8 w-56 rounded-xl bg-white/40" />
                 <div className="skeleton-pulse mt-1 h-4 w-52 rounded-xl bg-white/30" />
               </div>
@@ -1636,9 +1634,7 @@ export default function HomeApp() {
         <header className="relative mb-6">
           <div className="pr-24">
             <div>
-              <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
-                Hewster&apos;s Notebook
-              </Link>
+              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="mt-1 flex flex-col gap-1">
                 <p className="text-xl font-bold tracking-tight text-zinc-700">{headerDateTime}</p>
               </div>

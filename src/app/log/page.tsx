@@ -6,8 +6,6 @@ import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 
 import { Check, ChevronDown, ChevronUp, Clock3, Ellipsis, Tablets } from "lucide-react";
 
-import Link from "next/link";
-
 import { useEffect, useMemo, useState } from "react";
 
 
@@ -64,6 +62,7 @@ import { initialTemplates, type MealStatus, type MealTemplate } from "@/lib/meal
 import { careItemsForMeal, loadCareTemplates, loadCareTemplatesFromSupabase, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { PetNotebookTitle } from "@/components/pet-notebook-title";
 
 
 
@@ -1065,11 +1064,7 @@ export default function LogPage() {
 
               <div>
 
-                <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
-
-                  Hewster&apos;s Notebook
-
-                </Link>
+                <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
 
                 <div className="skeleton-pulse mt-1 h-10 w-36 rounded-xl bg-white/40" />
 
@@ -1119,11 +1114,7 @@ export default function LogPage() {
 
             <div>
 
-              <Link href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]">
-
-                Hewster&apos;s Notebook
-
-              </Link>
+              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
 
               <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Noted</h1>
 
