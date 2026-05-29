@@ -3,8 +3,9 @@
 import { Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import type { ComponentType } from "react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { useAuth } from "@/components/auth-provider";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
 import { loadAppState } from "@/lib/hewster-data";
@@ -20,8 +21,10 @@ import {
   saveCareTemplates,
   saveCareTemplatesToSupabase,
 } from "@/lib/care-settings";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 const HEWSTER_BRIDGE_SOURCE = "https://lindy.b-average.com";
+const MAX_SUPPLEMENTS_PER_MEAL_PLAN_TILE = 4;
 
 type BridgeCarePayload = {
   supplementSettings?: CareItemTemplate[];
@@ -38,22 +41,29 @@ type Props = {
   iconClassName: string;
 };
 
+function currentDateTimeInputValue() {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60 * 1000);
+  return local.toISOString().slice(0, 16);
+}
+
 function defaultTemplate(kind: CareItemKind, count: number): CareItemTemplate {
   return {
     id: Date.now(),
     kind,
     name: kind === "supplement" ? `Supplement ${count + 1}` : `Medication ${count + 1}`,
     dose: "",
-    scheduleKind: "meal",
+    scheduleKind: kind === "medication" ? "custom" : "meal",
     mealIds: [],
     customTiming: "with-food",
     medicationType: "oral",
     customScheduleMode: "one",
-    startDateTime: "",
+    startDateTime: kind === "medication" ? currentDateTimeInputValue() : "",
     customScheduleCreatedAt: "",
-    repeatEveryHours: "24",
-    repeatForDays: "1",
-    scheduleSteps: [{ id: Date.now() + 1, everyHours: "24", forDays: "1" }],
+    repeatEveryHours: "",
+    repeatForDays: "",
+    mealPlanDoseCount: "",
+    scheduleSteps: [{ id: Date.now() + 1, everyHours: "", forDays: "" }],
     ongoing: false,
     asNeeded: false,
     notes: "",
@@ -69,12 +79,44 @@ function summarizeSchedule(item: CareItemTemplate, meals: MealTemplate[]) {
       ? `${validSteps.length} Schedules${item.ongoing ? " • Ongoing" : item.asNeeded ? " • As Needed" : ""}`
       : validSteps[0]
         ? `Every ${validSteps[0].everyHours} Hours${item.ongoing ? " • Ongoing" : item.asNeeded ? " • As Needed" : ` For ${validSteps[0].forDays} Days`}`
+        : item.ongoing
+          ? ""
         : "Schedule Needed";
-    return [item.startDateTime || "Start Date & Time", schedule, timing].join(" • ");
+    return [item.startDateTime || "Start Date & Time", schedule, timing].filter(Boolean).join(" • ");
   }
 
   const mealNames = meals.filter((meal) => item.mealIds.includes(meal.id)).map((meal) => meal.name);
-  return mealNames.length ? mealNames.join(", ") : "No Meal Selected";
+  const mealSummary = mealNames.length ? mealNames.join(", ") : "No Meal Selected";
+  return mealSummary;
+}
+
+function normalizeMedicationSchedule(item: CareItemTemplate) {
+  if (item.kind === "medication" && item.scheduleKind === "meal") {
+    return {
+        ...item,
+        scheduleKind: "custom" as const,
+        mealIds: [],
+        customTiming: "with-food" as const,
+        startDateTime: item.startDateTime || currentDateTimeInputValue(),
+        customScheduleCreatedAt: item.customScheduleCreatedAt || item.startDateTime || new Date().toISOString(),
+      };
+  }
+
+  if (item.kind === "supplement" && item.scheduleKind === "meal") {
+    return {
+      ...item,
+      startDateTime: "",
+      customScheduleCreatedAt: "",
+      repeatEveryHours: "",
+      repeatForDays: "",
+      mealPlanDoseCount: "",
+      scheduleSteps: [{ id: item.scheduleSteps[0]?.id ?? Date.now(), everyHours: "", forDays: "" }],
+      ongoing: false,
+      asNeeded: false,
+    };
+  }
+
+  return item;
 }
 
 export function CareSettingsPage({
@@ -86,12 +128,13 @@ export function CareSettingsPage({
   accentClassName,
   iconClassName,
 }: Props) {
+  const { loading: authLoading } = useAuth();
   const [items, setItems] = useState<CareItemTemplate[]>(() => initialCareTemplatesForKind(kind));
   const [meals, setMeals] = useState<MealTemplate[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draftItems, setDraftItems] = useState<Record<number, CareItemTemplate>>({});
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving">("idle");
-  const hydrated = useRef(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     if (window.location.hostname !== "www.petnotebook.com" && window.location.hostname !== "petnotebook.com") return;
@@ -136,16 +179,20 @@ export function CareSettingsPage({
   }, [kind]);
 
   useEffect(() => {
+    if (isSupabaseConfigured() && authLoading) return;
+
     let cancelled = false;
 
     async function hydrate() {
       const state = await loadAppState();
       if (cancelled) return;
       setMeals(state.templates);
-      setItems(await loadCareTemplatesFromSupabase(kind));
+      const currentItems = await loadCareTemplatesFromSupabase(kind);
+      if (cancelled) return;
+      setItems(currentItems);
       setDraftItems({});
       setEditingId(null);
-      hydrated.current = true;
+      setHydrated(true);
     }
 
     void hydrate();
@@ -153,15 +200,17 @@ export function CareSettingsPage({
     return () => {
       cancelled = true;
     };
-  }, [kind]);
+  }, [authLoading, kind]);
 
+  const isHydrating = !hydrated || (isSupabaseConfigured() && authLoading);
   const activeCount = useMemo(() => items.filter((item) => item.active).length, [items]);
 
   const commitItems = (nextItems: CareItemTemplate[]) => {
-    setItems(nextItems);
-    saveCareTemplates(kind, nextItems);
+    const normalizedItems = nextItems.map(normalizeMedicationSchedule);
+    setItems(normalizedItems);
+    saveCareTemplates(kind, normalizedItems);
     setSaveState("saving");
-    saveCareTemplatesToSupabase(kind, nextItems)
+    saveCareTemplatesToSupabase(kind, normalizedItems)
       .then(() => setSaveState("saved"))
       .catch(() => setSaveState("saved"));
     window.setTimeout(() => setSaveState("idle"), 1600);
@@ -206,11 +255,30 @@ export function CareSettingsPage({
       return;
     }
 
-    commitItems(items.map((item) => (item.id === id ? draft : item)));
+    const nextItems = items.map((item) => (item.id === id ? draft : item));
+    commitItems(nextItems);
     cancelEditing(id);
   };
 
+  const mealSupplementCount = (mealId: number, candidate?: CareItemTemplate) => {
+    return items.reduce((count, savedItem) => {
+      const item = candidate && savedItem.id === candidate.id ? candidate : draftItems[savedItem.id] ?? savedItem;
+      if (item.kind !== "supplement" || item.scheduleKind !== "meal" || !item.active) return count;
+      return item.mealIds.includes(mealId) ? count + 1 : count;
+    }, 0);
+  };
+
   const toggleMeal = (item: CareItemTemplate, mealId: number) => {
+    if (
+      item.kind === "supplement" &&
+      item.scheduleKind === "meal" &&
+      item.active &&
+      !item.mealIds.includes(mealId) &&
+      mealSupplementCount(mealId, { ...item, mealIds: [...item.mealIds, mealId] }) > MAX_SUPPLEMENTS_PER_MEAL_PLAN_TILE
+    ) {
+      return;
+    }
+
     const mealIds = item.mealIds.includes(mealId)
       ? item.mealIds.filter((id) => id !== mealId)
       : [...item.mealIds, mealId];
@@ -280,30 +348,34 @@ export function CareSettingsPage({
               </span>
               <div>
                 <h2 className="text-lg font-semibold">{kind === "supplement" ? "Saved Supplements" : "Saved Medications"}</h2>
-                <p className="text-sm text-zinc-500">{activeCount} Active • Shows On Today&apos;s Meal Plan</p>
+                <p className="text-sm text-zinc-500">
+                  {isHydrating ? "Loading saved items..." : `${items.length} Saved • ${activeCount} Active`}
+                </p>
               </div>
             </div>
             <div className="text-right text-xs text-zinc-500">
               <div className="flex items-center justify-end gap-1.5 text-emerald-600">
                 <Save className="size-3.5" />
-                {saveState === "saving" ? "Saving..." : saveState === "saved" ? "Saved" : "Ready"}
+                {isHydrating ? "Loading..." : saveState === "saving" ? "Saving..." : saveState === "saved" ? "Saved" : "Ready"}
               </div>
             </div>
           </div>
 
           <div className="mb-4 flex flex-wrap gap-2">
-            <Button variant="outline" className="rounded-full" onClick={addItem}>
+            <Button variant="outline" className="rounded-full" onClick={addItem} disabled={isHydrating}>
               <Plus className="size-4" />
               Add {kind === "supplement" ? "Supplement" : "Medication"}
             </Button>
-            <Button variant="outline" className="rounded-full" onClick={resetItems}>
+            <Button variant="outline" className="rounded-full" onClick={resetItems} disabled={isHydrating}>
               <RotateCcw className="size-4" />
               Reset
             </Button>
           </div>
 
           <div className="space-y-4">
-            {items.length === 0 ? (
+            {isHydrating ? (
+              <div className={`rounded-2xl p-4 text-sm ring-1 ${accentClassName}`}>Loading saved {kind === "supplement" ? "supplements" : "medications"}...</div>
+            ) : items.length === 0 ? (
               <div className={`rounded-2xl p-4 text-sm ring-1 ${accentClassName}`}>{emptyLabel}</div>
             ) : null}
 
@@ -351,18 +423,40 @@ export function CareSettingsPage({
                       <label className="block min-w-0">
                         <span className="mb-1 block font-medium text-zinc-700">Schedule Type</span>
                         <select
-                          value={item.scheduleKind}
-                          disabled={!isEditing}
+                          value={kind === "medication" ? "custom" : item.scheduleKind}
+                          disabled={!isEditing || kind === "medication"}
                           onChange={(event) => {
                             const scheduleKind = event.target.value as CareItemTemplate["scheduleKind"];
+                            const isMealPlanSupplement = kind === "supplement" && scheduleKind === "meal";
+                            const nextItem = {
+                              ...item,
+                              scheduleKind,
+                              customTiming: scheduleKind === "meal" ? "with-food" : item.customTiming,
+                              startDateTime: isMealPlanSupplement ? "" : kind === "medication" && !item.startDateTime ? currentDateTimeInputValue() : item.startDateTime,
+                              customScheduleCreatedAt: isMealPlanSupplement ? "" : scheduleKind === "custom" && !item.customScheduleCreatedAt ? new Date().toISOString() : item.customScheduleCreatedAt,
+                              repeatEveryHours: isMealPlanSupplement ? "" : item.repeatEveryHours,
+                              repeatForDays: isMealPlanSupplement ? "" : item.repeatForDays,
+                              mealPlanDoseCount: isMealPlanSupplement ? "" : item.mealPlanDoseCount,
+                              scheduleSteps: isMealPlanSupplement ? [{ id: item.scheduleSteps[0]?.id ?? Date.now(), everyHours: "", forDays: "" }] : item.scheduleSteps,
+                              ongoing: isMealPlanSupplement ? false : item.ongoing,
+                              asNeeded: isMealPlanSupplement ? false : item.asNeeded,
+                            };
                             updateItem(item.id, {
                               scheduleKind,
-                              customScheduleCreatedAt: scheduleKind === "custom" && !item.customScheduleCreatedAt ? new Date().toISOString() : item.customScheduleCreatedAt,
+                              customTiming: nextItem.customTiming,
+                              startDateTime: nextItem.startDateTime,
+                              customScheduleCreatedAt: nextItem.customScheduleCreatedAt,
+                              repeatEveryHours: nextItem.repeatEveryHours,
+                              repeatForDays: nextItem.repeatForDays,
+                              mealPlanDoseCount: nextItem.mealPlanDoseCount,
+                              scheduleSteps: nextItem.scheduleSteps,
+                              ongoing: nextItem.ongoing,
+                              asNeeded: nextItem.asNeeded,
                             });
                           }}
                           className="w-full rounded-2xl border border-zinc-200 bg-white px-2 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                         >
-                          <option value="meal">Meal Plan</option>
+                          {kind === "supplement" ? <option value="meal">Meal Plan</option> : null}
                           <option value="custom">Custom</option>
                         </select>
                       </label>
@@ -379,27 +473,44 @@ export function CareSettingsPage({
                           />
                         </label>
                       ) : null}
+
                     </div>
 
                     {item.scheduleKind === "meal" ? (
                       <div className="text-sm">
-                        <p className="mb-2 font-medium text-zinc-700">Choose Saved Meal Plan(s)</p>
+                        <p className="mb-2 font-medium text-zinc-700">Give with meal plan</p>
+                        {kind === "supplement" ? (
+                          <p className="mb-2 rounded-2xl bg-white px-3 py-2 text-xs leading-5 text-zinc-500 ring-1 ring-zinc-200">
+                            Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.
+                          </p>
+                        ) : null}
                         <div className="flex flex-wrap gap-2">
-                          {meals.map((meal) => (
-                            <button
-                              key={meal.id}
-                              type="button"
-                              disabled={!isEditing}
-                              onClick={() => toggleMeal(item, meal.id)}
-                              className={`rounded-full px-3 py-2 text-xs font-semibold ring-1 transition disabled:cursor-not-allowed ${
-                                item.mealIds.includes(meal.id)
-                                  ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]"
-                                  : "bg-white text-zinc-600 ring-zinc-200"
-                              }`}
-                            >
-                              {meal.name}
-                            </button>
-                          ))}
+                          {meals.map((meal) => {
+                            const mealSelected = item.mealIds.includes(meal.id);
+                            const mealAtSupplementLimit = kind === "supplement" &&
+                              item.scheduleKind === "meal" &&
+                              item.active &&
+                              !mealSelected &&
+                              mealSupplementCount(meal.id, item) >= MAX_SUPPLEMENTS_PER_MEAL_PLAN_TILE;
+
+                            return (
+                              <button
+                                key={meal.id}
+                                type="button"
+                                disabled={!isEditing || mealAtSupplementLimit}
+                                onClick={() => toggleMeal(item, meal.id)}
+                                className={`rounded-full px-3 py-2 text-xs font-semibold ring-1 transition disabled:cursor-not-allowed ${
+                                  mealSelected
+                                    ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]"
+                                    : mealAtSupplementLimit
+                                      ? "bg-zinc-100 text-zinc-400 ring-zinc-200"
+                                      : "bg-white text-zinc-600 ring-zinc-200"
+                                }`}
+                              >
+                                {meal.name}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     ) : null}
@@ -432,7 +543,7 @@ export function CareSettingsPage({
                                   inputMode="numeric"
                                   maxLength={2}
                                   onChange={(event) => updateScheduleStep(item, step.id, { everyHours: event.target.value })}
-                                  placeholder={index === 0 ? "12" : "24"}
+                                  placeholder="—"
                                   className="w-10 rounded-lg border border-zinc-200 bg-white px-1.5 py-1.5 text-center text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                                 />
                                 <span>hours for</span>
@@ -443,7 +554,7 @@ export function CareSettingsPage({
                                   inputMode="numeric"
                                   maxLength={2}
                                   onChange={(event) => updateScheduleStep(item, step.id, { forDays: event.target.value })}
-                                  placeholder={durationLocked ? "—" : index === 0 ? "7" : "2"}
+                                  placeholder="—"
                                   className="w-10 rounded-lg border border-zinc-200 bg-white px-1.5 py-1.5 text-center text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-400"
                                 />
                                 <span>days{hasAnotherSchedule ? "," : ""}</span>
@@ -502,13 +613,15 @@ export function CareSettingsPage({
                     ) : null}
 
                     {kind === "medication" ? (
-                      <div className={`grid gap-3 text-sm ${item.medicationType === "oral" && item.scheduleKind === "custom" ? "grid-cols-2" : "grid-cols-1"}`}>
+                      <div className={`grid gap-3 text-sm ${item.medicationType === "oral" ? "grid-cols-2" : "grid-cols-1"}`}>
                         <label className="block">
                           <span className="mb-1 block font-medium text-zinc-700">Medication Type</span>
                           <select
                             value={item.medicationType}
                             disabled={!isEditing}
-                            onChange={(event) => updateItem(item.id, { medicationType: event.target.value as CareItemTemplate["medicationType"] })}
+                            onChange={(event) => updateItem(item.id, {
+                              medicationType: event.target.value as CareItemTemplate["medicationType"],
+                            })}
                             className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                           >
                             <option value="oral">Oral</option>
@@ -518,7 +631,7 @@ export function CareSettingsPage({
                           </select>
                         </label>
 
-                        {item.medicationType === "oral" && item.scheduleKind === "custom" ? (
+                        {item.medicationType === "oral" ? (
                           <label className="block">
                             <span className="mb-1 block font-medium text-zinc-700">Give With</span>
                             <select
@@ -553,8 +666,8 @@ export function CareSettingsPage({
                       <textarea
                         value={item.notes}
                         disabled={!isEditing}
-                        onChange={(event) => updateItem(item.id, { notes: event.target.value.slice(0, 180) })}
-                        maxLength={180}
+                        onChange={(event) => updateItem(item.id, { notes: event.target.value.slice(0, 100) })}
+                        maxLength={100}
                         rows={2}
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />

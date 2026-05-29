@@ -1,7 +1,8 @@
-﻿import { compareActivitiesReverseChronological } from "@/lib/activity";
+import { compareActivitiesReverseChronological } from "@/lib/activity";
 import type { MealStatus, MealTemplate } from "@/lib/meal-templates";
-import { initialTemplates, isMealTemplateArray, STORAGE_KEY } from "@/lib/meal-templates";
-import { getSupabaseBrowserClient, HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { initialTemplates, isMealTemplateArray, sortMealTemplatesByTime, STORAGE_KEY } from "@/lib/meal-templates";
+import { resolveActiveNotebookAccess } from "@/lib/notebook-access";
+import { getSupabaseBrowserClient, getSupabaseCurrentSession, HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 
 export type DailyMealState = {
   mealId: number;
@@ -77,16 +78,19 @@ export type ManualAlert = {
 
 export type HewsterAppState = {
   templates: MealTemplate[];
+  historicalMealTemplates?: MealTemplate[];
   dailyMealState: DailyMealState[];
   activityLogs: ActivityLog[];
   weightLogs: WeightLog[];
   mealLogs: MealLog[];
+  dailyMealHistory?: DailyMealState[];
   manualAlerts: ManualAlert[];
   todayKey: string;
   source: "supabase" | "local" | "seed";
 };
 
 export const DAILY_MEAL_STORAGE_KEY = "hewster.dailyMeals";
+export const DAILY_MEAL_HISTORY_STORAGE_KEY = "hewster.dailyMealHistory";
 export const ACTIVITY_LOGS_STORAGE_KEY = "hewster.activityLogs";
 export const WEIGHT_LOGS_STORAGE_KEY = "hewster.weightLogs";
 export const DELETED_WEIGHT_LOG_IDS_STORAGE_KEY = "hewster.deletedWeightLogIds";
@@ -95,8 +99,178 @@ export const MANUAL_ALERTS_STORAGE_KEY = "hewster.manualAlerts";
 export const TODAY_KEY_STORAGE_KEY = "hewster.todayKey";
 
 const RETIRED_WEIGHT_LOG_IDS = new Set(["weight-1778383254313", "weight-1778383263011"]);
+const APP_STATE_CACHE_TTL_MS = 30_000;
+let appStateCache: { state: HewsterAppState; cachedAt: number } | null = null;
+let appStateLoadPromise: Promise<HewsterAppState> | null = null;
+
+function cacheAppState(state: HewsterAppState) {
+  appStateCache = { state, cachedAt: Date.now() };
+  return state;
+}
+
+function cachedAppState() {
+  if (!appStateCache) return null;
+  if (appStateCache.state.todayKey !== currentTodayKey()) return null;
+  if (Date.now() - appStateCache.cachedAt > APP_STATE_CACHE_TTL_MS) return null;
+  return appStateCache.state;
+}
+
+function isMissedMealLog(mealLog: Pick<MealLog, "id" | "fedNotes">) {
+  return mealLog.fedNotes === "Missed" || mealLog.id.endsWith("-missed");
+}
+
+function cacheMealLog(mealLog: MealLog) {
+  if (!appStateCache) return;
+
+  cacheAppState({
+    ...appStateCache.state,
+    mealLogs: [
+      mealLog,
+      ...appStateCache.state.mealLogs.filter(
+        (entry) => entry.id !== mealLog.id && !(entry.dayKey === mealLog.dayKey && entry.mealId === mealLog.mealId)
+      ),
+    ],
+  });
+}
+
+function cacheDailyMealState(dailyMealState: DailyMealState[]) {
+  if (!appStateCache) return;
+
+  cacheAppState({
+    ...appStateCache.state,
+    dailyMealState,
+    dailyMealHistory: mergeDailyMealHistory(appStateCache.state.dailyMealHistory ?? [], dailyMealState, appStateCache.state.todayKey),
+  });
+}
+
+function cacheCompletedMeal(mealLog: MealLog, dailyMealState: DailyMealState[]) {
+  if (!appStateCache) return;
+
+  cacheAppState({
+    ...appStateCache.state,
+    dailyMealState,
+    dailyMealHistory: mergeDailyMealHistory(appStateCache.state.dailyMealHistory ?? [], dailyMealState, appStateCache.state.todayKey),
+    mealLogs: [
+      mealLog,
+      ...appStateCache.state.mealLogs.filter(
+        (entry) => entry.id !== mealLog.id && !(entry.dayKey === mealLog.dayKey && entry.mealId === mealLog.mealId)
+      ),
+    ],
+  });
+}
+
+function removeCachedMealLog(mealLogId: string) {
+  if (!appStateCache) return;
+
+  cacheAppState({
+    ...appStateCache.state,
+    mealLogs: appStateCache.state.mealLogs.filter((entry) => entry.id !== mealLogId),
+  });
+}
+
+function dailyMealStateWithResolvedMealLogs(
+  dailyMealState: DailyMealState[],
+  mealLogs: MealLog[],
+  todayKey: string
+) {
+  const resolvedLogsByMealId = new Map<number, MealLog>();
+
+  mealLogs.forEach((mealLog) => {
+    if (mealLog.dayKey !== todayKey || isMissedMealLog(mealLog)) return;
+    if (!resolvedLogsByMealId.has(mealLog.mealId)) {
+      resolvedLogsByMealId.set(mealLog.mealId, mealLog);
+    }
+  });
+
+  if (!resolvedLogsByMealId.size) return dailyMealState;
+
+  const resolvedMealState = dailyMealState.map((mealState) => {
+    const resolvedLog = resolvedLogsByMealId.get(mealState.mealId);
+    if (!resolvedLog) return mealState;
+
+    resolvedLogsByMealId.delete(mealState.mealId);
+
+    return {
+      ...mealState,
+      actualTime: resolvedLog.actualTime,
+      status: "done" as MealStatus,
+      fedNotes: resolvedLog.fedNotes,
+      skippedCareItemIds: resolvedLog.skippedCareItemIds ?? mealState.skippedCareItemIds ?? [],
+      dayKey: resolvedLog.dayKey,
+    };
+  });
+
+  return [
+    ...resolvedMealState,
+    ...Array.from(resolvedLogsByMealId.values()).map((mealLog) => ({
+      mealId: mealLog.mealId,
+      actualTime: mealLog.actualTime,
+      status: "done" as MealStatus,
+      fedNotes: mealLog.fedNotes,
+      skippedCareItemIds: mealLog.skippedCareItemIds ?? [],
+      dayKey: mealLog.dayKey,
+    })),
+  ];
+}
+
+function normalizeDailyMealHistory(dailyMeals: unknown, fallbackDayKey: string) {
+  if (!isDailyMealStateArray(dailyMeals)) return [];
+
+  return dailyMeals.map((meal) => ({
+    mealId: meal.mealId,
+    actualTime: meal.actualTime,
+    status: meal.status,
+    fedNotes: "fedNotes" in meal ? (meal as DailyMealState).fedNotes : null,
+    skippedCareItemIds: Array.isArray((meal as DailyMealState).skippedCareItemIds) ? (meal as DailyMealState).skippedCareItemIds : [],
+    dayKey: "dayKey" in meal ? (meal as DailyMealState).dayKey ?? fallbackDayKey : fallbackDayKey,
+  }));
+}
+
+function mergeDailyMealHistory(
+  existingHistory: DailyMealState[],
+  dailyMealState: DailyMealState[],
+  fallbackDayKey: string
+) {
+  const historyByKey = new Map<string, DailyMealState>();
+
+  [...existingHistory, ...dailyMealState].forEach((meal) => {
+    const dayKey = meal.dayKey ?? fallbackDayKey;
+    historyByKey.set(`${dayKey}-${meal.mealId}`, { ...meal, dayKey });
+  });
+
+  return [...historyByKey.values()];
+}
+
+export function persistDailyMealStateLocally(dailyMealState: DailyMealState[], fallbackDayKey: string = currentTodayKey()) {
+  if (typeof window === "undefined") return;
+
+  let existingHistory: DailyMealState[] = [];
+  try {
+    const storedHistory = window.localStorage.getItem(DAILY_MEAL_HISTORY_STORAGE_KEY);
+    existingHistory = normalizeDailyMealHistory(storedHistory ? JSON.parse(storedHistory) : null, fallbackDayKey);
+  } catch {
+    existingHistory = [];
+  }
+  const nextHistory = mergeDailyMealHistory(existingHistory, dailyMealState, fallbackDayKey);
+
+  window.localStorage.setItem(DAILY_MEAL_STORAGE_KEY, JSON.stringify(dailyMealState));
+  window.localStorage.setItem(DAILY_MEAL_HISTORY_STORAGE_KEY, JSON.stringify(nextHistory));
+}
+
+async function getSignedInSupabase() {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return null;
+
+  const session = await getSupabaseCurrentSession(supabase);
+  const user = session?.user ?? null;
+  if (!user) return null;
+
+  const access = await resolveActiveNotebookAccess(supabase, user);
+  return { supabase, userId: access.notebookOwnerId, accessRole: access.role };
+}
 
 type MealTemplateRow = {
+  owner_id: string;
   profile_slug: string;
   meal_id: number;
   name: string;
@@ -108,6 +282,7 @@ type MealTemplateRow = {
 };
 
 type DailyMealRow = {
+  owner_id: string;
   profile_slug: string;
   meal_id: number;
   day_key?: string;
@@ -118,6 +293,7 @@ type DailyMealRow = {
 
 type ActivityLogRow = {
   id: string;
+  owner_id: string;
   profile_slug: string;
   activity_type: ActivityType;
   happened_at: string;
@@ -128,6 +304,7 @@ type ActivityLogRow = {
 
 type WeightLogRow = {
   id: string;
+  owner_id: string;
   profile_slug: string;
   log_date: string;
   weight: string;
@@ -137,6 +314,7 @@ type WeightLogRow = {
 
 type MealLogRow = {
   id: string;
+  owner_id: string;
   profile_slug: string;
   day_key: string;
   meal_id: number;
@@ -150,12 +328,33 @@ type MealLogRow = {
 
 type ManualAlertRow = {
   id: string;
+  owner_id: string;
   profile_slug: string;
   title: string;
   message: string;
+  scope?: ManualAlert["scope"] | null;
+  weekdays?: number[] | null;
+  time?: string | null;
+  created_day_key?: string | null;
   resolved: boolean;
   created_at?: string;
   resolved_at?: string | null;
+};
+
+type AppAuditLogRow = {
+  table_name: string;
+  action: "INSERT" | "UPDATE" | "DELETE";
+  occurred_at: string;
+  old_row: Record<string, unknown> | null;
+  new_row: Record<string, unknown> | null;
+};
+
+type HistoricalMealTemplateRow = Record<string, unknown> & {
+  meal_id: number;
+  name: string;
+  planned_time: string;
+  food: string;
+  notes: string;
 };
 
 function isDailyMealStateArray(value: unknown): value is DailyMealState[] {
@@ -277,9 +476,11 @@ function buildSeedState(): HewsterAppState {
   return {
     templates: initialTemplates,
     dailyMealState: buildFreshDailyMealState(initialTemplates),
+    historicalMealTemplates: initialTemplates,
     activityLogs: [],
     weightLogs: [],
     mealLogs: [],
+    dailyMealHistory: [],
     manualAlerts: [],
     todayKey: currentTodayKey(),
     source: "seed",
@@ -292,6 +493,7 @@ export function loadLocalState(): HewsterAppState {
   try {
     const storedTemplates = window.localStorage.getItem(STORAGE_KEY);
     const storedDailyMeals = window.localStorage.getItem(DAILY_MEAL_STORAGE_KEY);
+    const storedDailyMealHistory = window.localStorage.getItem(DAILY_MEAL_HISTORY_STORAGE_KEY);
     const storedActivityLogs = window.localStorage.getItem(ACTIVITY_LOGS_STORAGE_KEY);
     const storedWeightLogs = window.localStorage.getItem(WEIGHT_LOGS_STORAGE_KEY);
     const storedMealLogs = window.localStorage.getItem(MEAL_LOGS_STORAGE_KEY);
@@ -300,29 +502,28 @@ export function loadLocalState(): HewsterAppState {
 
     const templates = storedTemplates ? JSON.parse(storedTemplates) : null;
     const dailyMeals = storedDailyMeals ? JSON.parse(storedDailyMeals) : null;
+    const dailyMealHistory = storedDailyMealHistory ? JSON.parse(storedDailyMealHistory) : null;
     const activityLogs = storedActivityLogs ? JSON.parse(storedActivityLogs) : null;
     const weightLogs = storedWeightLogs ? JSON.parse(storedWeightLogs) : null;
     const mealLogs = storedMealLogs ? JSON.parse(storedMealLogs) : null;
     const manualAlerts = storedManualAlerts ? JSON.parse(storedManualAlerts) : null;
     const todayKey = storedTodayKey ?? currentTodayKey();
-    const resolvedTemplates = isMealTemplateArray(templates) ? templates : seed.templates;
-    const resolvedDailyMeals = isDailyMealStateArray(dailyMeals)
-      ? dailyMeals
-          .map((meal) => ({
-            mealId: meal.mealId,
-            actualTime: meal.actualTime,
-            status: meal.status,
-            fedNotes: "fedNotes" in meal ? (meal as DailyMealState).fedNotes : null,
-            skippedCareItemIds: Array.isArray((meal as DailyMealState).skippedCareItemIds) ? (meal as DailyMealState).skippedCareItemIds : [],
-            dayKey: "dayKey" in meal ? (meal as DailyMealState).dayKey ?? todayKey : todayKey,
-          }))
-          .filter((meal) => (meal.dayKey ?? todayKey) === todayKey)
+    const resolvedTemplates = sortMealTemplatesByTime(isMealTemplateArray(templates) ? templates : seed.templates);
+    const localDailyMealHistory = mergeDailyMealHistory(
+      normalizeDailyMealHistory(dailyMealHistory, todayKey),
+      normalizeDailyMealHistory(dailyMeals, todayKey),
+      todayKey
+    );
+    const resolvedDailyMeals = localDailyMealHistory.length
+      ? localDailyMealHistory.filter((meal) => (meal.dayKey ?? todayKey) === todayKey)
       : buildFreshDailyMealState(resolvedTemplates);
     const isStaleDay = todayKey !== currentTodayKey();
 
     return {
       templates: resolvedTemplates,
+      historicalMealTemplates: resolvedTemplates,
       dailyMealState: isStaleDay ? buildFreshDailyMealState(resolvedTemplates) : resolvedDailyMeals,
+      dailyMealHistory: localDailyMealHistory,
       activityLogs: isActivityLogArray(activityLogs) ? activityLogs : seed.activityLogs,
       weightLogs: isWeightLogArray(weightLogs) ? weightLogs : seed.weightLogs,
       mealLogs: isMealLogArray(mealLogs) ? mealLogs : seed.mealLogs,
@@ -330,6 +531,7 @@ export function loadLocalState(): HewsterAppState {
       todayKey: currentTodayKey(),
       source:
         storedTemplates || storedDailyMeals || storedActivityLogs || storedWeightLogs || storedMealLogs || storedManualAlerts || storedTodayKey
+          || storedDailyMealHistory
           ? "local"
           : "seed",
     };
@@ -348,14 +550,37 @@ export function persistLocalState(
   mealLogs?: MealLog[]
 ) {
   const existingState = loadLocalState();
+  const resolvedDailyMealState = dailyMealState ?? existingState.dailyMealState;
+  const resolvedActivityLogs = activityLogs ?? existingState.activityLogs;
+  const resolvedWeightLogs = weightLogs ?? existingState.weightLogs;
+  const resolvedManualAlerts = manualAlerts ?? existingState.manualAlerts;
+  const resolvedMealLogs = mealLogs ?? existingState.mealLogs;
+  const resolvedDailyMealHistory = mergeDailyMealHistory(
+    existingState.dailyMealHistory ?? [],
+    resolvedDailyMealState,
+    todayKey
+  );
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-  window.localStorage.setItem(DAILY_MEAL_STORAGE_KEY, JSON.stringify(dailyMealState ?? existingState.dailyMealState));
-  window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(activityLogs ?? existingState.activityLogs));
-  window.localStorage.setItem(WEIGHT_LOGS_STORAGE_KEY, JSON.stringify(weightLogs ?? existingState.weightLogs));
-  window.localStorage.setItem(MANUAL_ALERTS_STORAGE_KEY, JSON.stringify(manualAlerts ?? existingState.manualAlerts));
-  window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(mealLogs ?? existingState.mealLogs));
+  persistDailyMealStateLocally(resolvedDailyMealState, todayKey);
+  window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(resolvedActivityLogs));
+  window.localStorage.setItem(WEIGHT_LOGS_STORAGE_KEY, JSON.stringify(resolvedWeightLogs));
+  window.localStorage.setItem(MANUAL_ALERTS_STORAGE_KEY, JSON.stringify(resolvedManualAlerts));
+  window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(resolvedMealLogs));
   window.localStorage.setItem(TODAY_KEY_STORAGE_KEY, todayKey);
+
+  cacheAppState({
+    templates,
+    historicalMealTemplates: existingState.historicalMealTemplates ?? templates,
+    dailyMealState: resolvedDailyMealState,
+    activityLogs: resolvedActivityLogs,
+    weightLogs: resolvedWeightLogs,
+    mealLogs: resolvedMealLogs,
+    dailyMealHistory: resolvedDailyMealHistory,
+    manualAlerts: resolvedManualAlerts,
+    todayKey,
+    source: appStateCache?.state.source ?? existingState.source,
+  });
 }
 
 function mapTemplateRowToTemplate(row: MealTemplateRow): MealTemplate {
@@ -368,8 +593,47 @@ function mapTemplateRowToTemplate(row: MealTemplateRow): MealTemplate {
   };
 }
 
-function mapTemplateToRow(template: MealTemplate, index: number): MealTemplateRow {
+function isHistoricalMealTemplateRow(row: Record<string, unknown> | null): row is HistoricalMealTemplateRow {
+  return (
+    !!row &&
+    typeof row.meal_id === "number" &&
+    typeof row.name === "string" &&
+    typeof row.planned_time === "string" &&
+    typeof row.food === "string" &&
+    typeof row.notes === "string"
+  );
+}
+
+function mapHistoricalTemplateRowToTemplate(row: HistoricalMealTemplateRow): MealTemplate {
   return {
+    id: row.meal_id,
+    name: row.name,
+    plannedTime: row.planned_time,
+    food: row.food,
+    notes: row.notes,
+  };
+}
+
+function mergeHistoricalMealTemplates(currentTemplates: MealTemplate[], auditRows: AppAuditLogRow[] = []) {
+  const templatesById = new Map(currentTemplates.map((template) => [template.id, template]));
+
+  auditRows.forEach((auditRow) => {
+    if (auditRow.table_name !== "meal_templates") return;
+
+    [auditRow.new_row, auditRow.old_row].forEach((row) => {
+      if (!isHistoricalMealTemplateRow(row)) return;
+      if (templatesById.has(row.meal_id)) return;
+
+      templatesById.set(row.meal_id, mapHistoricalTemplateRowToTemplate(row));
+    });
+  });
+
+  return sortMealTemplatesByTime([...templatesById.values()]);
+}
+
+function mapTemplateToRow(template: MealTemplate, index: number, ownerId: string): MealTemplateRow {
+  return {
+    owner_id: ownerId,
     profile_slug: HEWSTER_PROFILE_SLUG,
     meal_id: template.id,
     name: template.name,
@@ -381,8 +645,9 @@ function mapTemplateToRow(template: MealTemplate, index: number): MealTemplateRo
   };
 }
 
-function mapDailyMealStateToRow(state: DailyMealState): DailyMealRow {
+function mapDailyMealStateToRow(state: DailyMealState, ownerId: string): DailyMealRow {
   return {
+    owner_id: ownerId,
     profile_slug: HEWSTER_PROFILE_SLUG,
     meal_id: state.mealId,
     day_key: state.dayKey ?? currentTodayKey(),
@@ -404,9 +669,10 @@ function mapActivityLogRowToActivity(row: ActivityLogRow): ActivityLog {
   };
 }
 
-function mapActivityLogToRow(activity: ActivityLog): ActivityLogRow {
+function mapActivityLogToRow(activity: ActivityLog, ownerId: string): ActivityLogRow {
   return {
     id: activity.id,
+    owner_id: ownerId,
     profile_slug: HEWSTER_PROFILE_SLUG,
     activity_type: activity.activityType,
     happened_at: activity.happenedAt,
@@ -430,9 +696,10 @@ function mapWeightLogRowToWeight(row: WeightLogRow): WeightLog {
   };
 }
 
-function mapWeightLogToRow(weight: WeightLog): WeightLogRow {
+function mapWeightLogToRow(weight: WeightLog, ownerId: string): WeightLogRow {
   return {
     id: weight.id,
+    owner_id: ownerId,
     profile_slug: HEWSTER_PROFILE_SLUG,
     log_date: weight.date,
     weight: normalizeWeightText(weight.weight),
@@ -456,9 +723,10 @@ function mapMealLogRowToMealLog(row: MealLogRow): MealLog {
   };
 }
 
-function mapMealLogToRow(mealLog: MealLog): MealLogRow {
+function mapMealLogToRow(mealLog: MealLog, ownerId: string): MealLogRow {
   return {
     id: mealLog.id,
+    owner_id: ownerId,
     profile_slug: HEWSTER_PROFILE_SLUG,
     day_key: mealLog.dayKey,
     meal_id: mealLog.mealId,
@@ -470,26 +738,37 @@ function mapMealLogToRow(mealLog: MealLog): MealLogRow {
   };
 }
 
+function normalizeManualAlertScope(scope: ManualAlertRow["scope"]): ManualAlert["scope"] {
+  return ["today", "tomorrow", "date", "ongoing", "every-other-day", "certain-days"].includes(scope ?? "") ? scope as ManualAlert["scope"] : "today";
+}
+
 function mapManualAlertRowToAlert(row: ManualAlertRow): ManualAlert {
   return {
     id: row.id,
     profileSlug: row.profile_slug,
     title: row.title,
     message: row.message,
-    scope: "today",
-    createdDayKey: row.created_at ? currentTodayKey() : undefined,
+    scope: normalizeManualAlertScope(row.scope),
+    weekdays: row.weekdays ?? undefined,
+    time: row.time ?? undefined,
+    createdDayKey: row.created_day_key ?? (row.created_at ? currentTodayKey() : undefined),
     resolved: row.resolved,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at ?? null,
   };
 }
 
-function mapManualAlertToRow(alert: ManualAlert): ManualAlertRow {
+function mapManualAlertToRow(alert: ManualAlert, ownerId: string): ManualAlertRow {
   return {
     id: alert.id,
+    owner_id: ownerId,
     profile_slug: HEWSTER_PROFILE_SLUG,
     title: alert.title,
     message: alert.message,
+    scope: alert.scope ?? "today",
+    weekdays: alert.weekdays ?? null,
+    time: alert.time ?? null,
+    created_day_key: alert.createdDayKey ?? null,
     resolved: alert.resolved,
     resolved_at: alert.resolvedAt ?? null,
   };
@@ -499,29 +778,32 @@ function manualAlertRepeats(alert: Pick<ManualAlert, "scope">) {
   return ["ongoing", "every-other-day", "certain-days"].includes(alert.scope ?? "today");
 }
 
-export async function loadAppState(): Promise<HewsterAppState> {
+async function loadAppStateUncached(): Promise<HewsterAppState> {
   const localState = loadLocalState();
 
   if (!isSupabaseConfigured()) {
-    return localState;
+    return cacheAppState(localState);
   }
 
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return localState;
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) {
+    return cacheAppState(localState);
   }
+
+  const { supabase, userId } = signedInSupabase;
 
   const templatesPromise = supabase
     .from("meal_templates")
-    .select("profile_slug, meal_id, name, planned_time, food, notes, reminder_offset, sort_order")
+    .select("owner_id, profile_slug, meal_id, name, planned_time, food, notes, reminder_offset, sort_order")
+    .eq("owner_id", userId)
     .eq("profile_slug", HEWSTER_PROFILE_SLUG)
     .order("sort_order", { ascending: true });
 
   const dailyMealsWithFedNotesPromise = supabase
     .from("daily_meals")
-    .select("profile_slug, meal_id, day_key, actual_time, status, fed_notes")
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
-    .eq("day_key", localState.todayKey);
+    .select("owner_id, profile_slug, meal_id, day_key, actual_time, status, fed_notes")
+    .eq("owner_id", userId)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
   const [templatesResult, dailyMealsWithFedNotesResult] = await Promise.all([
     templatesPromise,
@@ -543,9 +825,9 @@ export async function loadAppState(): Promise<HewsterAppState> {
   if (dailyMealsWithFedNotesResult.error && dailyMealsWithFedNotesResult.error.message.includes("fed_notes")) {
     dailyMealsResult = await supabase
       .from("daily_meals")
-      .select("profile_slug, meal_id, day_key, actual_time, status")
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
-      .eq("day_key", localState.todayKey);
+      .select("owner_id, profile_slug, meal_id, day_key, actual_time, status")
+      .eq("owner_id", userId)
+      .eq("profile_slug", HEWSTER_PROFILE_SLUG);
   }
 
   if (templatesResult.error || dailyMealsResult.error) {
@@ -553,30 +835,42 @@ export async function loadAppState(): Promise<HewsterAppState> {
       templatesError: templatesResult.error,
       dailyMealsError: dailyMealsResult.error,
     });
-    return localState;
+    return cacheAppState(localState);
   }
 
-  const [activityLogsResult, weightLogsResult, mealLogsResult, manualAlertsResult] = await Promise.all([
+  const [activityLogsResult, weightLogsResult, mealLogsResult, manualAlertsResult, auditLogsResult] = await Promise.all([
     supabase
       .from("activity_logs")
-      .select("id, profile_slug, activity_type, happened_at, detail, notes, created_at")
+      .select("id, owner_id, profile_slug, activity_type, happened_at, detail, notes, created_at")
+      .eq("owner_id", userId)
       .eq("profile_slug", HEWSTER_PROFILE_SLUG)
       .order("happened_at", { ascending: false }),
     supabase
       .from("weight_logs")
-      .select("id, profile_slug, log_date, weight, note, created_at")
+      .select("id, owner_id, profile_slug, log_date, weight, note, created_at")
+      .eq("owner_id", userId)
       .eq("profile_slug", HEWSTER_PROFILE_SLUG)
       .order("log_date", { ascending: false }),
     supabase
       .from("meal_logs")
-      .select("id, profile_slug, day_key, meal_id, meal_name, food, default_notes, fed_notes, actual_time, created_at")
+      .select("id, owner_id, profile_slug, day_key, meal_id, meal_name, food, default_notes, fed_notes, actual_time, created_at")
+      .eq("owner_id", userId)
       .eq("profile_slug", HEWSTER_PROFILE_SLUG)
       .order("created_at", { ascending: false }),
     supabase
       .from("manual_alerts")
-      .select("id, profile_slug, title, message, resolved, created_at, resolved_at")
+      .select("id, owner_id, profile_slug, title, message, scope, weekdays, time, created_day_key, resolved, created_at, resolved_at")
+      .eq("owner_id", userId)
       .eq("profile_slug", HEWSTER_PROFILE_SLUG)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("app_audit_log")
+      .select("table_name, action, occurred_at, old_row, new_row")
+      .eq("owner_id", userId)
+      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("table_name", "meal_templates")
+      .order("occurred_at", { ascending: false })
+      .limit(500),
   ]);
 
   if (activityLogsResult.error) {
@@ -595,11 +889,21 @@ export async function loadAppState(): Promise<HewsterAppState> {
     console.warn("Manual alerts unavailable, falling back locally", manualAlertsResult.error);
   }
 
-  const templates = templatesResult.data?.length
-    ? (templatesResult.data as MealTemplateRow[]).map(mapTemplateRowToTemplate)
-    : localState.templates;
+  if (auditLogsResult.error) {
+    console.warn("Audit log unavailable, history will use current meal templates only", auditLogsResult.error);
+  }
 
-  const dailyMealState = dailyMealsResult.data?.length
+  const templates = sortMealTemplatesByTime(
+    templatesResult.data?.length
+      ? (templatesResult.data as MealTemplateRow[]).map(mapTemplateRowToTemplate)
+      : localState.templates
+  );
+  const historicalMealTemplates = mergeHistoricalMealTemplates(
+    templates,
+    !auditLogsResult.error && auditLogsResult.data?.length ? (auditLogsResult.data as AppAuditLogRow[]) : []
+  );
+
+  const remoteDailyMealHistory = dailyMealsResult.data?.length
     ? (dailyMealsResult.data as DailyMealRow[]).map((row) => {
         const localMeal = localState.dailyMealState.find((meal) => meal.mealId === row.meal_id && (meal.dayKey ?? localState.todayKey) === (row.day_key ?? localState.todayKey));
         return {
@@ -611,6 +915,11 @@ export async function loadAppState(): Promise<HewsterAppState> {
           dayKey: row.day_key ?? localState.todayKey,
         };
       })
+    : [];
+
+  const todayDailyMeals = remoteDailyMealHistory.filter((meal) => (meal.dayKey ?? localState.todayKey) === localState.todayKey);
+  const dailyMealState = todayDailyMeals.length
+    ? todayDailyMeals
     : buildFreshDailyMealState(templates).map((meal) => ({
         ...meal,
         dayKey: localState.todayKey,
@@ -646,6 +955,7 @@ export async function loadAppState(): Promise<HewsterAppState> {
           .from("weight_logs")
           .delete()
           .eq("id", weightLogId)
+          .eq("owner_id", userId)
           .eq("profile_slug", HEWSTER_PROFILE_SLUG)
       )
     ).catch(() => undefined);
@@ -657,7 +967,7 @@ export async function loadAppState(): Promise<HewsterAppState> {
   if (localOnlyWeightLogs.length && !weightLogsResult.error) {
     const { error } = await supabase
       .from("weight_logs")
-      .upsert(localOnlyWeightLogs.map(mapWeightLogToRow), { onConflict: "id" });
+      .upsert(localOnlyWeightLogs.map((entry) => mapWeightLogToRow(entry, userId)), { onConflict: "id" });
 
     if (error) {
       console.warn("Failed to backfill local weight logs to Supabase", error);
@@ -692,7 +1002,7 @@ export async function loadAppState(): Promise<HewsterAppState> {
   const manualAlerts = [...remoteManualAlerts, ...localState.manualAlerts]
     .map((entry) => {
       const localMatch = localState.manualAlerts.find((candidate) => candidate.id === entry.id);
-      const scope = localMatch?.scope ?? (["today", "tomorrow", "date", "ongoing", "every-other-day", "certain-days"].includes(entry.scope ?? "") ? entry.scope : "today");
+      const scope = localMatch?.scope ?? normalizeManualAlertScope(entry.scope);
       const repeats = manualAlertRepeats({ scope });
 
       return {
@@ -707,9 +1017,19 @@ export async function loadAppState(): Promise<HewsterAppState> {
     })
     .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));
 
-  return {
+  const resolvedDailyMealState = dailyMealStateWithResolvedMealLogs(dailyMealState, mealLogs, localState.todayKey);
+  const dailyMealHistoryByKey = new Map<string, DailyMealState>();
+
+  [...remoteDailyMealHistory, ...(localState.dailyMealHistory ?? []), ...localState.dailyMealState, ...resolvedDailyMealState].forEach((meal) => {
+    const dayKey = meal.dayKey ?? localState.todayKey;
+    dailyMealHistoryByKey.set(`${dayKey}-${meal.mealId}`, { ...meal, dayKey });
+  });
+
+  return cacheAppState({
     templates,
-    dailyMealState,
+    historicalMealTemplates,
+    dailyMealState: resolvedDailyMealState,
+    dailyMealHistory: [...dailyMealHistoryByKey.values()],
     activityLogs,
     weightLogs,
     mealLogs,
@@ -724,19 +1044,57 @@ export async function loadAppState(): Promise<HewsterAppState> {
       (!manualAlertsResult.error && manualAlertsResult.data?.length)
         ? "supabase"
         : localState.source,
-  };
+  });
+}
+
+export async function loadAppState(): Promise<HewsterAppState> {
+  const cached = cachedAppState();
+  if (cached) return cached;
+
+  if (appStateLoadPromise) return appStateLoadPromise;
+
+  appStateLoadPromise = loadAppStateUncached().finally(() => {
+    appStateLoadPromise = null;
+  });
+
+  return appStateLoadPromise;
+}
+
+export async function loadFreshAppState(): Promise<HewsterAppState> {
+  appStateCache = null;
+  appStateLoadPromise = null;
+  return loadAppState();
 }
 
 export async function saveTemplatesToSupabase(templates: MealTemplate[]) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
+
+  const { supabase, userId } = signedInSupabase;
+  const sortedTemplates = sortMealTemplatesByTime(templates);
+  const rows = sortedTemplates.map((template, index) => mapTemplateToRow(template, index, userId));
+  if (appStateCache) {
+    cacheAppState({ ...appStateCache.state, templates: sortedTemplates });
   }
 
-  const rows = templates.map(mapTemplateToRow);
+  const deleteQuery = supabase
+    .from("meal_templates")
+    .delete()
+    .eq("owner_id", userId)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+
+  const deleted = sortedTemplates.length
+    ? await deleteQuery.not("meal_id", "in", `(${sortedTemplates.map((template) => template.id).join(",")})`)
+    : await deleteQuery;
+
+  if (deleted.error) {
+    throw deleted.error;
+  }
+
+  if (!rows.length) return;
 
   const { error } = await supabase.from("meal_templates").upsert(rows, {
-    onConflict: "profile_slug,meal_id",
+    onConflict: "owner_id,profile_slug,meal_id",
   });
 
   if (error) {
@@ -745,19 +1103,20 @@ export async function saveTemplatesToSupabase(templates: MealTemplate[]) {
 }
 
 export async function saveDailyMealsToSupabase(dailyMealState: DailyMealState[]) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
 
-  const rows = dailyMealState.map(mapDailyMealStateToRow);
+  const { supabase, userId } = signedInSupabase;
+  const rows = dailyMealState.map((state) => mapDailyMealStateToRow(state, userId));
+  cacheDailyMealState(dailyMealState);
 
   const { error } = await supabase.from("daily_meals").upsert(rows, {
-    onConflict: "profile_slug,day_key,meal_id",
+    onConflict: "owner_id,profile_slug,day_key,meal_id",
   });
 
   if (error && error.message.includes("fed_notes")) {
     const fallbackRows = dailyMealState.map((state) => ({
+      owner_id: userId,
       profile_slug: HEWSTER_PROFILE_SLUG,
       meal_id: state.mealId,
       actual_time: state.actualTime,
@@ -765,7 +1124,7 @@ export async function saveDailyMealsToSupabase(dailyMealState: DailyMealState[])
     }));
 
     const fallbackResult = await supabase.from("daily_meals").upsert(fallbackRows, {
-      onConflict: "profile_slug,meal_id",
+      onConflict: "owner_id,profile_slug,meal_id",
     });
 
     if (fallbackResult.error) {
@@ -781,12 +1140,11 @@ export async function saveDailyMealsToSupabase(dailyMealState: DailyMealState[])
 }
 
 export async function saveActivityLogToSupabase(activity: ActivityLog) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
 
-  const { error } = await supabase.from("activity_logs").insert(mapActivityLogToRow(activity));
+  const { supabase, userId } = signedInSupabase;
+  const { error } = await supabase.from("activity_logs").insert(mapActivityLogToRow(activity, userId));
 
   if (error) {
     throw error;
@@ -794,11 +1152,10 @@ export async function saveActivityLogToSupabase(activity: ActivityLog) {
 }
 
 export async function updateActivityLogInSupabase(activity: ActivityLog) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
 
+  const { supabase, userId } = signedInSupabase;
   const { error } = await supabase
     .from("activity_logs")
     .update({
@@ -807,6 +1164,7 @@ export async function updateActivityLogInSupabase(activity: ActivityLog) {
       notes: activity.notes,
     })
     .eq("id", activity.id)
+    .eq("owner_id", userId)
     .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
   if (error) {
@@ -815,15 +1173,15 @@ export async function updateActivityLogInSupabase(activity: ActivityLog) {
 }
 
 export async function deleteActivityLogInSupabase(activityId: string) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
 
+  const { supabase, userId } = signedInSupabase;
   const { error } = await supabase
     .from("activity_logs")
     .delete()
     .eq("id", activityId)
+    .eq("owner_id", userId)
     .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
   if (error) {
@@ -832,12 +1190,11 @@ export async function deleteActivityLogInSupabase(activityId: string) {
 }
 
 export async function saveWeightLogToSupabase(weight: WeightLog) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
 
-  const { error } = await supabase.from("weight_logs").upsert(mapWeightLogToRow(weight), {
+  const { supabase, userId } = signedInSupabase;
+  const { error } = await supabase.from("weight_logs").upsert(mapWeightLogToRow(weight, userId), {
     onConflict: "id",
   });
 
@@ -847,15 +1204,15 @@ export async function saveWeightLogToSupabase(weight: WeightLog) {
 }
 
 export async function updateWeightLogInSupabase(weight: WeightLog) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
 
+  const { supabase, userId } = signedInSupabase;
   const { error } = await supabase
     .from("weight_logs")
-    .update(mapWeightLogToRow(weight))
+    .update(mapWeightLogToRow(weight, userId))
     .eq("id", weight.id)
+    .eq("owner_id", userId)
     .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
   if (error) {
@@ -864,15 +1221,15 @@ export async function updateWeightLogInSupabase(weight: WeightLog) {
 }
 
 export async function deleteWeightLogInSupabase(weightLogId: string) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
 
+  const { supabase, userId } = signedInSupabase;
   const { error } = await supabase
     .from("weight_logs")
     .delete()
     .eq("id", weightLogId)
+    .eq("owner_id", userId)
     .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
   if (error) {
@@ -881,12 +1238,13 @@ export async function deleteWeightLogInSupabase(weightLogId: string) {
 }
 
 export async function saveMealLogToSupabase(mealLog: MealLog) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  cacheMealLog(mealLog);
 
-  const { error } = await supabase.from("meal_logs").upsert(mapMealLogToRow(mealLog), {
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
+
+  const { supabase, userId } = signedInSupabase;
+  const { error } = await supabase.from("meal_logs").upsert(mapMealLogToRow(mealLog, userId), {
     onConflict: "id",
   });
 
@@ -895,16 +1253,93 @@ export async function saveMealLogToSupabase(mealLog: MealLog) {
   }
 }
 
-export async function deleteMealLogInSupabase(mealLogId: string) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
+export async function saveCompletedMealToSupabase(mealLog: MealLog, dailyMealState: DailyMealState[], staleMealLogId?: string) {
+  cacheCompletedMeal(mealLog, dailyMealState);
+
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
+
+  const { supabase, userId } = signedInSupabase;
+  const dailyMeal = dailyMealState.find(
+    (state) => state.mealId === mealLog.mealId && (state.dayKey ?? currentTodayKey()) === mealLog.dayKey
+  ) ?? {
+    mealId: mealLog.mealId,
+    actualTime: mealLog.actualTime,
+    status: "done" as MealStatus,
+    fedNotes: mealLog.fedNotes,
+    skippedCareItemIds: mealLog.skippedCareItemIds ?? [],
+    dayKey: mealLog.dayKey,
+  };
+
+  const dailyMealRow = mapDailyMealStateToRow(dailyMeal, userId);
+  const { error: dailyMealError } = await supabase.from("daily_meals").upsert(dailyMealRow, {
+    onConflict: "owner_id,profile_slug,day_key,meal_id",
+  });
+
+  if (dailyMealError) {
+    throw dailyMealError;
   }
 
+  const { error: mealLogError } = await supabase.from("meal_logs").upsert(mapMealLogToRow(mealLog, userId), {
+    onConflict: "id",
+  });
+
+  if (mealLogError) {
+    throw mealLogError;
+  }
+
+  if (staleMealLogId) {
+    removeCachedMealLog(staleMealLogId);
+    const { error: deleteError } = await supabase
+      .from("meal_logs")
+      .delete()
+      .eq("id", staleMealLogId)
+      .eq("owner_id", userId)
+      .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+  }
+
+  const [{ data: savedDailyMeal, error: verifyDailyError }, { data: savedMealLog, error: verifyLogError }] = await Promise.all([
+    supabase
+      .from("daily_meals")
+      .select("actual_time,status")
+      .eq("owner_id", userId)
+      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("day_key", mealLog.dayKey)
+      .eq("meal_id", mealLog.mealId)
+      .maybeSingle(),
+    supabase
+      .from("meal_logs")
+      .select("id")
+      .eq("id", mealLog.id)
+      .eq("owner_id", userId)
+      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .maybeSingle(),
+  ]);
+
+  if (verifyDailyError) throw verifyDailyError;
+  if (verifyLogError) throw verifyLogError;
+
+  if (!savedDailyMeal?.actual_time || savedDailyMeal.status !== "done" || !savedMealLog?.id) {
+    throw new Error("Meal save verification failed");
+  }
+}
+
+export async function deleteMealLogInSupabase(mealLogId: string) {
+  removeCachedMealLog(mealLogId);
+
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
+
+  const { supabase, userId } = signedInSupabase;
   const { error } = await supabase
     .from("meal_logs")
     .delete()
     .eq("id", mealLogId)
+    .eq("owner_id", userId)
     .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
   if (error) {
@@ -913,12 +1348,11 @@ export async function deleteMealLogInSupabase(mealLogId: string) {
 }
 
 export async function saveManualAlertToSupabase(alert: ManualAlert) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
 
-  const { error } = await supabase.from("manual_alerts").insert(mapManualAlertToRow(alert));
+  const { supabase, userId } = signedInSupabase;
+  const { error } = await supabase.from("manual_alerts").insert(mapManualAlertToRow(alert, userId));
 
   if (error) {
     throw error;
@@ -926,20 +1360,24 @@ export async function saveManualAlertToSupabase(alert: ManualAlert) {
 }
 
 export async function updateManualAlertInSupabase(alert: ManualAlert) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
 
+  const { supabase, userId } = signedInSupabase;
   const { error } = await supabase
     .from("manual_alerts")
     .update({
       title: alert.title,
       message: alert.message,
+      scope: alert.scope ?? "today",
+      weekdays: alert.weekdays ?? null,
+      time: alert.time ?? null,
+      created_day_key: alert.createdDayKey ?? null,
       resolved: alert.resolved,
       resolved_at: alert.resolvedAt ?? null,
     })
     .eq("id", alert.id)
+    .eq("owner_id", userId)
     .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
   if (error) {
@@ -948,15 +1386,15 @@ export async function updateManualAlertInSupabase(alert: ManualAlert) {
 }
 
 export async function deleteManualAlertInSupabase(alertId: string) {
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) {
-    return;
-  }
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
 
+  const { supabase, userId } = signedInSupabase;
   const { error } = await supabase
     .from("manual_alerts")
     .delete()
     .eq("id", alertId)
+    .eq("owner_id", userId)
     .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
   if (error) {

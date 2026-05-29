@@ -5,6 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "check:account-settings": "node scripts/check-account-settings.mjs",
+    "check:alerts": "node scripts/check-alert-capacity.mjs",
+    "check:auth": "node scripts/check-auth.mjs",
+    "check:floating-menu": "node scripts/check-floating-menu.mjs",
     "start": "next start",
     "lint": "eslint"
   },
@@ -28,6 +32,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
+    "playwright": "^1.60.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

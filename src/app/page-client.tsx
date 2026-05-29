@@ -3,13 +3,15 @@
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import {
   Bell,
+  StickyNote,
   Tablets,
   TriangleAlert,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ActivityDetailForm } from "@/components/activity-detail-form";
 import { ActivityFeed } from "@/components/activity-feed";
+import { useAuth } from "@/components/auth-provider";
 import { PottyDetailBadges } from "@/components/potty-detail-badges";
 import { BottomNav } from "@/components/bottom-nav";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
@@ -19,7 +21,6 @@ import {
   ACTIVITY_LOGS_STORAGE_KEY,
   currentTodayKey,
   deleteActivityLogInSupabase,
-  deleteMealLogInSupabase,
   type ActivityLog,
   type ActivityType,
   type DailyMealState,
@@ -29,8 +30,10 @@ import {
   MEAL_LOGS_STORAGE_KEY,
   WEIGHT_LOGS_STORAGE_KEY,
   loadAppState,
+  loadFreshAppState,
   persistLocalState,
   saveActivityLogToSupabase,
+  saveCompletedMealToSupabase,
   saveDailyMealsToSupabase,
   saveMealLogToSupabase,
   saveTemplatesToSupabase,
@@ -43,9 +46,10 @@ import {
   type DailyMeal,
   type MealTemplate,
   initialTemplates,
+  isMealTemplateActiveForDay,
 } from "@/lib/meal-templates";
 import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail } from "@/lib/activity";
-import { loadReminderAlertRules, resolveAlerts, type ReminderAlertRule } from "@/lib/alerts";
+import { formatManualAlertTimelineDetail, loadReminderAlertRules, resolveAlerts, type ReminderAlertRule } from "@/lib/alerts";
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import {
@@ -53,6 +57,8 @@ import {
   customScheduledCareItems,
   loadCareTemplates,
   loadCareTemplatesFromSupabase,
+  mealPlanDoseNumberForMeal,
+  mealPlanTotalDoseCount,
   saveCareTemplates,
   saveCareTemplatesToSupabase,
   type CareItemKind,
@@ -80,6 +86,8 @@ function currentAlertMinuteKey() {
   const now = new Date();
   return `${currentTodayKey()}-${now.getHours()}:${now.getMinutes()}`;
 }
+
+const DUE_ACTION_WINDOW_MS = 60 * 60 * 1000;
 
 function resolveActivityTypeForSave(activityType: ActivityType, detail: string): ActivityType {
   if (activityType !== "potty") return activityType;
@@ -121,6 +129,7 @@ function customCareFrequencyText(item: CareItemTemplate) {
     if (item.asNeeded) return `Every ${steps[0].everyHours} Hours • As Needed`;
     return `Every ${steps[0].everyHours} Hours For ${steps[0].forDays} Days`;
   }
+  if (item.ongoing) return "";
   return "Schedule Needed";
 }
 
@@ -138,132 +147,61 @@ function customCareTimingLabel(item: CareItemTemplate) {
   return item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food";
 }
 
-function CareItemLine({ item, skipped = false, tone = "meal" }: { item: CareItemTemplate; skipped?: boolean; tone?: "accent" | "meal" }) {
-  const iconClassName = skipped
-    ? item.kind === "supplement"
-      ? "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]"
-      : "bg-sky-50 text-sky-600 ring-sky-200"
-    : item.kind === "supplement"
-      ? "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]"
-      : "bg-sky-50 text-sky-600 ring-sky-200";
-  const lineClassName = skipped
-    ? "rounded-2xl bg-rose-50/70 px-2 py-1.5 text-rose-700 ring-1 ring-rose-200/70"
-    : tone === "accent"
-      ? "text-[var(--hewie-active-text,#334155)]/75"
-      : "text-[#6b3f22]/70";
-  const textClassName = skipped ? "text-rose-800" : tone === "accent" ? "text-[var(--hewie-active-text,#334155)]" : "text-[#4f2f1b]";
-
-  return (
-    <div className={`flex items-start gap-2 text-sm leading-5 ${lineClassName}`}>
-      <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ${iconClassName}`}>
-        {item.kind === "supplement" ? <Tablets className="size-3" /> : <MedicationPillIcon className="size-3.5" />}
-      </span>
-      <p className="min-w-0 flex-1">
-        <span className={`font-semibold ${textClassName}`}>{careKindLabel(item.kind)}:</span>{" "}
-        <span className={`font-medium ${textClassName}`}>{item.name}</span>
-        {medicationTypeLabel(item) ? ` • ${medicationTypeLabel(item)}` : ""}
-        {item.dose ? ` — ${item.dose}` : ""}
-        {item.notes ? ` (${item.notes})` : ""}
-        {skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
-      </p>
-    </div>
-  );
+function mealPlanCareDetailText(item: CareItemTemplate) {
+  const dose = item.dose ? ` — ${item.dose}` : "";
+  const route = medicationTypeLabel(item);
+  const routeText = route ? ` (${route})` : "";
+  return `${dose}${routeText}`;
 }
 
-function CustomCareCard({
-  occurrence,
-  isSkipOpen,
-  skipNote,
-  onGiven,
-  onSkip,
-  onSkipNoteChange,
-  onConfirmSkip,
-  onCancelSkip,
+const MAX_COLLAPSED_MEAL_SUPPLEMENTS = 2;
+const MAX_MEAL_PLAN_SUPPLEMENTS = 4;
+
+function mealCareNameDose(item: CareItemTemplate) {
+  return `${item.name}${item.dose ? ` ${item.dose}` : ""}`;
+}
+
+function CompactMealCareSummary({
+  expanded,
+  items,
+  onToggle,
 }: {
-  occurrence: CustomCareOccurrence;
-  isSkipOpen: boolean;
-  skipNote: string;
-  onGiven: (occurrence: CustomCareOccurrence) => void;
-  onSkip: (occurrence: CustomCareOccurrence) => void;
-  onSkipNoteChange: (occurrence: CustomCareOccurrence, note: string) => void;
-  onConfirmSkip: (occurrence: CustomCareOccurrence) => void;
-  onCancelSkip: (occurrence: CustomCareOccurrence) => void;
+  expanded: boolean;
+  items: CareItemTemplate[];
+  onToggle: () => void;
 }) {
-  const { item } = occurrence;
-  const isSupplement = item.kind === "supplement";
-  const timingLabel = customCareTimingLabel(item);
-  const cardClassName = isSupplement
-    ? "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]"
-    : "bg-sky-50 text-sky-700 ring-sky-200";
-  const iconClassName = isSupplement
-    ? "bg-white/55 text-[#1f3d5c] ring-[#b8c9dd]/70"
-    : "bg-sky-100 text-sky-600 ring-transparent";
-  const timingBadgeClassName = isSupplement
-    ? "bg-white/55 text-[#1f3d5c]/60"
-    : "bg-sky-100/80 text-sky-700/60";
-  const doneButtonClassName = isSupplement
-    ? "bg-white/65 text-[#1f3d5c] ring-[#b8c9dd]/70 hover:bg-white/85"
-    : "bg-sky-100 text-sky-700 ring-sky-200/80 hover:bg-sky-100/80";
-  const skipButtonClassName = isSupplement
-    ? "bg-white/45 text-[#1f3d5c]/55 ring-[#b8c9dd]/45 hover:bg-white/70 hover:text-[#1f3d5c]/75"
-    : "bg-white/55 text-sky-700/55 ring-sky-200/55 hover:bg-white/80 hover:text-sky-700/75";
+  const supplements = items.filter((item) => item.kind === "supplement").slice(0, MAX_MEAL_PLAN_SUPPLEMENTS);
+  if (!supplements.length) return null;
+
+  const shouldCollapseToCount = supplements.length > MAX_COLLAPSED_MEAL_SUPPLEMENTS && !expanded;
+  const visibleSupplements = expanded || !shouldCollapseToCount
+    ? supplements
+    : supplements.slice(0, MAX_COLLAPSED_MEAL_SUPPLEMENTS);
 
   return (
-    <article className={`relative rounded-3xl p-3 shadow-sm ring-1 ${cardClassName}`}>
-      <div className="flex items-start gap-2.5">
-        <span className={`flex size-9 shrink-0 items-center justify-center rounded-full ring-1 ${iconClassName}`}>
-          {isSupplement ? <Tablets className="size-5" /> : <MedicationPillIcon className="size-5" />}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-current/62">{careKindLabel(item.kind)}</p>
-          <div className="mt-0.5">
-            <h3 className="text-base font-semibold text-current/95">{item.name} at {occurrence.timeLabel}</h3>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <p className="text-sm font-normal leading-5 text-current/68">{customCareGiveText(item)}</p>
-              {timingLabel ? <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${timingBadgeClassName}`}>{timingLabel}</span> : null}
-              {occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
-            </div>
-          </div>
-          {isSkipOpen ? <p className="mt-0.5 text-sm text-current/45">{occurrence.frequencyText}</p> : null}
-          {item.notes ? <p className="mt-1 text-sm text-current/58">Notes: {item.notes}</p> : null}
-          {!isSkipOpen ? <p className="mt-0.5 text-sm text-current/45">{occurrence.frequencyText}</p> : null}
-          {isSkipOpen ? (
-            <div className="mt-3 rounded-2xl bg-white/60 p-3 ring-1 ring-current/15">
-              <p className="text-sm font-semibold text-current/85">Skip {careKindLabel(item.kind)}</p>
-              <textarea
-                value={skipNote}
-                onChange={(event) => onSkipNoteChange(occurrence, event.target.value.slice(0, 180))}
-                maxLength={180}
-                placeholder="Notes / Reasons"
-                rows={2}
-                className="mt-1 w-full rounded-2xl border border-current/15 bg-white/80 px-3 py-2 text-sm text-inherit outline-none placeholder:text-current/40 focus:ring-2 focus:ring-current/15"
-              />
-              <div className="mt-2 flex gap-2">
-                <Button variant="outline" className="h-8 rounded-full border-current/20 bg-transparent px-3 text-xs font-semibold text-inherit hover:bg-white/40" onClick={() => onCancelSkip(occurrence)}>
-                  Cancel
-                </Button>
-                <Button className="h-8 rounded-full bg-white/80 px-3 text-xs font-semibold text-inherit ring-1 ring-current/20 hover:bg-white" onClick={() => onConfirmSkip(occurrence)}>
-                  Confirm Skip
-                </Button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
-      {!isSkipOpen ? (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button variant="outline" className={`h-9 rounded-full border-0 px-3 text-xs font-medium shadow-sm ring-1 ${skipButtonClassName}`} onClick={() => onSkip(occurrence)}>
-            Skip
-          </Button>
-          <Button className={`h-9 rounded-full px-3.5 text-xs font-semibold shadow-sm ring-1 ${doneButtonClassName}`} onClick={() => onGiven(occurrence)}>
-            Done
-          </Button>
-        </div>
-      ) : null}
-    </article>
+    <button
+      type="button"
+      aria-expanded={expanded}
+      className="mt-1.5 flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl bg-white/34 px-1.5 py-0.5 text-left text-[10.5px] font-bold leading-[11px] text-[#1f3d5c] ring-1 ring-white/35"
+      onClick={onToggle}
+    >
+      <span className="inline-flex size-3.5 shrink-0 items-center justify-center rounded-full bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]">
+        <Tablets className="size-2.5" />
+      </span>
+      <span className="min-w-0 flex-1 space-y-px">
+        {shouldCollapseToCount ? (
+          <span className="block truncate">{supplements.length} supplements</span>
+        ) : (
+          visibleSupplements.map((item) => (
+            <span key={item.id} className="block truncate">
+              {mealCareNameDose(item)}
+            </span>
+          ))
+        )}
+      </span>
+    </button>
   );
 }
-
 
 function buildMealLog(meal: DailyMeal, fedNotes: string | null, dayKey: string, skippedCareItemIds: string[] = []): MealLog {
   return {
@@ -277,7 +215,22 @@ function buildMealLog(meal: DailyMeal, fedNotes: string | null, dayKey: string, 
     fedNotes,
     skippedCareItemIds,
     actualTime: meal.actualTime ?? "",
+    createdAt: new Date().toISOString(),
   };
+}
+
+function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
+  return careItemsForMeal(careTemplates, meal.id, meals, dayKey).sort((a, b) => {
+    const kindOrder = (item: CareItemTemplate) => item.kind === "medication" ? 0 : 1;
+    return kindOrder(a) - kindOrder(b) || a.name.localeCompare(b.name) || a.id - b.id;
+  }).map((item) => {
+    const doseNumber = mealPlanDoseNumberForMeal(item, meal, meals, dayKey);
+    const totalDoses = mealPlanTotalDoseCount(item);
+    return {
+      ...item,
+      isLastDose: Boolean(doseNumber && totalDoses && doseNumber === totalDoses),
+    };
+  });
 }
 
 function missedMealLogId(dayKey: string, mealId: number) {
@@ -354,12 +307,49 @@ function mealScheduledAtForSort(meal: DailyMeal, allMealsDone: boolean) {
   return scheduledAt;
 }
 
+function mealScheduledAtForDay(meal: Pick<MealTemplate, "plannedTime">, dayKey: string) {
+  const scheduledAt = dateFromDayKey(dayKey);
+  const minutes = parseClockMinutes(meal.plannedTime);
+  if (minutes === Number.MAX_SAFE_INTEGER) return scheduledAt;
+
+  scheduledAt.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return scheduledAt;
+}
+
 function dayKeyFromDate(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+}
+
+function scheduleTimeLabel(scheduledAt: Date, fallbackTimeLabel: string, activeTodayKey: string) {
+  const scheduledDayKey = dayKeyFromDate(scheduledAt);
+  if (scheduledDayKey === activeTodayKey) return fallbackTimeLabel;
+  if (scheduledDayKey === nextDayKey(activeTodayKey)) return `Tomorrow, ${fallbackTimeLabel}`;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(scheduledAt);
+}
+
+function dateFromDayKey(dayKey: string) {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  if (!year || !month || !day) return new Date();
+  return new Date(year, month - 1, day);
+}
+
+function sortMsForClockTime(dayKey: string, time: string) {
+  const minutes = parseClockMinutes(time);
+  const date = dateFromDayKey(dayKey);
+  if (minutes === Number.MAX_SAFE_INTEGER) return date.getTime();
+
+  date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return date.getTime();
 }
 
 type CustomCareOccurrence = {
@@ -370,6 +360,27 @@ type CustomCareOccurrence = {
   frequencyText: string;
   isLastDose: boolean;
 };
+
+type UpcomingScheduleCard =
+  | { type: "meal"; sortMinutes: number; sortAt: Date; sortKey: string; meal: DailyMeal }
+  | { type: "custom-care"; sortMinutes: number; sortAt: Date; sortKey: string; occurrence: CustomCareOccurrence };
+
+function scheduleCardTimeMs(card: UpcomingScheduleCard) {
+  return card.sortAt.getTime();
+}
+
+function sortUpcomingScheduleCards(cards: UpcomingScheduleCard[]) {
+  return [...cards].sort((a, b) => scheduleCardTimeMs(a) - scheduleCardTimeMs(b) || a.sortKey.localeCompare(b.sortKey));
+}
+
+function upcomingScheduleCardTitle(card: UpcomingScheduleCard) {
+  return card.type === "meal" ? card.meal.name : card.occurrence.item.name;
+}
+
+function upcomingScheduleCardKindLabel(card: UpcomingScheduleCard) {
+  if (card.type === "meal") return "Meal";
+  return card.occurrence.item.kind === "supplement" ? "Supplement" : "Medication";
+}
 
 type CustomCareStatusValue = "given" | "skipped" | "missed" | { status: "given" | "skipped" | "missed"; note?: string };
 type CustomCareStatus = Record<string, CustomCareStatusValue>;
@@ -426,6 +437,10 @@ function dateFromDateTimeLocal(value: string) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function sameScheduledMinute(first: Date, second: Date) {
+  return Math.abs(first.getTime() - second.getTime()) < 60 * 1000;
+}
+
 function customCareOccurrencesForDay(items: CareItemTemplate[], targetDayKey: string): CustomCareOccurrence[] {
   return customScheduledCareItems(items).flatMap((item) => {
     if (item.asNeeded) return [];
@@ -438,15 +453,33 @@ function customCareOccurrencesForDay(items: CareItemTemplate[], targetDayKey: st
       const [year, month, day] = targetDayKey.split("-").map(Number);
       const dayStart = new Date(year, month - 1, day);
       const dayEnd = new Date(year, month - 1, day + 1);
+      const steps = customCareScheduleSteps(item);
 
-      return customCareScheduleSteps(item).flatMap((step, stepIndex) => {
+      if (!steps.length) {
+        const scheduledAt = new Date(year, month - 1, day, startAt.getHours(), startAt.getMinutes(), 0, 0);
+        if (scheduledAt < dayStart || scheduledAt >= dayEnd || scheduledAt < startAt) return [];
+
+        return [
+          {
+            key: `${item.kind}-${item.id}-schedule-daily-${scheduledAt.toISOString()}`,
+            item,
+            scheduledAt,
+            timeLabel: formatActivityTime(scheduledAt.toISOString()),
+            frequencyText: "",
+            isLastDose: false,
+          },
+        ];
+      }
+
+      return steps.flatMap((step, stepIndex) => {
         const firstOffset = Math.max(0, Math.ceil((dayStart.getTime() - startAt.getTime()) / (step.everyHours * 60 * 60 * 1000)));
         const occurrences: CustomCareOccurrence[] = [];
 
         for (let doseIndex = firstOffset; ; doseIndex += 1) {
           const scheduledAt = new Date(startAt.getTime() + doseIndex * step.everyHours * 60 * 60 * 1000);
           if (scheduledAt >= dayEnd) break;
-          if (scheduledAt < dayStart || scheduledAt < scheduleCreatedAt) continue;
+          const explicitStartDose = sameScheduledMinute(scheduledAt, startAt);
+          if (scheduledAt < dayStart || (!explicitStartDose && scheduledAt < scheduleCreatedAt)) continue;
 
           occurrences.push({
             key: `${item.kind}-${item.id}-schedule-${stepIndex + 1}-dose-${doseIndex + 1}-${scheduledAt.toISOString()}`,
@@ -468,7 +501,8 @@ function customCareOccurrencesForDay(items: CareItemTemplate[], targetDayKey: st
 
     return effectiveOffsets.flatMap((offset) => {
       const scheduledAt = new Date(startAt.getTime() + offset.offsetHours * 60 * 60 * 1000);
-      if (dayKeyFromDate(scheduledAt) !== targetDayKey || scheduledAt.getTime() < scheduleCreatedAt.getTime()) return [];
+      const explicitStartDose = sameScheduledMinute(scheduledAt, startAt);
+      if (dayKeyFromDate(scheduledAt) !== targetDayKey || (!explicitStartDose && scheduledAt.getTime() < scheduleCreatedAt.getTime())) return [];
 
       return [
         {
@@ -514,7 +548,36 @@ function activityMatchesCustomCareOccurrence(activity: ActivityLog, occurrence: 
   return detail.toLowerCase().startsWith(occurrence.item.name.toLowerCase());
 }
 
-function customCareActivityLog(occurrence: CustomCareOccurrence, status: "given" | "skipped" | "missed", note = ""): ActivityLog {
+function activityMatchesMealLinkedCareTimeline(
+  activity: ActivityLog,
+  item: CareItemTemplate,
+  mealAt: Date,
+  mealId: MealTemplate["id"],
+  dayKey: string,
+  itemOccurrenceCount: number
+) {
+  if (activity.activityType !== item.kind) return false;
+
+  const activityAt = new Date(activity.happenedAt);
+  if (Number.isNaN(activityAt.getTime())) return false;
+  if (dayKeyFromDate(activityAt) !== dayKey) return false;
+
+  const expectedId = `${item.kind}-${item.id}-meal-${mealId}-${dayKey}`;
+  if (activity.id === expectedId || activity.id === `${expectedId}-skipped` || activity.id === `${expectedId}-missed`) return true;
+
+  const detail = (activity.detail ?? "").trim().toLowerCase();
+  const itemName = item.name.trim().toLowerCase();
+  if (!itemName || !detail.startsWith(itemName)) return false;
+
+  if (itemOccurrenceCount <= 1) return true;
+  return Math.abs(activityAt.getTime() - mealAt.getTime()) < 60 * 1000;
+}
+
+function customCareDisplayDate(activity: ActivityLog) {
+  return new Date(activity.happenedAt);
+}
+
+function customCareActivityLog(occurrence: CustomCareOccurrence, status: "given" | "skipped" | "missed", note = "", happenedAt = occurrence.scheduledAt): ActivityLog {
   const { item } = occurrence;
   const statusDetail = status === "given" ? "" : status === "skipped" ? " Skipped" : " Missed";
   const statusNote = status === "given" ? "" : status === "skipped" ? (note ? `Skip Note: ${note}` : "") : "Missed";
@@ -523,7 +586,7 @@ function customCareActivityLog(occurrence: CustomCareOccurrence, status: "given"
     id: status === "given" ? occurrence.key : `${occurrence.key}-${status}`,
     profileSlug: HEWSTER_PROFILE_SLUG,
     activityType: item.kind,
-    happenedAt: occurrence.scheduledAt.toISOString(),
+    happenedAt: happenedAt.toISOString(),
     detail: `${item.name}${item.dose && status === "given" ? ` • ${item.dose}` : ""}${statusDetail}`,
     notes: [customCareGiveText(item), occurrence.frequencyText, occurrence.isLastDose ? "Last Dose" : null, customCareTimingLabel(item), item.kind === "medication" ? medicationTypeLabel(item) : null, statusNote, item.notes ? `Notes: ${item.notes}` : ""].filter(Boolean).join("\n") || null,
     createdAt: new Date().toISOString(),
@@ -611,6 +674,7 @@ async function importBridgePayload(payload: HewsterBridgePayload) {
 }
 
 export default function HomeApp() {
+  const { loading: authLoading } = useAuth();
   const [templates, setTemplates] = useState<MealTemplate[]>(initialTemplates);
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>(
     initialTemplates.map((template) => ({
@@ -652,10 +716,37 @@ export default function HomeApp() {
   const [customCareSkipKey, setCustomCareSkipKey] = useState<string | null>(null);
   const [customCareSkipNotes, setCustomCareSkipNotes] = useState<Record<string, string>>({});
   const [expandedAlertIds, setExpandedAlertIds] = useState<Set<string>>(() => new Set());
+  const [expandedMealCareKey, setExpandedMealCareKey] = useState<string | null>(null);
+  const [upcomingOverflowExpanded, setUpcomingOverflowExpanded] = useState(false);
+  const [expandedUpcomingNoteKey, setExpandedUpcomingNoteKey] = useState<string | null>(null);
   const initialLoadComplete = useRef(false);
   const previousTodayKeyRef = useRef<string | null>(null);
   const missedRolloverRef = useRef<string | null>(null);
   const supabaseReady = isSupabaseConfigured();
+
+  const applySharedNotebookState = useCallback((state: Awaited<ReturnType<typeof loadAppState>>) => {
+    setTemplates(state.templates);
+    const activeTemplates = state.templates.filter((template) => isMealTemplateActiveForDay(template, state.todayKey));
+    setDailyMealState(
+      activeTemplates.map((template) => {
+        const existing = state.dailyMealState.find((entry) => entry.mealId === template.id);
+        return (
+          existing ?? {
+            mealId: template.id,
+            actualTime: null,
+            status: "upcoming" as const,
+            fedNotes: null,
+            skippedCareItemIds: [],
+            dayKey: state.todayKey,
+          }
+        );
+      })
+    );
+    setActivityLogs(state.activityLogs);
+    setManualAlerts(state.manualAlerts ?? []);
+    setMealLogs(state.mealLogs ?? []);
+    setTodayKey(state.todayKey);
+  }, []);
 
   useEffect(() => {
     const handleBridgeRequest = (event: MessageEvent) => {
@@ -696,16 +787,9 @@ export default function HomeApp() {
   }, []);
 
   useEffect(() => {
+    if (supabaseReady && authLoading) return;
+
     let cancelled = false;
-    const fallbackTimer = window.setTimeout(() => {
-      if (!cancelled) {
-        initialLoadComplete.current = true;
-        setHeaderDateTime(formatTodayHeaderDateTime());
-        setAlertMinuteKey(currentAlertMinuteKey());
-        setTodayKey((current) => current || currentTodayKey());
-        setHydrated(true);
-      }
-    }, 2200);
 
     async function hydrate() {
       try {
@@ -713,25 +797,7 @@ export default function HomeApp() {
         const state = await loadAppState();
         if (cancelled) return;
 
-        setTemplates(state.templates);
-        setDailyMealState(
-          state.templates.map((template) => {
-            const existing = state.dailyMealState.find((entry) => entry.mealId === template.id);
-            return (
-              existing ?? {
-                mealId: template.id,
-                actualTime: null,
-                status: "upcoming" as const,
-                fedNotes: null,
-                skippedCareItemIds: [],
-                dayKey: state.todayKey,
-              }
-            );
-          })
-        );
-        setActivityLogs(state.activityLogs);
-        setManualAlerts(state.manualAlerts ?? []);
-        setMealLogs(state.mealLogs ?? []);
+        applySharedNotebookState(state);
         const [supplements, medications] = await Promise.all([
           loadCareTemplatesFromSupabase("supplement"),
           loadCareTemplatesFromSupabase("medication"),
@@ -740,7 +806,6 @@ export default function HomeApp() {
         setMedicationTemplates(medications);
         setCustomCareStatus(loadCustomCareStatus());
         setReminderRules(loadReminderAlertRules());
-        setTodayKey(state.todayKey);
         setHeaderDateTime(formatTodayHeaderDateTime());
         setAlertMinuteKey(currentAlertMinuteKey());
       } catch {
@@ -753,7 +818,6 @@ export default function HomeApp() {
         setReminderRules(loadReminderAlertRules());
       } finally {
         if (!cancelled) {
-          window.clearTimeout(fallbackTimer);
           initialLoadComplete.current = true;
           setHydrated(true);
         }
@@ -764,15 +828,57 @@ export default function HomeApp() {
 
     return () => {
       cancelled = true;
-      window.clearTimeout(fallbackTimer);
     };
-  }, []);
+  }, [applySharedNotebookState, authLoading, supabaseReady]);
 
   useEffect(() => {
     if (!hydrated || !initialLoadComplete.current) return;
 
     persistLocalState(templates, dailyMealState, activityLogs, undefined, todayKey, manualAlerts, mealLogs);
   }, [templates, dailyMealState, activityLogs, hydrated, todayKey, manualAlerts, mealLogs]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    let cancelled = false;
+
+    const refreshSharedNotebookState = async () => {
+      if (document.visibilityState === "hidden") return;
+
+      try {
+        const state = await loadFreshAppState();
+        if (cancelled) return;
+        applySharedNotebookState(state);
+        setAlertMinuteKey(currentAlertMinuteKey());
+      } catch {
+        // Keep the current notebook view if the refresh is temporarily unavailable.
+      }
+    };
+
+    const refreshOnVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refreshSharedNotebookState();
+      }
+    };
+
+    const refreshInterval = window.setInterval(() => {
+      void refreshSharedNotebookState();
+    }, 20_000);
+
+    window.addEventListener("focus", refreshSharedNotebookState);
+    window.addEventListener("hewster:meal-templates-updated", refreshSharedNotebookState);
+    window.addEventListener("petnotebook-active-notebook-updated", refreshSharedNotebookState);
+    document.addEventListener("visibilitychange", refreshOnVisibility);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", refreshSharedNotebookState);
+      window.removeEventListener("hewster:meal-templates-updated", refreshSharedNotebookState);
+      window.removeEventListener("petnotebook-active-notebook-updated", refreshSharedNotebookState);
+      document.removeEventListener("visibilitychange", refreshOnVisibility);
+    };
+  }, [applySharedNotebookState, hydrated]);
 
   useEffect(() => {
     const refreshCareSettings = () => {
@@ -862,9 +968,12 @@ export default function HomeApp() {
   }, [dailyMealState, hydrated, mealActionState, supabaseReady]);
 
   useEffect(() => {
+    const activeTodayKey = todayKey || currentTodayKey();
+    const activeTemplates = templates.filter((template) => isMealTemplateActiveForDay(template, activeTodayKey));
+
     setDailyMealState((current) => {
       const existingById = new Map(current.map((entry) => [entry.mealId, entry]));
-      return templates.map((template) => {
+      return activeTemplates.map((template) => {
         const existing = existingById.get(template.id);
         return (
           existing ?? {
@@ -873,7 +982,7 @@ export default function HomeApp() {
             status: "upcoming" as const,
             fedNotes: null,
             skippedCareItemIds: [],
-            dayKey: todayKey || currentTodayKey(),
+            dayKey: activeTodayKey,
           }
         );
       });
@@ -887,7 +996,9 @@ export default function HomeApp() {
       const nextTodayKey = currentTodayKey();
 
       if (todayKey && nextTodayKey !== todayKey) {
-        const missedMealLogs = templates.flatMap((template) => {
+        const activeTemplatesForPreviousDay = templates.filter((template) => isMealTemplateActiveForDay(template, todayKey));
+        const activeTemplatesForNextDay = templates.filter((template) => isMealTemplateActiveForDay(template, nextTodayKey));
+        const missedMealLogs = activeTemplatesForPreviousDay.flatMap((template) => {
           const mealState = dailyMealState.find((entry) => entry.mealId === template.id && (entry.dayKey ?? todayKey) === todayKey);
           if (mealState?.status === "done") return [];
           return [buildMissedMealLog(template, todayKey, mealState?.skippedCareItemIds ?? [])];
@@ -912,7 +1023,7 @@ export default function HomeApp() {
 
         setTodayKey(nextTodayKey);
         setDailyMealState(
-          templates.map((template) => ({
+          activeTemplatesForNextDay.map((template) => ({
             mealId: template.id,
             actualTime: null,
             status: "upcoming" as const,
@@ -944,9 +1055,11 @@ export default function HomeApp() {
   }, [dailyMealState, todayKey]);
 
   const dailyMeals = useMemo<DailyMeal[]>(() => {
+    const activeTodayKey = todayKey || currentTodayKey();
+    const activeTemplates = templates.filter((template) => isMealTemplateActiveForDay(template, activeTodayKey));
     const stateByMealId = new Map(todayMealState.map((entry) => [entry.mealId, entry]));
 
-    return templates.map((template) => {
+    return activeTemplates.map((template) => {
       const existing = stateByMealId.get(template.id);
       return {
         ...template,
@@ -954,18 +1067,25 @@ export default function HomeApp() {
         status: existing?.status ?? "upcoming",
       };
     });
-  }, [templates, todayMealState]);
+  }, [templates, todayMealState, todayKey]);
 
   const missedMealIds = useMemo(() => {
+    void alertMinuteKey;
+
     const activeTodayKey = todayKey || currentTodayKey();
+    const nowMs = Date.now();
+    const templateById = new Map(templates.map((template) => [template.id, template]));
     return new Set(
       mealLogs
         .filter((mealLog) => mealLog.dayKey === activeTodayKey && isMissedMealLog(mealLog))
+        .filter((mealLog) => {
+          const template = templateById.get(mealLog.mealId);
+          const scheduledTime = template?.plannedTime ?? mealLog.actualTime;
+          return sortMsForClockTime(activeTodayKey, scheduledTime) <= nowMs;
+        })
         .map((mealLog) => mealLog.mealId)
     );
-  }, [mealLogs, todayKey]);
-  const allMealsDone = dailyMeals.length > 0 && dailyMeals.every((meal) => meal.status === "done" || missedMealIds.has(meal.id));
-  const nextMeal = dailyMeals.find((meal) => meal.status !== "done" && !missedMealIds.has(meal.id)) ?? dailyMeals[0];
+  }, [alertMinuteKey, mealLogs, templates, todayKey]);
   const careTemplates = useMemo(
     () => [...supplementTemplates, ...medicationTemplates],
     [supplementTemplates, medicationTemplates]
@@ -1065,25 +1185,46 @@ export default function HomeApp() {
     window.localStorage.setItem(TODAY_KEY_STORAGE_KEY, activeTodayKey);
   }, [activityLogs, careTemplates, customCareStatus, hydrated, supabaseReady, todayKey]);
 
-  const upcomingScheduleCards = useMemo(() => {
+  const allUpcomingScheduleCards = useMemo(() => {
     void alertMinuteKey;
 
-    type ScheduleCard =
-      | { type: "meal"; sortMinutes: number; sortAt: Date; sortKey: string; meal: DailyMeal }
-      | { type: "custom-care"; sortMinutes: number; sortAt: Date; sortKey: string; occurrence: CustomCareOccurrence };
+    const cards: UpcomingScheduleCard[] = [];
+    const activeTodayKey = todayKey || currentTodayKey();
+    const tomorrowKey = nextDayKey(activeTodayKey);
+    const nowMs = Date.now();
+    const todayMealById = new Map(dailyMeals.map((meal) => [meal.id, meal]));
 
-    const cards: ScheduleCard[] = [];
-    const mealCards = (allMealsDone ? (nextMeal && !missedMealIds.has(nextMeal.id) ? [nextMeal] : []) : dailyMeals.filter((meal) => meal.status !== "done" && !missedMealIds.has(meal.id)))
-      .map((meal) => {
-        const sortAt = mealScheduledAtForSort(meal, allMealsDone);
-        return {
+    const mealCards = templates.flatMap<UpcomingScheduleCard>((template) => {
+      const todayMeal = todayMealById.get(template.id);
+      const todayScheduledAt = mealScheduledAtForDay(template, activeTodayKey);
+      const todayScheduledMs = todayScheduledAt.getTime();
+      const todayResolved = todayMeal?.status === "done" || missedMealIds.has(template.id);
+
+      if (todayMeal && !todayResolved && todayScheduledMs >= nowMs) {
+        return [{
           type: "meal" as const,
-          sortMinutes: sortAt.getHours() * 60 + sortAt.getMinutes(),
-          sortAt,
-          sortKey: `meal-${meal.id}`,
-          meal,
-        };
-      });
+          sortMinutes: todayScheduledAt.getHours() * 60 + todayScheduledAt.getMinutes(),
+          sortAt: todayScheduledAt,
+          sortKey: `meal-${template.id}-${activeTodayKey}`,
+          meal: todayMeal,
+        }];
+      }
+
+      if (!isMealTemplateActiveForDay(template, tomorrowKey)) return [];
+
+      const tomorrowScheduledAt = mealScheduledAtForDay(template, tomorrowKey);
+      return [{
+        type: "meal" as const,
+        sortMinutes: tomorrowScheduledAt.getHours() * 60 + tomorrowScheduledAt.getMinutes(),
+        sortAt: tomorrowScheduledAt,
+        sortKey: `meal-${template.id}-${tomorrowKey}`,
+        meal: {
+          ...template,
+          actualTime: null,
+          status: "upcoming" as const,
+        },
+      }];
+    });
 
     cards.push(...mealCards);
 
@@ -1097,39 +1238,30 @@ export default function HomeApp() {
       });
     });
 
-    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    const sortedCards = cards
-      .filter((card) => card.sortAt.getTime() > oneHourAgo)
-      .sort((a, b) => a.sortAt.getTime() - b.sortAt.getTime() || a.sortKey.localeCompare(b.sortKey));
-    if (!sortedCards.length) return sortedCards;
+    return sortUpcomingScheduleCards(cards
+      .filter((card) => card.sortAt.getTime() >= nowMs)
+    );
+  }, [alertMinuteKey, customCareOccurrences, dailyMeals, missedMealIds, templates, todayKey]);
 
-    const laneWindowMs = 60 * 60 * 1000;
-    const nextMealCard = sortedCards.find((card) => card.type === "meal");
-    const nextMedicationCard = sortedCards.find((card) => card.type === "custom-care" && card.occurrence.item.kind === "medication");
-    const nextSupplementCard = sortedCards.find((card) => card.type === "custom-care" && card.occurrence.item.kind === "supplement");
+  const upcomingClusterCards = useMemo(() => {
+    const firstCard = allUpcomingScheduleCards[0];
+    if (!firstCard) return [];
 
-    const laneCards = [nextMealCard, nextMedicationCard, nextSupplementCard].flatMap((laneStart) => {
-      if (!laneStart) return [];
-      const laneStartTime = laneStart.sortAt.getTime();
-      if (laneStart.type === "meal") {
-        return sortedCards.filter((card) => card.type === "meal" && card.sortAt.getTime() >= laneStartTime && card.sortAt.getTime() <= laneStartTime + laneWindowMs);
-      }
+    const activeWindowMs = 60 * 60 * 1000;
+    const activeWindowEnd = firstCard.sortAt.getTime() + activeWindowMs;
+    return allUpcomingScheduleCards.filter((card) => card.sortAt.getTime() <= activeWindowEnd);
+  }, [allUpcomingScheduleCards]);
 
-      return sortedCards.filter(
-        (card) =>
-          card.type === "custom-care" &&
-          card.occurrence.item.kind === laneStart.occurrence.item.kind &&
-          card.sortAt.getTime() >= laneStartTime &&
-          card.sortAt.getTime() <= laneStartTime + laneWindowMs
-      );
-    });
+  const upcomingVisibleCardCount = upcomingClusterCards.length > 5 ? 5 : 6;
+  const upcomingScheduleCards = useMemo(() => upcomingClusterCards.slice(0, upcomingVisibleCardCount), [upcomingClusterCards, upcomingVisibleCardCount]);
+  const hiddenUpcomingScheduleCards = useMemo(() => upcomingClusterCards.slice(upcomingVisibleCardCount), [upcomingClusterCards, upcomingVisibleCardCount]);
+  const priorityScheduleTime = upcomingScheduleCards[0]?.sortAt.getTime() ?? null;
+  const upcomingClusterFirstKey = upcomingClusterCards[0]?.sortKey ?? "";
 
-    const uniqueCards = Array.from(new Map(laneCards.map((card) => [card.sortKey, card])).values());
+  useEffect(() => {
+    setUpcomingOverflowExpanded(false);
+  }, [upcomingClusterFirstKey, hiddenUpcomingScheduleCards.length]);
 
-    return uniqueCards.sort((a, b) => a.sortAt.getTime() - b.sortAt.getTime() || a.sortKey.localeCompare(b.sortKey)).slice(0, 6);
-  }, [alertMinuteKey, allMealsDone, customCareOccurrences, dailyMeals, missedMealIds, nextMeal]);
-  const groupedUpcomingScheduleCards = upcomingScheduleCards;
-  const priorityScheduleTime = groupedUpcomingScheduleCards[0]?.sortAt.getTime() ?? null;
   const overdueActionCards = useMemo(() => {
     void alertMinuteKey;
 
@@ -1138,16 +1270,19 @@ export default function HomeApp() {
       | { type: "custom-care"; sortAt: Date; sortKey: string; occurrence: CustomCareOccurrence };
 
     const activeTodayKey = todayKey || currentTodayKey();
-    const cutoff = Date.now() - 60 * 60 * 1000;
+    const nowMs = Date.now();
+    const cutoff = nowMs - DUE_ACTION_WINDOW_MS;
     const mealCards = dailyMeals.flatMap<OverdueActionCard>((meal) => {
       const scheduledAt = mealScheduledAtForSort(meal, false);
       const hasResolvedLog = mealLogs.some((mealLog) => mealLog.dayKey === activeTodayKey && mealLog.mealId === meal.id && !isMissedMealLog(mealLog));
 
-      if (meal.status === "done" || hasResolvedLog || scheduledAt.getTime() > cutoff) return [];
+      const scheduledMs = scheduledAt.getTime();
+      if (meal.status === "done" || hasResolvedLog || scheduledMs > nowMs || scheduledMs < cutoff) return [];
       return [{ type: "meal", sortAt: scheduledAt, sortKey: `meal-${meal.id}`, meal }];
     });
     const careCards = customCareOccurrences.flatMap<OverdueActionCard>((occurrence) => {
-      if (dayKeyFromDate(occurrence.scheduledAt) !== activeTodayKey || occurrence.scheduledAt.getTime() > cutoff) return [];
+      const scheduledMs = occurrence.scheduledAt.getTime();
+      if (dayKeyFromDate(occurrence.scheduledAt) !== activeTodayKey || scheduledMs > nowMs || scheduledMs < cutoff) return [];
       return [{ type: "custom-care", sortAt: occurrence.scheduledAt, sortKey: occurrence.key, occurrence }];
     });
 
@@ -1167,31 +1302,52 @@ export default function HomeApp() {
   }, [activityLogs, todayKey]);
 
   const dynamicTimeline = useMemo(() => {
+    const activeTodayKey = todayKey || currentTodayKey();
     const mealTimeline = dailyMeals
       .filter((meal) => meal.actualTime)
       .flatMap((meal) => {
         const actualTime = meal.actualTime as string;
-        const sortMinutes = parseClockMinutes(actualTime);
-        const fedNotes = todayMealState.find((entry) => entry.mealId === meal.id)?.fedNotes?.trim();
+        const mealState = todayMealState.find((entry) => entry.mealId === meal.id);
+        const fedNotes = mealState?.fedNotes?.trim();
         const skippedMeal = fedNotes === "Skipped";
+        const mealLog = mealLogs.find((entry) => entry.dayKey === activeTodayKey && entry.mealId === meal.id && !isMissedMealLog(entry));
+        const loggedAt = mealLog?.createdAt ? new Date(mealLog.createdAt) : null;
+        const displayTime = skippedMeal ? meal.plannedTime || actualTime : actualTime;
+        const sortMinutes = parseClockMinutes(displayTime);
+        const sortMs = loggedAt && !Number.isNaN(loggedAt.getTime()) ? loggedAt.getTime() : sortMsForClockTime(activeTodayKey, displayTime);
         const mealItem = {
-          time: actualTime,
+          time: displayTime,
           label: skippedMeal ? "Skipped Meal" : "Fed",
           detail: fedNotes && !skippedMeal ? `${meal.name}: ${meal.food} • Notes: ${fedNotes}` : `${meal.name}: ${meal.food}`,
           activityType: "meal" as const,
+          mealGroupId: `meal-${meal.id}`,
           sortMinutes,
-          sortKey: `meal-${meal.id}`,
+          sortMs,
+          sortKey: mealLog?.createdAt ?? `meal-${meal.id}`,
         };
-        const skippedCareItemIds = todayMealState.find((entry) => entry.mealId === meal.id)?.skippedCareItemIds ?? [];
-        const careItems = careItemsForMeal(careTemplates, meal.id).map((item) => {
+        const skippedCareItemIds = mealState?.skippedCareItemIds ?? [];
+        const mealAt = new Date(sortMsForClockTime(activeTodayKey, displayTime));
+        const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, dailyMeals, activeTodayKey);
+        const careItems = mealCareItems.filter((item) => {
+          const itemOccurrenceCount = dailyMeals.filter((dailyMeal) =>
+            mealCareItemsWithDoseBadges(careTemplates, dailyMeal, dailyMeals, activeTodayKey).some((candidate) => candidate.kind === item.kind && candidate.id === item.id)
+          ).length;
+          return !todayActivityLogs.some((activity) =>
+            activityMatchesMealLinkedCareTimeline(activity, item, mealAt, meal.id, activeTodayKey, itemOccurrenceCount)
+          );
+        }).map((item) => {
           const skippedCare = skippedCareItemIds.includes(`${item.kind}-${item.id}`);
+          const detailText = `${item.name}${mealPlanCareDetailText(item)}${!skippedCare && item.notes ? ` • Notes: ${item.notes}` : ""}`;
           return {
-            time: actualTime,
+            time: displayTime,
             label: skippedCare ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
-            detail: `${item.name}${item.dose ? (skippedCare ? ` - ${item.dose}` : ` • ${item.dose}`) : ""}${!skippedCare && item.notes ? ` • ${item.notes}` : ""}`,
+            detail: detailText,
             activityType: item.kind,
+            careItem: item,
+            mealGroupId: `meal-${meal.id}`,
             sortMinutes,
-            sortKey: `meal-${meal.id}-${item.kind}-${item.id}${skippedCare ? "-skipped" : ""}`,
+            sortMs,
+            sortKey: `${mealLog?.createdAt ?? `meal-${meal.id}`}-${item.kind}-${item.id}${skippedCare ? "-skipped" : ""}`,
           };
         });
 
@@ -1199,35 +1355,38 @@ export default function HomeApp() {
       });
 
     const missedMealTimeline = mealLogs
-      .filter((mealLog) => mealLog.dayKey === (todayKey || currentTodayKey()) && isMissedMealLog(mealLog))
+      .filter((mealLog) => mealLog.dayKey === activeTodayKey && isMissedMealLog(mealLog))
       .map((mealLog) => {
-        const sortMinutes = parseClockMinutes(mealLog.actualTime);
+        const displayTime = templates.find((template) => template.id === mealLog.mealId)?.plannedTime ?? mealLog.actualTime;
+        const sortMinutes = parseClockMinutes(displayTime);
         return {
-          time: mealLog.actualTime,
+          time: displayTime,
           label: "Missed Meal",
           detail: `${mealLog.mealName}: ${mealLog.food}`,
           activityType: "meal" as const,
           sortMinutes,
+          sortMs: sortMsForClockTime(activeTodayKey, displayTime),
           sortKey: mealLog.id,
         };
       });
 
     const activityTimeline = todayActivityLogs.map((activity) => {
-      const happenedAt = new Date(activity.happenedAt);
+      const happenedAt = customCareDisplayDate(activity);
       return {
-        time: formatActivityTime(activity.happenedAt),
+        time: formatActivityTime(happenedAt.toISOString()),
         label: formatActivityLabel(activity.activityType),
         detail: renderActivityDetail(activity),
         activity,
         activityType: activity.activityType,
         sortMinutes: happenedAt.getHours() * 60 + happenedAt.getMinutes(),
+        sortMs: happenedAt.getTime(),
         sortKey: activity.createdAt ?? activity.id,
       };
     });
 
     const manualAlertTimeline = manualAlerts
       .flatMap((alert) => {
-        const events: Array<{ time: string; label: string; detail: string; activityType: "manual"; sortMinutes: number; sortKey: string }> = [];
+        const events: Array<{ time: string; label: string; detail: string; activityType: "manual"; sortMinutes: number; sortMs: number; sortKey: string }> = [];
         const createdAt = alert.createdAt ? new Date(alert.createdAt) : null;
         const resolvedAt = alert.resolvedAt ? new Date(alert.resolvedAt) : null;
         const activeToday = todayKey || currentTodayKey();
@@ -1239,9 +1398,10 @@ export default function HomeApp() {
           events.push({
             time: formatActivityTime(alert.createdAt as string),
             label: "Alert Created",
-            detail: `${alert.title}: ${alert.message}`,
+            detail: formatManualAlertTimelineDetail(alert),
             activityType: "manual",
             sortMinutes: createdAt.getHours() * 60 + createdAt.getMinutes(),
+            sortMs: createdAt.getTime(),
             sortKey: `${alert.id}-created`,
           });
         }
@@ -1253,9 +1413,10 @@ export default function HomeApp() {
           events.push({
             time: formatActivityTime(alert.resolvedAt as string),
             label: "Alert Resolved",
-            detail: `${alert.title}: ${alert.message}`,
+            detail: formatManualAlertTimelineDetail(alert),
             activityType: "manual",
             sortMinutes: resolvedAt.getHours() * 60 + resolvedAt.getMinutes(),
+            sortMs: resolvedAt.getTime(),
             sortKey: `${alert.id}-resolved`,
           });
         }
@@ -1264,15 +1425,16 @@ export default function HomeApp() {
       });
 
     return [...mealTimeline, ...missedMealTimeline, ...activityTimeline, ...manualAlertTimeline].sort(
-      (a, b) => a.sortMinutes - b.sortMinutes || a.sortKey.localeCompare(b.sortKey)
+      (a, b) => a.sortMs - b.sortMs || a.sortMinutes - b.sortMinutes || a.sortKey.localeCompare(b.sortKey)
     );
-  }, [dailyMeals, todayActivityLogs, todayMealState, careTemplates, manualAlerts, mealLogs, todayKey]);
+  }, [dailyMeals, todayActivityLogs, todayMealState, careTemplates, manualAlerts, mealLogs, templates, todayKey]);
 
   const alerts = useMemo(() => {
     void alertMinuteKey;
     return resolveAlerts(templates, todayMealState, todayActivityLogs, manualAlerts, reminderRules, careTemplates);
   }, [templates, todayMealState, todayActivityLogs, manualAlerts, reminderRules, careTemplates, alertMinuteKey]);
   const alertCards = alerts.filter((alert) => alert.kind !== "reminder");
+  const todayAlertCards = alertCards.filter((alert) => alert.kind !== "review");
   const reminderCards = alerts.filter((alert) => alert.kind === "reminder" && !alert.id.startsWith("meal-"));
 
   const poopRecords = useMemo(() => {
@@ -1331,8 +1493,7 @@ export default function HomeApp() {
 
       if (supabaseReady) {
         try {
-          await saveMealLogToSupabase(mealLog);
-          await deleteMealLogInSupabase(missedMealLogId(activeTodayKey, mealId));
+          await saveCompletedMealToSupabase(mealLog, nextMealState, missedMealLogId(activeTodayKey, mealId));
         } catch {
           // local fallback already captured
         }
@@ -1371,31 +1532,30 @@ export default function HomeApp() {
     const template = templates.find((entry) => entry.id === mealId);
     if (!template) return;
 
-    const skippedCareItemIds = careItemsForMeal(careTemplates, mealId).map((item) => `${item.kind}-${item.id}`);
+    const meal = dailyMeals.find((dailyMeal) => dailyMeal.id === mealId);
+    const skippedCareItemIds = meal ? mealCareItemsWithDoseBadges(careTemplates, meal, dailyMeals, activeTodayKey).map((item) => `${item.kind}-${item.id}`) : [];
     const mealLog = buildSkippedMealLog(template, activeTodayKey, skippedCareItemIds);
 
-    setDailyMealState((current) =>
-      current.map((meal) =>
-        meal.mealId === mealId
-          ? {
-              ...meal,
-              actualTime: template.plannedTime,
-              status: "done",
-              fedNotes: "Skipped",
-              skippedCareItemIds,
-              dayKey: activeTodayKey,
-            }
-          : meal
-      )
+    const nextMealState = dailyMealState.map((meal) =>
+      meal.mealId === mealId
+        ? {
+            ...meal,
+            actualTime: template.plannedTime,
+            status: "done" as const,
+            fedNotes: "Skipped",
+            skippedCareItemIds,
+            dayKey: activeTodayKey,
+          }
+        : meal
     );
 
+    setDailyMealState(nextMealState);
     setMealLogs((current) => [mealLog, ...current.filter((entry) => entry.id !== mealLog.id && entry.id !== missedMealLogId(activeTodayKey, mealId))]);
     setMealActionState("saving");
 
     if (supabaseReady) {
       try {
-        await saveMealLogToSupabase(mealLog);
-        await deleteMealLogInSupabase(missedMealLogId(activeTodayKey, mealId));
+        await saveCompletedMealToSupabase(mealLog, nextMealState, missedMealLogId(activeTodayKey, mealId));
       } catch {
         // local fallback already captured
       }
@@ -1481,7 +1641,7 @@ export default function HomeApp() {
   };
 
   const markCustomCareGiven = async (occurrence: CustomCareOccurrence) => {
-    const activity = customCareActivityLog(occurrence, "given");
+    const activity = customCareActivityLog(occurrence, "given", "", new Date());
 
     updateCustomCareStatus(occurrence, "given");
     await removeMissedCustomCareActivity(occurrence);
@@ -1504,7 +1664,7 @@ export default function HomeApp() {
 
   const markCustomCareSkipped = async (occurrence: CustomCareOccurrence) => {
     const skipNote = customCareSkipNotes[occurrence.key]?.trim() ?? "";
-    const activity = customCareActivityLog(occurrence, "skipped", skipNote);
+    const activity = customCareActivityLog(occurrence, "skipped", skipNote, new Date());
 
     updateCustomCareStatus(occurrence, "skipped", skipNote);
     await removeMissedCustomCareActivity(occurrence);
@@ -1646,9 +1806,9 @@ export default function HomeApp() {
           </p>
         </header>
 
-        {alertCards.length ? (
+        {todayAlertCards.length ? (
           <section className="mb-3 space-y-2">
-            {alertCards.slice(0, 3).map((alert) => {
+            {todayAlertCards.slice(0, 3).map((alert) => {
               const expanded = expandedAlertIds.has(alert.id);
               return (
                 <div
@@ -1680,7 +1840,12 @@ export default function HomeApp() {
                     <TriangleAlert className="size-4 shrink-0 self-center text-[#8f1739]" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold leading-4 text-[#8f1739]">{alert.title}</p>
-                      <p className={`${expanded ? "whitespace-pre-wrap" : "line-clamp-1"} text-xs leading-4 text-[#b71f48]/65`}>{alert.detail}</p>
+                      <p
+                        className="pet-note-text text-xs leading-4 text-[#b71f48]/65"
+                        style={expanded ? undefined : { WebkitBoxOrient: "vertical", WebkitLineClamp: 1, display: "-webkit-box", overflow: "hidden" }}
+                      >
+                        {alert.detail}
+                      </p>
                     </div>
                   </div>
                   {alert.kind === "manual" ? (
@@ -1787,108 +1952,158 @@ export default function HomeApp() {
           </section>
         ) : null}
 
-        {groupedUpcomingScheduleCards.length ? (
+        {upcomingScheduleCards.length ? (
           <section className="mb-4 space-y-2">
-            <section className={`rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] ${groupedUpcomingScheduleCards.length === 1 ? "p-5" : "p-3"} text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]`}>
-              <div className={groupedUpcomingScheduleCards.length > 1 ? "grid grid-cols-2 gap-2" : ""}>
-                {groupedUpcomingScheduleCards.map((card, index) => {
-                  const spanFullRow = groupedUpcomingScheduleCards.length > 1 && groupedUpcomingScheduleCards.length % 2 === 1 && index === groupedUpcomingScheduleCards.length - 1;
-                  const cardMealCareItems = card.type === "meal" ? careItemsForMeal(careTemplates, card.meal.id) : [];
+            <section className="rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-2 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+              <div className="grid grid-cols-2 gap-2">
+                {upcomingScheduleCards.map((card) => {
+                  if (card.type === "meal") {
+                    const plannedTimeLabel = scheduleTimeLabel(card.sortAt, card.meal.plannedTime, todayKey || currentTodayKey());
+                    const mealDayKey = dayKeyFromDate(card.sortAt);
+                    const cardMealCareItems = mealCareItemsWithDoseBadges(careTemplates, card.meal, templates, mealDayKey);
+                    const mealCareKey = `${mealDayKey}-${card.meal.id}`;
+                    const mealNoteKey = `meal-note-${mealCareKey}`;
+                    const mealNoteText = card.meal.notes?.trim().slice(0, 100) ?? "";
+                    const isMealCareExpanded = expandedMealCareKey === mealCareKey;
+                    const isMealNoteExpanded = expandedUpcomingNoteKey === mealNoteKey;
 
-                  return card.type === "meal" ? (
-                    <div key={card.sortKey} className={`${spanFullRow ? "col-span-2" : ""} ${priorityScheduleTime === card.sortAt.getTime() && groupedUpcomingScheduleCards.length > 1 ? "hewie-priority-border" : ""} ${groupedUpcomingScheduleCards.length === 1 ? "p-0" : "rounded-2xl bg-white/28 p-3"}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className={groupedUpcomingScheduleCards.length === 1 ? "text-sm text-[var(--hewie-active-text,#334155)]/70" : "text-xs font-bold uppercase tracking-wide text-[var(--hewie-active-text,#334155)]/55"}>Next Meal</p>
-                          <h2 className={groupedUpcomingScheduleCards.length === 1 ? "mt-1 text-2xl font-semibold leading-8" : "mt-1 text-xl font-semibold leading-6"}>
-                            {groupedUpcomingScheduleCards.length === 1 ? `${card.meal.name} at ${card.meal.plannedTime}` : card.meal.name}
-                          </h2>
-                          {groupedUpcomingScheduleCards.length > 1 ? <p className="mt-0.5 text-sm font-semibold text-[var(--hewie-active-text,#334155)]/70">{card.meal.plannedTime}</p> : null}
-                        </div>
-                        {card.meal.status === "late" ? (
-                          <div className="rounded-full bg-white/80 px-2 py-1 text-[11px] font-medium text-[var(--hewie-active-text,#334155)] ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
-                            Late
+                    const mealPriorityClassName = priorityScheduleTime === card.sortAt.getTime() && upcomingScheduleCards.length > 1
+                      ? "hewie-priority-border"
+                      : "";
+
+                    return (
+                      <div key={card.sortKey} className={`${mealPriorityClassName} relative flex aspect-square min-w-0 overflow-hidden flex-col justify-between rounded-2xl bg-white/32 p-2.5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/55`}>
+                        <div className="min-h-0 min-w-0">
+                          <p className="text-[10px] font-bold uppercase leading-3 tracking-wide text-current/55">Next Meal</p>
+                          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
+                            <p className="truncate text-sm font-semibold leading-4 text-current/95">{card.meal.name}</p>
+                            {card.meal.status === "late" ? <span className="rounded-full bg-white/75 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-current/75 ring-1 ring-current/15">Late</span> : null}
                           </div>
-                        ) : null}
-                      </div>
-                      <div className={`${groupedUpcomingScheduleCards.length === 1 ? "mt-3 space-y-2 text-sm leading-6" : "mt-3 space-y-1 text-sm leading-5"} text-[var(--hewie-active-text,#334155)]/80`}>
-                        <p>{groupedUpcomingScheduleCards.length === 1 ? <span className="font-medium text-[var(--hewie-active-text,#334155)]">Food: </span> : null}{card.meal.food}</p>
-                        {card.meal.notes ? <p className="text-[var(--hewie-active-text,#334155)]/58">{groupedUpcomingScheduleCards.length === 1 ? <span className="font-medium text-[var(--hewie-active-text,#334155)]">Notes: </span> : null}{card.meal.notes}</p> : null}
-                      </div>
-                      {cardMealCareItems.length ? (
-                        <div className="mt-3 space-y-1.5 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-3">
-                          {cardMealCareItems.map((item) => <CareItemLine key={`${item.kind}-${item.id}`} item={item} tone="accent" />)}
+                          <p className="text-[13px] font-semibold leading-4 text-current/70">{plannedTimeLabel}</p>
+                          <p className="mt-0.5 line-clamp-1 text-[12px] leading-4 text-current/72">{card.meal.food}</p>
+                          {mealNoteText ? (
+                            <button
+                              type="button"
+                              aria-label={isMealNoteExpanded ? "Hide notes" : "Show notes"}
+                              aria-expanded={isMealNoteExpanded}
+                              className="mt-1 inline-flex h-4 shrink-0 items-center gap-1 rounded-full bg-white/55 px-1.5 text-[10px] font-semibold leading-4 text-[var(--hewie-active-text,#334155)] ring-1 ring-white/70 transition hover:bg-white/75"
+                              onClick={() => setExpandedUpcomingNoteKey((current) => current === mealNoteKey ? null : mealNoteKey)}
+                            >
+                              <StickyNote className="size-2.5" />
+                              Notes
+                            </button>
+                          ) : null}
+                          {mealNoteText && isMealNoteExpanded ? (
+                            <p className="mt-1 max-h-[3.25rem] overflow-x-hidden overflow-y-auto whitespace-normal break-words rounded-xl bg-white/50 px-2 py-1 text-[10.5px] font-medium leading-3 text-[var(--hewie-active-text,#334155)]/78 ring-1 ring-white/65">
+                              {mealNoteText}
+                            </p>
+                          ) : null}
+                          {cardMealCareItems.length ? (
+                            <CompactMealCareSummary
+                              expanded={isMealCareExpanded}
+                              items={cardMealCareItems}
+                              onToggle={() => setExpandedMealCareKey((current) => current === mealCareKey ? null : mealCareKey)}
+                            />
+                          ) : null}
                         </div>
-                      ) : null}
-                      <div className="mt-3 text-sm">
-                        <Button
-                          className={`${groupedUpcomingScheduleCards.length === 1 ? "h-12" : "h-10"} w-full rounded-2xl bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90`}
-                          onClick={() => markMealFed(card.meal.id)}
-                        >
-                          {groupedUpcomingScheduleCards.length === 1 ? "Mark Fed Now" : "Mark Fed"}
+                        <Button className="mt-1.5 h-7 w-full rounded-full bg-[var(--hewie-accent,#64748b)] px-2 text-xs font-semibold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90" onClick={() => markMealFed(card.meal.id)}>
+                          Done
                         </Button>
                       </div>
-                    </div>
-                  ) : spanFullRow || groupedUpcomingScheduleCards.length === 1 ? (
-                    <div key={card.sortKey} className={spanFullRow ? "col-span-2" : ""}>
-                      <CustomCareCard
-                        occurrence={card.occurrence}
-                        isSkipOpen={customCareSkipKey === card.occurrence.key}
-                        skipNote={customCareSkipNotes[card.occurrence.key] ?? ""}
-                        onGiven={markCustomCareGiven}
-                        onSkip={openCustomCareSkipNote}
-                        onSkipNoteChange={(occurrence, note) => updateCustomCareSkipNote(occurrence, note.slice(0, 180))}
-                        onConfirmSkip={markCustomCareSkipped}
-                        onCancelSkip={cancelCustomCareSkip}
-                      />
-                    </div>
-                  ) : (
-                    <div key={card.sortKey} className={`${priorityScheduleTime === card.sortAt.getTime() && groupedUpcomingScheduleCards.length > 1 ? `hewie-priority-border ${card.occurrence.item.kind === "supplement" ? "hewie-priority-border-supplement" : "hewie-priority-border-medication"}` : ""} rounded-2xl p-3 ring-1 ${card.occurrence.item.kind === "supplement" ? "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]" : "bg-sky-50 text-sky-700 ring-sky-200"}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold uppercase tracking-wide text-current/55">{careKindLabel(card.occurrence.item.kind)}</p>
-                          <h3 className="mt-1 line-clamp-2 text-xl font-semibold leading-6 text-current/95">
-                            {card.occurrence.item.name}
-                          </h3>
-                          <p className="mt-0.5 text-sm font-semibold text-current/70">{card.occurrence.timeLabel}</p>
+                    );
+                  }
+
+                  const occurrence = card.occurrence;
+                  const occurrenceTimeLabel = scheduleTimeLabel(occurrence.scheduledAt, occurrence.timeLabel, todayKey || currentTodayKey());
+                  const timingLabel = customCareTimingLabel(occurrence.item);
+                  const isSupplement = occurrence.item.kind === "supplement";
+                  const tileClassName = isSupplement
+                    ? "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]"
+                    : "bg-sky-50 text-sky-700 ring-sky-200";
+                  const priorityClassName = priorityScheduleTime === card.sortAt.getTime() && upcomingScheduleCards.length > 1
+                    ? `hewie-priority-border ${isSupplement ? "hewie-priority-border-supplement" : "hewie-priority-border-medication"}`
+                    : "";
+                  const iconClassName = isSupplement
+                    ? "bg-white/55 text-[#1f3d5c] ring-[#b8c9dd]/70"
+                    : "bg-sky-100 text-sky-600 ring-transparent";
+                  const timingBadgeClassName = isSupplement ? "bg-white/55 text-[#1f3d5c]/60" : "bg-white/55 text-current/58";
+                  const skipButtonClassName = isSupplement
+                    ? "bg-white/45 text-[#1f3d5c]/55 ring-[#b8c9dd]/45 hover:bg-white/70 hover:text-[#1f3d5c]/75"
+                    : "bg-white/55 text-current/58 ring-white/70 hover:bg-white/80 hover:text-current/75";
+                  const doneButtonClassName = isSupplement
+                    ? "bg-white/65 text-[#1f3d5c] ring-[#b8c9dd]/70 hover:bg-white/85"
+                    : "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] ring-white/40 hover:opacity-90";
+                  const noteButtonClassName = isSupplement
+                    ? "bg-[#d8e4f1] text-[#1f3d5c] ring-[#8ca8c3]/70 hover:bg-[#cfdeee]"
+                    : "bg-sky-100 text-sky-700 ring-sky-300/80 hover:bg-sky-200/70";
+                  const notePanelClassName = isSupplement
+                    ? "bg-white/52 text-[#1f3d5c]/78 ring-[#8ca8c3]/45"
+                    : "bg-white/58 text-sky-800/78 ring-sky-300/45";
+                  const noteText = occurrence.item.notes?.trim() ?? "";
+                  const isNoteExpanded = expandedUpcomingNoteKey === occurrence.key;
+
+                  return (
+                    <div key={card.sortKey} className={`${priorityClassName} relative flex aspect-square min-w-0 overflow-hidden flex-col justify-between rounded-2xl p-2.5 shadow-sm ring-1 ${tileClassName}`}>
+                      <div className="min-w-0">
+                        <div className="pr-9">
+                          <p className="text-[10px] font-bold uppercase leading-3 tracking-wide text-current/55">{isSupplement ? "Next Supplement" : "Next Medication"}</p>
                         </div>
-                        <span className={`flex size-9 shrink-0 items-center justify-center rounded-full ring-1 ${card.occurrence.item.kind === "supplement" ? "bg-white/55 text-[#1f3d5c] ring-[#b8c9dd]/70" : "bg-sky-100 text-sky-600 ring-transparent"}`}>
-                          {card.occurrence.item.kind === "supplement" ? <Tablets className="size-5" /> : <MedicationPillIcon className="size-5" />}
+                        <span className={`absolute right-2.5 top-2.5 flex size-8 shrink-0 items-center justify-center rounded-full ring-1 ${iconClassName}`}>
+                          {isSupplement ? <Tablets className="size-4" /> : <MedicationPillIcon className="size-5" />}
                         </span>
+                        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 pr-9">
+                          <p className="truncate text-sm font-semibold leading-4 text-current/95">{occurrence.item.name}</p>
+                          {occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
+                        </div>
+                        <p className="text-[13px] font-semibold leading-4 text-current/70">{occurrenceTimeLabel}</p>
+                        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
+                          <p className="line-clamp-1 text-[12px] leading-4 text-current/68">{customCareGiveText(occurrence.item)}</p>
+                          {timingLabel ? <span className={`inline-flex shrink-0 rounded-full px-1.5 py-0 text-[10px] font-normal leading-4 ${timingBadgeClassName}`}>{timingLabel}</span> : null}
+                          {noteText ? (
+                            <button
+                              type="button"
+                              aria-label={isNoteExpanded ? "Hide notes" : "Show notes"}
+                              aria-expanded={isNoteExpanded}
+                              className={`inline-flex h-4 shrink-0 items-center gap-1 rounded-full px-1.5 text-[10px] font-semibold leading-4 ring-1 transition ${noteButtonClassName}`}
+                              onClick={() => setExpandedUpcomingNoteKey((current) => current === occurrence.key ? null : occurrence.key)}
+                            >
+                              <StickyNote className="size-2.5" />
+                              Notes
+                            </button>
+                          ) : null}
+                        </div>
+                        {occurrence.frequencyText ? <p className="mt-0.5 truncate text-[11px] font-normal leading-4 text-current/45">{occurrence.frequencyText}</p> : null}
+                        {noteText && isNoteExpanded ? (
+                          <p className={`mt-1 max-h-[3.25rem] overflow-x-hidden overflow-y-auto whitespace-normal break-words rounded-xl px-2 py-1 text-[10.5px] font-medium leading-3 ring-1 ${notePanelClassName}`}>
+                            {noteText}
+                          </p>
+                        ) : null}
                       </div>
-                      <p className="mt-3 line-clamp-2 text-sm leading-5 text-current/70">{customCareGiveText(card.occurrence.item)}</p>
-                      {customCareTimingLabel(card.occurrence.item) ? (
-                        <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-normal ${card.occurrence.item.kind === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : "bg-sky-100/80 text-sky-700/60"}`}>
-                          {customCareTimingLabel(card.occurrence.item)}
-                        </span>
-                      ) : null}
-                      {card.occurrence.isLastDose ? <span className="mt-2 inline-flex rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
-                      <p className="mt-1 text-xs font-normal text-current/45">{card.occurrence.frequencyText}</p>
-                      {customCareSkipKey === card.occurrence.key ? (
-                        <div className="mt-3 rounded-2xl bg-white/60 p-2.5 ring-1 ring-current/15">
+                      {customCareSkipKey === occurrence.key ? (
+                        <div className="mt-1.5 space-y-1">
                           <textarea
-                            value={customCareSkipNotes[card.occurrence.key] ?? ""}
-                            onChange={(event) => updateCustomCareSkipNote(card.occurrence, event.target.value.slice(0, 180))}
-                            maxLength={180}
+                            value={customCareSkipNotes[occurrence.key] ?? ""}
+                            onChange={(event) => updateCustomCareSkipNote(occurrence, event.target.value.slice(0, 100))}
+                            maxLength={100}
                             placeholder="Notes / Reasons"
-                            rows={2}
-                            className="w-full rounded-xl border border-current/15 bg-white/80 px-3 py-2 text-sm text-inherit outline-none placeholder:text-current/40 focus:ring-2 focus:ring-current/15"
+                            rows={1}
+                            className="h-8 w-full resize-none rounded-xl border border-current/15 bg-white/70 px-2 py-1 text-xs text-inherit outline-none placeholder:text-current/40 focus:ring-2 focus:ring-current/15"
                           />
-                          <div className="mt-2 grid grid-cols-2 gap-1.5">
-                            <Button variant="outline" className="h-8 rounded-full border-current/20 bg-transparent px-2 text-xs font-semibold text-inherit hover:bg-white/40" onClick={() => cancelCustomCareSkip(card.occurrence)}>
+                          <div className="grid grid-cols-2 gap-1">
+                            <Button variant="outline" className="h-7 rounded-full border-current/20 bg-transparent px-2 text-xs font-semibold text-inherit hover:bg-white/40" onClick={() => cancelCustomCareSkip(occurrence)}>
                               Cancel
                             </Button>
-                            <Button className="h-8 rounded-full bg-white/80 px-2 text-xs font-semibold text-inherit ring-1 ring-current/20 hover:bg-white" onClick={() => markCustomCareSkipped(card.occurrence)}>
+                            <Button className="h-7 rounded-full bg-white/80 px-2 text-xs font-semibold text-inherit ring-1 ring-current/20 hover:bg-white" onClick={() => markCustomCareSkipped(occurrence)}>
                               Confirm
                             </Button>
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-3 grid grid-cols-2 gap-1.5">
-                          <Button variant="outline" className={`h-9 rounded-full border-0 px-2 text-xs font-medium shadow-sm ring-1 ${card.occurrence.item.kind === "supplement" ? "bg-white/45 text-[#1f3d5c]/55 ring-[#b8c9dd]/45 hover:bg-white/70 hover:text-[#1f3d5c]/75" : "bg-white/55 text-sky-700/55 ring-sky-200/55 hover:bg-white/80 hover:text-sky-700/75"}`} onClick={() => openCustomCareSkipNote(card.occurrence)}>
+                        <div className="mt-1.5 grid grid-cols-2 gap-1">
+                          <Button variant="outline" className={`h-7 rounded-full border-0 px-2 text-xs font-medium shadow-sm ring-1 ${skipButtonClassName}`} onClick={() => openCustomCareSkipNote(occurrence)}>
                             Skip
                           </Button>
-                          <Button className={`h-9 rounded-full px-2 text-xs font-semibold shadow-sm ring-1 ${card.occurrence.item.kind === "supplement" ? "bg-white/65 text-[#1f3d5c] ring-[#b8c9dd]/70 hover:bg-white/85" : "bg-sky-100 text-sky-700 ring-sky-200/80 hover:bg-sky-100/80"}`} onClick={() => markCustomCareGiven(card.occurrence)}>
+                          <Button className={`h-7 rounded-full px-2 text-xs font-semibold shadow-sm ring-1 ${doneButtonClassName}`} onClick={() => markCustomCareGiven(occurrence)}>
                             Done
                           </Button>
                         </div>
@@ -1896,7 +2111,48 @@ export default function HomeApp() {
                     </div>
                   );
                 })}
+                {hiddenUpcomingScheduleCards.length ? (
+                  <button
+                    type="button"
+                    aria-expanded={upcomingOverflowExpanded}
+                    className="flex aspect-square min-w-0 flex-col items-center justify-center rounded-2xl bg-white/28 p-2.5 text-center text-current shadow-sm ring-1 ring-white/55 transition hover:bg-white/40"
+                    onClick={() => setUpcomingOverflowExpanded((current) => !current)}
+                  >
+                    <span className="text-2xl font-bold leading-7 text-current/86">+{hiddenUpcomingScheduleCards.length}</span>
+                    <span className="mt-0.5 text-[11px] font-semibold leading-4 text-current/60">more coming up</span>
+                    <span className="mt-2 rounded-full bg-white/45 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-current/52 ring-1 ring-white/50">
+                      {upcomingOverflowExpanded ? "Hide" : "View"}
+                    </span>
+                  </button>
+                ) : null}
               </div>
+              {hiddenUpcomingScheduleCards.length ? (
+                <div className="mt-2">
+                  {upcomingOverflowExpanded ? (
+                    <div className="mt-2 space-y-1 rounded-2xl bg-white/28 p-2 ring-1 ring-white/45">
+                      {hiddenUpcomingScheduleCards.map((card) => {
+                        const timeLabel = scheduleTimeLabel(
+                          card.sortAt,
+                          card.type === "meal" ? card.meal.plannedTime : card.occurrence.timeLabel,
+                          todayKey || currentTodayKey()
+                        );
+
+                        return (
+                          <div key={card.sortKey} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/35 px-2 py-1 text-xs text-current/72">
+                            <span className="shrink-0 font-semibold text-current/58">{timeLabel}</span>
+                            <span className="shrink-0 rounded-full bg-white/45 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-3 text-current/50">
+                              {upcomingScheduleCardKindLabel(card)}
+                            </span>
+                            <span className="min-w-0 truncate font-semibold text-current/82">
+                              {upcomingScheduleCardTitle(card)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </section>
 
           </section>
@@ -1922,11 +2178,17 @@ export default function HomeApp() {
               onCancel={resetActivityEditor}
               onDelete={editingActivityId ? deleteActivity : undefined}
               saving={activityState === "saving"}
+              savedCareItems={careTemplates.filter((item) => item.asNeeded && (item.kind === detailActivityType || (detailActivityType === "sick" && item.kind === "medication") || (detailActivityType === "wellness" && item.kind === "supplement")))}
             />
           ) : null}
         </QuickLogCard>
 
-        <ActivityFeed activityLogs={todayActivityLogs} timelineItems={dynamicTimeline} title="Today&apos;s Timeline" />
+        <ActivityFeed
+          activityLogs={todayActivityLogs}
+          timelineItems={dynamicTimeline}
+          title="Today&apos;s Timeline"
+          careTemplates={careTemplates}
+        />
 
         <section className="mb-4 rounded-3xl bg-[#fff5d8] p-5 text-[#765313] shadow-sm ring-1 ring-[#ead28a]/80">
           <div className="mb-4 flex items-start justify-between gap-3">

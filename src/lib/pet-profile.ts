@@ -7,6 +7,7 @@ export type PetProfile = {
   species: string;
   breed: string;
   birthday: string;
+  manualAge: string;
   microchipNumber: string;
   sex: "" | "female" | "male";
   spayNeuterStatus: "" | "spayed" | "neutered" | "intact";
@@ -32,6 +33,7 @@ export const defaultPetProfile: PetProfile = {
   species: "Dog",
   breed: "",
   birthday: "",
+  manualAge: "",
   microchipNumber: "",
   sex: "",
   spayNeuterStatus: "",
@@ -138,6 +140,7 @@ export function normalizePetProfile(value: unknown): PetProfile {
     species: typeof profile.species === "string" ? profile.species : defaultPetProfile.species,
     breed: typeof profile.breed === "string" ? profile.breed : defaultPetProfile.breed,
     birthday: typeof profile.birthday === "string" ? profile.birthday : defaultPetProfile.birthday,
+    manualAge: typeof profile.manualAge === "string" ? profile.manualAge : defaultPetProfile.manualAge,
     microchipNumber: typeof profile.microchipNumber === "string" ? profile.microchipNumber : defaultPetProfile.microchipNumber,
     sex: profile.sex === "female" || profile.sex === "male" ? profile.sex : defaultPetProfile.sex,
     spayNeuterStatus:
@@ -156,6 +159,31 @@ export function normalizePetProfile(value: unknown): PetProfile {
     weightUnit: profile.weightUnit === "kg" ? "kg" : "lb",
     themeId,
   };
+}
+
+export function formatPetAgeFromBirthday(birthday: string) {
+  if (!birthday) return "";
+  const birthDate = new Date(`${birthday}T00:00:00`);
+  if (Number.isNaN(birthDate.getTime())) return "";
+
+  const today = new Date();
+  let years = today.getFullYear() - birthDate.getFullYear();
+  let months = today.getMonth() - birthDate.getMonth();
+  if (today.getDate() < birthDate.getDate()) months -= 1;
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  if (years < 0) return "";
+
+  if (years > 0 && months > 0) return `${years} yr ${months} mo`;
+  if (years > 0) return `${years} yr`;
+  if (months > 0) return `${months} mo`;
+  return "Under 1 mo";
+}
+
+export function displayPetAge(profile: Pick<PetProfile, "birthday" | "manualAge">) {
+  return profile.birthday ? formatPetAgeFromBirthday(profile.birthday) : profile.manualAge.trim();
 }
 
 export function loadPetProfile() {

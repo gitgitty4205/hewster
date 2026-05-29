@@ -15,6 +15,7 @@ import { ActivityDetailForm } from "@/components/activity-detail-form";
 import { ActivityFeed } from "@/components/activity-feed";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { ExpandableNoteText } from "@/components/expandable-note-text";
 
 import { MealTimeForm } from "@/components/meal-time-form";
 
@@ -26,8 +27,6 @@ import { MedicationPillIcon } from "@/components/medication-pill-icon";
 import {
 
   ACTIVITY_LOGS_STORAGE_KEY,
-
-  DAILY_MEAL_STORAGE_KEY,
 
   currentTodayKey,
 
@@ -46,10 +45,13 @@ import {
   MEAL_LOGS_STORAGE_KEY,
 
   loadAppState,
+  persistDailyMealStateLocally,
+
+  saveCompletedMealToSupabase,
 
   saveActivityLogToSupabase,
 
-  saveMealLogToSupabase,
+  saveDailyMealsToSupabase,
 
   updateActivityLogInSupabase,
 
@@ -57,9 +59,9 @@ import {
 
 import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail } from "@/lib/activity";
 
-import { initialTemplates, type MealStatus, type MealTemplate } from "@/lib/meal-templates";
+import { initialTemplates, isMealTemplateActiveForDay, type MealStatus, type MealTemplate } from "@/lib/meal-templates";
 
-import { careItemsForMeal, loadCareTemplates, loadCareTemplatesFromSupabase, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
+import { careItemsForMeal, loadCareTemplates, loadCareTemplatesFromSupabase, mealPlanDoseNumberForMeal, mealPlanTotalDoseCount, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
@@ -282,7 +284,23 @@ function medicationTypeLabel(item: CareItemTemplate) {
   return "Oral";
 }
 
-function CareItemLine({ item, skipped = false }: { item: CareItemTemplate; skipped?: boolean }) {
+function customCareDisplayDate(activity: ActivityLog) {
+  return new Date(activity.happenedAt);
+}
+
+function mealPlanCareTimingLabel(item: CareItemTemplate) {
+  if (item.kind !== "medication" || item.medicationType !== "oral") return null;
+  return "With Food";
+}
+
+function mealPlanCareDetailText(item: CareItemTemplate) {
+  const dose = item.dose ? ` — ${item.dose}` : "";
+  const route = medicationTypeLabel(item);
+  const routeText = route ? ` (${route})` : "";
+  return `${dose}${routeText}`;
+}
+
+function CareItemLine({ item, skipped = false }: { item: CareItemTemplate & { isLastDose?: boolean }; skipped?: boolean }) {
   const iconClassName = item.kind === "supplement"
     ? "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]"
     : "bg-sky-50 text-sky-600 ring-sky-200";
@@ -290,22 +308,40 @@ function CareItemLine({ item, skipped = false }: { item: CareItemTemplate; skipp
     ? "rounded-2xl bg-rose-50/70 px-2 py-1.5 text-rose-700 ring-1 ring-rose-200/70"
     : "text-[#6b3f22]/70";
   const textClassName = skipped ? "text-rose-800" : "text-[#4f2f1b]";
+  const timingLabel = mealPlanCareTimingLabel(item);
+  const timingBadgeClassName = item.kind === "supplement"
+    ? "bg-white/55 text-[#1f3d5c]/60"
+    : "bg-sky-100/80 text-sky-700/60";
 
   return (
     <div className={`flex items-start gap-2 text-sm leading-5 ${lineClassName}`}>
       <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ${iconClassName}`}>
         {item.kind === "supplement" ? <Tablets className="size-3" /> : <MedicationPillIcon className="size-3.5" />}
       </span>
-      <p className="min-w-0 flex-1">
-        <span className={`font-semibold ${textClassName}`}>{careKindLabel(item.kind)}:</span>{" "}
-        <span className={`font-medium ${textClassName}`}>{item.name}</span>
-        {medicationTypeLabel(item) ? ` • ${medicationTypeLabel(item)}` : ""}
-        {item.dose ? ` — ${item.dose}` : ""}
-        {item.notes ? ` (${item.notes})` : ""}
-        {skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
-      </p>
+      <div className="min-w-0 flex-1">
+        <p>
+          <span className={`font-semibold ${textClassName}`}>{careKindLabel(item.kind)}:</span>{" "}
+          <span className={`font-semibold ${textClassName}`}>{item.name}</span>
+          <span className={`font-normal ${textClassName}`}>{mealPlanCareDetailText(item)}</span>
+          {timingLabel ? <span className={`ml-2 inline-flex rounded-full px-2 py-0.5 text-xs font-normal ${timingBadgeClassName}`}>{timingLabel}</span> : null}
+          {item.isLastDose ? <span className="ml-2 inline-flex rounded-full bg-amber-100/80 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
+          {skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
+        </p>
+        {!skipped && item.notes ? <ExpandableNoteText className="mt-0.5 text-[#6b3f22]/62">Notes: {item.notes}</ExpandableNoteText> : null}
+      </div>
     </div>
   );
+}
+
+function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
+  return careItemsForMeal(careTemplates, meal.id, meals, dayKey).map((item) => {
+    const doseNumber = mealPlanDoseNumberForMeal(item, meal, meals, dayKey);
+    const totalDoses = mealPlanTotalDoseCount(item);
+    return {
+      ...item,
+      isLastDose: Boolean(doseNumber && totalDoses && doseNumber === totalDoses),
+    };
+  });
 }
 
 function TodayMealPlanCard({
@@ -361,7 +397,7 @@ function TodayMealPlanCard({
           const skipped = mealLog ? isSkippedMealLog(mealLog) : fedNotes === "Skipped";
           const missed = mealLog ? isMissedMealLog(mealLog) : false;
           const checked = status === "done" && !skipped && !missed;
-          const mealCareItems = careItemsForMeal(careTemplates, meal.id);
+          const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, templates, today);
           const skippedCareItemIds = mealLog?.skippedCareItemIds ?? mealState?.skippedCareItemIds ?? [];
 
           return (
@@ -400,8 +436,8 @@ function TodayMealPlanCard({
                 <p>Actual: {actualTime ?? "Not Logged"}</p>
               </div>
               <div className="mt-3">
-                {meal.notes ? <p className="text-sm text-[#6b3f22]/58">{meal.notes}</p> : null}
-                {fedNotes && !skipped && !missed ? <p className="mt-1 text-sm font-semibold leading-6 text-[#6b3f22]/72">Notes: {fedNotes}</p> : null}
+                {meal.notes ? <ExpandableNoteText className="text-sm text-[#6b3f22]/58">{meal.notes}</ExpandableNoteText> : null}
+                {fedNotes && !skipped && !missed ? <ExpandableNoteText className="mt-1 text-sm font-semibold leading-6 text-[#6b3f22]/72">Notes: {fedNotes}</ExpandableNoteText> : null}
               </div>
 
               {mealCareItems.length ? (
@@ -499,6 +535,10 @@ export default function LogPage() {
   const [hydrated, setHydrated] = useState(false);
 
   const supabaseReady = isSupabaseConfigured();
+  const activeTemplates = useMemo(
+    () => templates.filter((template) => isMealTemplateActiveForDay(template, currentTodayKey())),
+    [templates]
+  );
 
 
 
@@ -638,7 +678,7 @@ export default function LogPage() {
   );
 
   const persistMealState = (nextMealState: DailyMealState[], nextMealLogs: MealLog[]) => {
-    window.localStorage.setItem(DAILY_MEAL_STORAGE_KEY, JSON.stringify(nextMealState));
+    persistDailyMealStateLocally(nextMealState);
     window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextMealLogs));
   };
 
@@ -691,8 +731,7 @@ export default function LogPage() {
       nextMealLogs = [mealLog, ...mealLogs.filter((entry) => entry.id !== mealLogId && entry.id !== missedMealLogId(today, editingMealTimeId))];
       if (supabaseReady) {
         try {
-          await saveMealLogToSupabase(mealLog);
-          await deleteMealLogInSupabase(missedMealLogId(today, editingMealTimeId));
+          await saveCompletedMealToSupabase(mealLog, nextMealState, missedMealLogId(today, editingMealTimeId));
         } catch {
           // local fallback already captured
         }
@@ -733,6 +772,7 @@ export default function LogPage() {
     if (supabaseReady) {
       try {
         await deleteMealLogInSupabase(mealLogId);
+        await saveDailyMealsToSupabase(nextMealState);
       } catch {
         // local fallback already captured
       }
@@ -743,11 +783,11 @@ export default function LogPage() {
 
     const activityItems = todayActivityLogs.map((activity) => {
 
-      const happenedAt = new Date(activity.happenedAt);
+      const happenedAt = customCareDisplayDate(activity);
 
       return {
 
-        time: formatActivityTime(activity.happenedAt),
+        time: formatActivityTime(happenedAt.toISOString()),
 
         label: formatActivityLabel(activity.activityType),
 
@@ -1249,6 +1289,8 @@ export default function LogPage() {
 
           onSelectActivity={openEditorForActivity}
 
+          careTemplates={careTemplates}
+
           renderInlineEditor={(activity) =>
 
             activity.id === editingActivityId || (!editingActivityId && detailActivityType === activity.activityType && activity.happenedAt === todayActivityLogs[0]?.happenedAt)
@@ -1310,7 +1352,7 @@ export default function LogPage() {
 
 
         <TodayMealPlanCard
-          templates={templates}
+          templates={activeTemplates}
           dailyMealState={dailyMealState}
           mealLogs={mealLogs}
           careTemplates={careTemplates}

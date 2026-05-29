@@ -6,18 +6,21 @@ import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, SlidersHorizontal
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
+import { ExpandableNoteText } from "@/components/expandable-note-text";
 
 import { useEffect, useMemo, useState } from "react";
 
 
 
 import { BottomNav } from "@/components/bottom-nav";
+import { useAuth } from "@/components/auth-provider";
 
 import { Button } from "@/components/ui/button";
 
 import {
 
   type ActivityLog,
+  type DailyMealState,
 
   type ManualAlert,
 
@@ -30,10 +33,14 @@ import {
 } from "@/lib/hewster-data";
 
 import { compareActivitiesChronological, formatActivityLabel, formatActivityTime, renderActivityDetail, splitTreatDetailText } from "@/lib/activity";
-import { loadCareTemplatesFromSupabase, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
+import { careItemHistoricallyOccurredWithMeal, loadCareTemplates, loadCareTemplatesFromSupabase, mealPlanDoseNumberForMeal, mealPlanTotalDoseCount, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 
 import type { MealTemplate } from "@/lib/meal-templates";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
+import { getSupabaseBrowserClient, getSupabaseCurrentSession, isSupabaseConfigured } from "@/lib/supabase";
+import { resolveActiveNotebookAccess } from "@/lib/notebook-access";
+import { displayPetAge, loadPetProfile, type PetProfile } from "@/lib/pet-profile";
+import { formatManualAlertTimelineDetail } from "@/lib/alerts";
 
 
 
@@ -57,6 +64,10 @@ type HistoryDay = {
 
     actualTime: string;
 
+    createdAt?: string;
+
+    sortOrder: number;
+
   }>;
 
   activities: ActivityLog[];
@@ -77,13 +88,25 @@ type HistoryDay = {
 
     activityType: ActivityLog["activityType"] | "meal" | "manual";
 
+    mealGroupId?: string;
+
     sortMinutes: number;
+
+    sortCreatedAt?: string;
+
+    sortOrder: number;
 
     sortKey: string;
 
   }>;
 
 };
+
+type HistoryTimelineItem = HistoryDay["timelineItems"][number];
+
+type HistoryTimelineEntry =
+  | { type: "item"; item: HistoryTimelineItem }
+  | { type: "group"; id: string; items: HistoryTimelineItem[] };
 
 
 
@@ -181,33 +204,200 @@ function careKindLabel(kind: CareItemKind) {
   return kind === "supplement" ? "Supplement" : "Medication";
 }
 
+function medicationTypeLabel(item: CareItemTemplate) {
+  if (item.kind !== "medication") return null;
+  if (item.medicationType === "topical") return "Topical";
+  if (item.medicationType === "injection") return "Injection";
+  if (item.medicationType === "other") return "Other";
+  return "Oral";
+}
+
+function careTemplateGiveText(item: CareItemTemplate | null) {
+  if (!item) return null;
+  const route = medicationTypeLabel(item);
+  return `Give ${item.dose || "as directed"}${route ? ` (${route})` : ""}`;
+}
+
+function mealPlanCareTimingLabel(item: CareItemTemplate) {
+  if (item.kind !== "medication" || item.medicationType !== "oral") return null;
+  return "With Food";
+}
+
+function mealPlanCareDetailText(item: CareItemTemplate) {
+  const dose = item.dose ? ` — ${item.dose}` : "";
+  const route = medicationTypeLabel(item);
+  const routeText = route ? ` (${route})` : "";
+  return `${dose}${routeText}`;
+}
+
+function mealPlanTimelineCareDetailText(item: CareItemTemplate & { skipped?: boolean }) {
+  const route = medicationTypeLabel(item);
+  const routeText = route ? ` (${route})` : "";
+  if (!item.dose) return `${item.name}${routeText}`;
+  return `${item.name}${item.skipped ? ` - ${item.dose}` : ` — ${item.dose}`}${routeText}`;
+}
+
 function careItemKey(item: CareItemTemplate) {
   return `${item.kind}-${item.id}`;
 }
 
-function careItemsForMeal(careTemplates: CareItemTemplate[], mealId: number) {
-  return careTemplates.filter((item) => item.active && item.scheduleKind === "meal" && item.mealIds.includes(mealId));
+function careItemsForMeal(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
+  return careTemplates.filter((item) => {
+    if (item.kind === "medication" || item.asNeeded || item.scheduleKind !== "meal" || !item.mealIds.includes(meal.id)) return false;
+    return careItemHistoricallyOccurredWithMeal(item, meal, meals, dayKey);
+  });
 }
 
-function CareItemHistoryLine({ item }: { item: CareItemTemplate & { skipped: boolean } }) {
+function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
+  return careItemsForMeal(careTemplates, meal, meals, dayKey).sort((a, b) => {
+    const kindOrder = (item: CareItemTemplate) => item.kind === "medication" ? 0 : 1;
+    return kindOrder(a) - kindOrder(b) || a.name.localeCompare(b.name) || a.id - b.id;
+  }).map((item) => {
+    const doseNumber = mealPlanDoseNumberForMeal(item, meal, meals, dayKey);
+    const totalDoses = mealPlanTotalDoseCount(item);
+    return {
+      ...item,
+      isLastDose: Boolean(doseNumber && totalDoses && doseNumber === totalDoses),
+    };
+  });
+}
+
+function formatProfileDate(value: string) {
+  if (!value) return "";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
+}
+
+function formatProfileValue(value: string) {
+  return value ? value : "Not listed";
+}
+
+function normalizeReportName(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function displayPetName(profile: PetProfile) {
+  return normalizeReportName(profile.petName || [profile.petFirstName, profile.petLastName].filter(Boolean).join(" ")) || "Pet";
+}
+
+function compareMaybeCreatedAt(a?: string, b?: string) {
+  return a && b ? a.localeCompare(b) : 0;
+}
+
+function customCareDisplayDate(activity: ActivityLog) {
+  return new Date(activity.happenedAt);
+}
+
+function normalizedCareName(value: string | null) {
+  return (value ?? "")
+    .replace(/\s*(?:[•·-]\s*)?(?:Given|Skipped|Missed)\b/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function matchingCareTemplate(activity: ActivityLog, careTemplates: CareItemTemplate[] = []) {
+  if (!["medication", "supplement"].includes(activity.activityType)) return null;
+  const detailName = normalizedCareName(activity.detail);
+
+  return careTemplates.find((item) => {
+    if (item.kind !== activity.activityType) return false;
+    if (activity.id.includes(`${item.kind}-${item.id}-`)) return true;
+    const itemName = item.name.trim().toLowerCase();
+    if (!itemName || !detailName) return false;
+    return detailName === itemName || detailName.startsWith(`${itemName} `) || detailName.startsWith(`${itemName} •`) || detailName.startsWith(`${itemName} -`) || detailName.includes(itemName);
+  }) ?? null;
+}
+
+function compareHistoryMeals(a: HistoryDay["meals"][number], b: HistoryDay["meals"][number]) {
+  return (
+    parseClockMinutes(a.actualTime) - parseClockMinutes(b.actualTime) ||
+    compareMaybeCreatedAt(a.createdAt, b.createdAt) ||
+    a.sortOrder - b.sortOrder ||
+    a.id - b.id
+  );
+}
+
+function compareHistoryTimelineItems(a: HistoryDay["timelineItems"][number], b: HistoryDay["timelineItems"][number]) {
+  return (
+    a.sortMinutes - b.sortMinutes ||
+    compareMaybeCreatedAt(a.sortCreatedAt, b.sortCreatedAt) ||
+    a.sortOrder - b.sortOrder ||
+    a.sortKey.localeCompare(b.sortKey)
+  );
+}
+
+function groupHistoryMealTimelineItems(items: HistoryTimelineItem[]): HistoryTimelineEntry[] {
+  const entries: HistoryTimelineEntry[] = [];
+  let activeGroup: { id: string; items: HistoryTimelineItem[] } | null = null;
+  const flushGroup = () => {
+    if (!activeGroup) return;
+    entries.push(activeGroup.items.length > 1 ? { type: "group", id: activeGroup.id, items: activeGroup.items } : { type: "item", item: activeGroup.items[0] });
+    activeGroup = null;
+  };
+
+  for (const item of items) {
+    if (!item.mealGroupId) {
+      flushGroup();
+      entries.push({ type: "item", item });
+      continue;
+    }
+
+    if (activeGroup && activeGroup.id !== item.mealGroupId) {
+      flushGroup();
+    }
+
+    activeGroup ??= { id: item.mealGroupId, items: [] };
+    activeGroup.items.push(item);
+  }
+
+  flushGroup();
+
+  return entries;
+}
+
+function filterHistoryDays(historyDays: HistoryDay[], filter: HistoryFilter, startDate: string, endDate: string) {
+  return historyDays
+    .filter((day) => (!startDate || day.day >= startDate) && (!endDate || day.day <= endDate))
+    .map((day) => {
+      if (filter === "all") return day;
+
+      const meals = filter === "allFood" ? day.meals : [];
+      const activities = day.activities.filter((activity) => activityMatchesHistoryFilter(activity, filter));
+      const weights: WeightLog[] = [];
+      const timelineItems = day.timelineItems.filter((item) => timelineItemMatchesHistoryFilter(item, filter));
+
+      return { ...day, meals, activities, weights, timelineItems };
+    })
+    .filter((day) => day.meals.length || day.activities.length || day.weights.length || day.timelineItems.length);
+}
+
+function CareItemHistoryLine({ item }: { item: CareItemTemplate & { skipped: boolean; isLastDose?: boolean } }) {
   const iconClassName = item.skipped
     ? "bg-rose-50 text-rose-600 ring-rose-200"
     : item.kind === "supplement"
       ? "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]"
       : "bg-sky-100 text-sky-600 ring-sky-200";
+  const textClassName = item.skipped ? "text-rose-800" : "text-[#4f2f1b]";
+  const timingLabel = mealPlanCareTimingLabel(item);
 
   return (
     <div className={`flex items-start gap-2 text-sm leading-5 ${item.skipped ? "rounded-2xl bg-rose-50/70 px-2 py-1.5 text-rose-700 ring-1 ring-rose-200/70" : "text-[#6b3f22]/70"}`}>
       <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ${iconClassName}`}>
         {item.kind === "supplement" ? <Tablets className="size-3" /> : <MedicationPillIcon className="size-3.5" />}
       </span>
-      <p className="min-w-0 flex-1">
-        <span className={`font-semibold ${item.skipped ? "text-rose-800" : "text-[#4f2f1b]"}`}>{careKindLabel(item.kind)}:</span>{" "}
-        <span className={`font-medium ${item.skipped ? "text-rose-800" : "text-[#4f2f1b]"}`}>{item.name}</span>
-        {item.dose ? ` — ${item.dose}` : ""}
-        {item.notes ? ` (${item.notes})` : ""}
-        {item.skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
-      </p>
+      <div className="min-w-0 flex-1">
+        <p>
+          <span className={`font-semibold ${textClassName}`}>{careKindLabel(item.kind)}:</span>{" "}
+          <span className={`font-semibold ${textClassName}`}>{item.name}</span>
+          <span className={`font-normal ${textClassName}`}>{mealPlanCareDetailText(item)}</span>
+          {timingLabel ? <span className="ml-2 inline-flex rounded-full bg-sky-100/80 px-2 py-0.5 text-xs font-normal text-sky-700/60">{timingLabel}</span> : null}
+          {item.isLastDose ? <span className="ml-2 inline-flex rounded-full bg-amber-100/80 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
+          {item.skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
+        </p>
+        {!item.skipped && item.notes ? <ExpandableNoteText className="mt-0.5 text-[#6b3f22]/62">Notes: {item.notes}</ExpandableNoteText> : null}
+      </div>
     </div>
   );
 }
@@ -418,7 +608,7 @@ function PottyDetailBadges({ detail, notes }: { detail: string | null; notes: st
 
       </div>
 
-      {notes ? <p className="text-sm text-zinc-600">{notes}</p> : null}
+      {notes ? <ExpandableNoteText className="text-sm text-zinc-600">{notes}</ExpandableNoteText> : null}
 
     </div>
 
@@ -458,7 +648,7 @@ function splitActivityNotes(notes: string | null) {
 
 
 
-function CareActivityDetail({ activity }: { activity: ActivityLog }) {
+function CareActivityDetail({ activity, careTemplates = [] }: { activity: ActivityLog; careTemplates?: CareItemTemplate[] }) {
 
   const { lines, attachmentLine } = splitActivityNotes(activity.notes);
 
@@ -474,13 +664,15 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
 
   const isLastDose = careLines.includes("Last Dose");
 
-  const timingLine = careLines.find((line) => line === "With Food" || line === "Empty Stomach") ?? null;
+  const matchedTemplate = matchingCareTemplate(activity, careTemplates);
+
+  const timingLine = careLines.find((line) => line === "With Food" || line === "Empty Stomach") ?? (matchedTemplate?.kind === "medication" ? mealPlanCareTimingLabel(matchedTemplate) : null);
 
   const giveLine = careLines.find((line) => line.startsWith("Give ")) ?? null;
 
-  const doseText = giveLine?.replace(/^Give\s+/i, "").replace(/\s*\([^)]*\)\s*$/, "").trim() ?? "";
+  const doseText = giveLine?.replace(/^Give\s+/i, "").replace(/\s*\([^)]*\)\s*$/, "").trim() ?? matchedTemplate?.dose ?? "";
 
-  const name = detail
+  const name = (matchedTemplate?.name || detail)
 
     .replace(/\s*(?:[•·-]\s*)?(?:Skipped|Missed)\b/i, "")
 
@@ -488,7 +680,7 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
 
     .trim();
 
-  const giveDetail = giveLine ?? null;
+  const giveDetail = giveLine ?? careTemplateGiveText(matchedTemplate);
 
   const specialNotes = careLines.filter((line) => line.startsWith("Notes: ")).map((line) => line.replace("Notes: ", ""));
 
@@ -532,9 +724,9 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
 
       ) : null}
 
-      {specialNotes.length ? <p className="text-zinc-500"><span className="font-medium text-zinc-600">Notes:</span> {specialNotes.join(" · ")}</p> : null}
+      {specialNotes.length ? <ExpandableNoteText className="text-zinc-500"><span className="font-medium text-zinc-600">Notes:</span> {specialNotes.join(" · ")}</ExpandableNoteText> : null}
 
-      {attachmentLine ? <p className="text-zinc-500">{attachmentLine}</p> : null}
+      {attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
 
     </div>
 
@@ -544,7 +736,7 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
 
 
 
-function ActivityDetailAndNotes({ activity }: { activity: ActivityLog }) {
+function ActivityDetailAndNotes({ activity, careTemplates = [] }: { activity: ActivityLog; careTemplates?: CareItemTemplate[] }) {
 
   const { notesText, attachmentLine } = splitActivityNotes(activity.notes);
 
@@ -552,7 +744,7 @@ function ActivityDetailAndNotes({ activity }: { activity: ActivityLog }) {
 
   if (["medication", "supplement"].includes(activity.activityType)) {
 
-    return <CareActivityDetail activity={activity} />;
+    return <CareActivityDetail activity={activity} careTemplates={careTemplates} />;
 
   }
 
@@ -564,9 +756,9 @@ function ActivityDetailAndNotes({ activity }: { activity: ActivityLog }) {
 
       {activity.detail ? <p>{activity.detail}</p> : null}
 
-      {notesText ? <p>Notes: {notesText}</p> : null}
+      {notesText ? <ExpandableNoteText>Notes: {notesText}</ExpandableNoteText> : null}
 
-      {attachmentLine ? <p className="text-zinc-500">{attachmentLine}</p> : null}
+      {attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
 
     </div>
 
@@ -845,6 +1037,38 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
 
 type HistoryFilter = "all" | "allFood" | "potty" | "activity" | "medical" | "wellness" | "care" | "other" | "uploads" | "medicalRecords" | "vetProcedures";
 
+const eventFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
+
+  { id: "all", label: "All" },
+
+  { id: "potty", label: "Potty" },
+
+  { id: "allFood", label: "Food (All)" },
+
+  { id: "activity", label: "Activity" },
+
+  { id: "medical", label: "Health" },
+
+  { id: "wellness", label: "Wellness" },
+
+  { id: "care", label: "Care" },
+
+  { id: "other", label: "Other" },
+
+];
+
+const recordFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
+
+  { id: "uploads", label: "Photos / Documents" },
+
+  { id: "vetProcedures", label: "Vet Visits / Procedures" },
+
+  { id: "medicalRecords", label: "Medical Records" },
+
+];
+
+const historyFilterLabels = new Map([...eventFilterOptions, ...recordFilterOptions].map((option) => [option.id, option.label]));
+
 const medicalWellnessDetails = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Medication", "Flea & Tick", "Deworming", "Procedure", "Other Medical"];
 
 function isMedicalWellnessDetail(detail: string | null) {
@@ -960,7 +1184,12 @@ function timelineItemMatchesHistoryFilter(item: HistoryDay["timelineItems"][numb
 
 export default function HistoryPage() {
 
+  const { loading: authLoading } = useAuth();
+
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
+  const [historicalMealTemplates, setHistoricalMealTemplates] = useState<MealTemplate[]>([]);
+
+  const [dailyMealHistory, setDailyMealHistory] = useState<DailyMealState[]>([]);
 
   const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
 
@@ -998,21 +1227,30 @@ export default function HistoryPage() {
 
   const [hydrated, setHydrated] = useState(false);
 
+  const [sendCopyStatus, setSendCopyStatus] = useState("");
+  const [isSendingCopy, setIsSendingCopy] = useState(false);
+  const [profile, setProfile] = useState<PetProfile>(() => loadPetProfile());
+  const supabaseReady = isSupabaseConfigured();
+
 
 
   useEffect(() => {
+    const refreshProfile = () => setProfile(loadPetProfile());
+    refreshProfile();
+    window.addEventListener("pet-profile-updated", refreshProfile);
+    window.addEventListener("storage", refreshProfile);
+    return () => {
+      window.removeEventListener("pet-profile-updated", refreshProfile);
+      window.removeEventListener("storage", refreshProfile);
+    };
+  }, []);
+
+
+
+  useEffect(() => {
+    if (supabaseReady && authLoading) return;
 
     let cancelled = false;
-
-    const fallbackTimer = window.setTimeout(() => {
-
-      if (!cancelled) {
-
-        setHydrated(true);
-
-      }
-
-    }, 2200);
 
 
 
@@ -1025,12 +1263,15 @@ export default function HistoryPage() {
         if (cancelled) return;
 
         setTemplates(state.templates);
+        setHistoricalMealTemplates(state.historicalMealTemplates?.length ? state.historicalMealTemplates : state.templates);
+
+        setDailyMealHistory(state.dailyMealHistory?.length ? state.dailyMealHistory : state.dailyMealState);
 
         setMealLogs(state.mealLogs ?? []);
 
         const [supplements, medications] = await Promise.all([
-          loadCareTemplatesFromSupabase("supplement"),
-          loadCareTemplatesFromSupabase("medication"),
+          loadCareTemplatesFromSupabase("supplement").catch(() => loadCareTemplates("supplement")),
+          loadCareTemplatesFromSupabase("medication").catch(() => loadCareTemplates("medication")),
         ]);
 
         setCareTemplates([...supplements, ...medications]);
@@ -1044,8 +1285,6 @@ export default function HistoryPage() {
       } finally {
 
         if (!cancelled) {
-
-          window.clearTimeout(fallbackTimer);
 
           setHydrated(true);
 
@@ -1065,17 +1304,17 @@ export default function HistoryPage() {
 
       cancelled = true;
 
-      window.clearTimeout(fallbackTimer);
-
     };
 
-  }, []);
+  }, [authLoading, supabaseReady]);
 
 
 
   const historyDays = useMemo<HistoryDay[]>(() => {
 
     const templatesById = new Map(templates.map((template) => [template.id, template]));
+    const historicalTemplatesById = new Map(historicalMealTemplates.map((template) => [template.id, template]));
+    const mealSortOrderById = new Map(templates.map((template, index) => [template.id, index]));
 
     const days = new Map<string, HistoryDay>();
 
@@ -1113,7 +1352,33 @@ export default function HistoryPage() {
 
 
 
-    mealLogs.forEach((meal) => {
+    const mealLogsWithDailyStateFallbacks = [...mealLogs];
+    const mealLogKeys = new Set(mealLogs.map((meal) => `${meal.dayKey}-${meal.mealId}`));
+
+    dailyMealHistory.forEach((mealState) => {
+      if (mealState.status !== "done") return;
+      const day = mealState.dayKey ?? historyDayKeyFromDate(new Date());
+      if (mealLogKeys.has(`${day}-${mealState.mealId}`)) return;
+
+      const template = templatesById.get(mealState.mealId) ?? historicalTemplatesById.get(mealState.mealId);
+      if (!template) return;
+
+      mealLogsWithDailyStateFallbacks.push({
+        id: `${day}-${mealState.mealId}-daily-state`,
+        profileSlug: "hewie",
+        dayKey: day,
+        mealId: mealState.mealId,
+        mealName: template.name,
+        food: template.food,
+        defaultNotes: template.notes,
+        fedNotes: mealState.fedNotes,
+        skippedCareItemIds: mealState.skippedCareItemIds ?? [],
+        actualTime: mealState.actualTime || template.plannedTime,
+      });
+      mealLogKeys.add(`${day}-${mealState.mealId}`);
+    });
+
+    mealLogsWithDailyStateFallbacks.forEach((meal) => {
 
       const day = meal.dayKey ?? inferMealHistoryDate(meal.actualTime);
 
@@ -1135,7 +1400,8 @@ export default function HistoryPage() {
 
     latestMealsByDayAndMealId.forEach((meal) => {
 
-      const template = templatesById.get(meal.mealId);
+      const template = templatesById.get(meal.mealId) ?? historicalTemplatesById.get(meal.mealId);
+      const mealSortOrder = mealSortOrderById.get(meal.mealId) ?? parseClockMinutes(template?.plannedTime ?? meal.actualTime);
 
       const day = meal.dayKey ?? inferMealHistoryDate(meal.actualTime);
 
@@ -1143,7 +1409,18 @@ export default function HistoryPage() {
 
       const skippedCareItemIds = meal.skippedCareItemIds ?? [];
 
-      const mealCareItems = careItemsForMeal(careTemplates, meal.mealId).map((item) => ({
+      const mealTemplate = template ?? {
+        id: meal.mealId,
+        name: meal.mealName || "Meal",
+        plannedTime: meal.actualTime,
+        food: meal.food,
+        notes: meal.defaultNotes,
+      };
+      const mealTemplatesForDoseCount = templates.some((savedMeal) => savedMeal.id === mealTemplate.id) ? templates : [...templates, mealTemplate];
+      const missedMeal = isMissedMealRecord(meal);
+      const skippedMeal = isSkippedMealRecord(meal);
+      const displayTime = missedMeal || skippedMeal ? mealTemplate.plannedTime || meal.actualTime : meal.actualTime || mealTemplate.plannedTime;
+      const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, mealTemplate, mealTemplatesForDoseCount, day).map((item) => ({
 
         ...item,
 
@@ -1167,20 +1444,21 @@ export default function HistoryPage() {
 
         careItems: mealCareItems,
 
-        actualTime: meal.actualTime,
+        actualTime: displayTime,
+
+        createdAt: meal.createdAt,
+
+        sortOrder: mealSortOrder,
 
       });
 
 
 
-      const missedMeal = isMissedMealRecord(meal);
-      const skippedMeal = isSkippedMealRecord(meal);
-
       targetDay.timelineItems.push({
 
         key: meal.id,
 
-        time: meal.actualTime,
+        time: displayTime,
 
         label: missedMeal ? "Missed Meal" : skippedMeal ? "Skipped Meal" : "Fed",
 
@@ -1196,7 +1474,13 @@ export default function HistoryPage() {
 
         activityType: "meal",
 
-        sortMinutes: parseClockMinutes(meal.actualTime),
+        mealGroupId: `meal-${meal.id}`,
+
+        sortMinutes: parseClockMinutes(displayTime),
+
+        sortCreatedAt: meal.createdAt,
+
+        sortOrder: mealSortOrder * 10,
 
         sortKey: `meal-${meal.id}`,
 
@@ -1204,21 +1488,27 @@ export default function HistoryPage() {
 
 
 
-      mealCareItems.forEach((item) => {
+      mealCareItems.forEach((item, index) => {
 
         targetDay.timelineItems.push({
 
           key: `${meal.id}-${item.kind}-${item.id}${item.skipped ? "-skipped" : ""}`,
 
-          time: meal.actualTime,
+          time: displayTime,
 
           label: item.skipped ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
 
-          detail: `${item.name}${item.dose ? (item.skipped ? ` - ${item.dose}` : ` • ${item.dose}`) : ""}${!item.skipped && item.notes ? ` • ${item.notes}` : ""}`,
+          detail: `${mealPlanTimelineCareDetailText(item)}${!item.skipped && item.notes ? ` • Notes: ${item.notes}` : ""}`,
 
           activityType: item.kind,
 
-          sortMinutes: parseClockMinutes(meal.actualTime),
+          mealGroupId: `meal-${meal.id}`,
+
+          sortMinutes: parseClockMinutes(displayTime),
+
+          sortCreatedAt: meal.createdAt,
+
+          sortOrder: mealSortOrder * 10 + index + 1,
 
           sortKey: `meal-${meal.id}-${item.kind}-${item.id}${item.skipped ? "-skipped" : ""}`,
 
@@ -1244,11 +1534,13 @@ export default function HistoryPage() {
 
       targetDay.activities.push(activity);
 
+      const activityDisplayDate = customCareDisplayDate(activity);
+
       targetDay.timelineItems.push({
 
         key: activity.id,
 
-        time: formatActivityTime(activity.happenedAt),
+        time: formatActivityTime(activityDisplayDate.toISOString()),
 
         label: formatActivityLabel(activity.activityType),
 
@@ -1258,7 +1550,11 @@ export default function HistoryPage() {
 
         activityType: activity.activityType,
 
-        sortMinutes: new Date(activity.happenedAt).getHours() * 60 + new Date(activity.happenedAt).getMinutes(),
+        sortMinutes: activityDisplayDate.getHours() * 60 + activityDisplayDate.getMinutes(),
+
+        sortCreatedAt: activity.createdAt,
+
+        sortOrder: 0,
 
         sortKey: activity.createdAt ?? activity.id,
 
@@ -1288,11 +1584,15 @@ export default function HistoryPage() {
 
           label: "Alert Created",
 
-          detail: `${alert.title}: ${alert.message}`,
+          detail: formatManualAlertTimelineDetail(alert),
 
           activityType: "manual",
 
           sortMinutes: createdAt.getHours() * 60 + createdAt.getMinutes(),
+
+          sortCreatedAt: alert.createdAt,
+
+          sortOrder: 0,
 
           sortKey: `${alert.id}-created`,
 
@@ -1314,11 +1614,15 @@ export default function HistoryPage() {
 
           label: "Alert Resolved",
 
-          detail: `${alert.title}: ${alert.message}`,
+          detail: formatManualAlertTimelineDetail(alert),
 
           activityType: "manual",
 
           sortMinutes: resolvedAt.getHours() * 60 + resolvedAt.getMinutes(),
+
+          sortCreatedAt: alert.resolvedAt ?? undefined,
+
+          sortOrder: 0,
 
           sortKey: `${alert.id}-resolved`,
 
@@ -1346,41 +1650,21 @@ export default function HistoryPage() {
 
         ...day,
 
-        meals: [...day.meals].sort((a, b) => parseClockMinutes(a.actualTime) - parseClockMinutes(b.actualTime)),
+        meals: [...day.meals].sort(compareHistoryMeals),
 
         activities: [...day.activities].sort(compareActivitiesChronological),
 
         weights: [...day.weights].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)),
 
-        timelineItems: [...day.timelineItems].sort((a, b) => a.sortMinutes - b.sortMinutes || a.sortKey.localeCompare(b.sortKey)),
+        timelineItems: [...day.timelineItems].sort(compareHistoryTimelineItems),
 
       }));
 
-  }, [activityLogs, careTemplates, manualAlerts, mealLogs, templates, weightLogs]);
+  }, [activityLogs, careTemplates, dailyMealHistory, historicalMealTemplates, manualAlerts, mealLogs, templates, weightLogs]);
 
   const filteredHistoryDays = useMemo(() => {
 
-    return historyDays
-
-      .filter((day) => (!startDate || day.day >= startDate) && (!endDate || day.day <= endDate))
-
-      .map((day) => {
-
-        if (activeFilter === "all") return day;
-
-        const meals = activeFilter === "allFood" ? day.meals : [];
-
-        const activities = day.activities.filter((activity) => activityMatchesHistoryFilter(activity, activeFilter));
-
-        const weights: WeightLog[] = [];
-
-        const timelineItems = day.timelineItems.filter((item) => timelineItemMatchesHistoryFilter(item, activeFilter));
-
-        return { ...day, meals, activities, weights, timelineItems };
-
-      })
-
-      .filter((day) => day.meals.length || day.activities.length || day.weights.length || day.timelineItems.length);
+    return filterHistoryDays(historyDays, activeFilter, startDate, endDate);
 
   }, [activeFilter, endDate, historyDays, startDate]);
 
@@ -1418,35 +1702,55 @@ export default function HistoryPage() {
 
   const selectedDayActivities = selectedHistoryDay?.activities ?? [];
 
-  const eventFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
+  const selectedTimelineEntries = useMemo(() => {
+    const items = selectedHistoryDay?.timelineItems ?? [];
+    return activeFilter === "all" ? groupHistoryMealTimelineItems(items) : items.map((item) => ({ type: "item" as const, item }));
+  }, [activeFilter, selectedHistoryDay]);
 
-    { id: "all", label: "All" },
+  const renderHistoryTimelineItem = (item: HistoryTimelineItem, key: string, groupedRow = false, showTime = true) => {
+    const treatParts = item.activityType === "treat" ? splitTreatDetailText(item.detail) : null;
+    const careActivity = item.activity && ["medication", "supplement"].includes(item.activityType) ? item.activity : null;
+    const status = timelineStatusFor(item);
 
-    { id: "potty", label: "Potty" },
+    return (
+      <div key={key} className={groupedRow ? "px-2.5 py-3" : "rounded-2xl bg-zinc-50/75 p-2.5 ring-1 ring-zinc-200/70"}>
+        <div className="grid grid-cols-[1.35rem_1fr] gap-2.5">
+          <div className="flex w-5 justify-center">
+            <EventFeedMarker activityType={item.activityType} />
+          </div>
 
-    { id: "allFood", label: "Food (All)" },
+          <div className="min-w-0">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
+              </div>
+              {showTime ? (
+                <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+                  {item.time}
+                </span>
+              ) : null}
+            </div>
 
-    { id: "activity", label: "Activity" },
-
-    { id: "medical", label: "Health" },
-
-    { id: "wellness", label: "Wellness" },
-
-    { id: "care", label: "Care" },
-
-    { id: "other", label: "Other" },
-
-  ];
-
-  const recordFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
-
-    { id: "uploads", label: "Photos / Documents" },
-
-    { id: "vetProcedures", label: "Vet Visits / Procedures" },
-
-    { id: "medicalRecords", label: "Medical Records" },
-
-  ];
+            {careActivity ? (
+              <CareActivityDetail activity={careActivity} careTemplates={careTemplates} />
+            ) : treatParts ? (
+              <>
+                {treatParts.summary ? <p className="mt-1 text-sm text-zinc-500">{treatParts.summary}</p> : null}
+                {treatParts.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {treatParts.notes}</ExpandableNoteText> : null}
+              </>
+            ) : item.detail.includes(" • Notes: ") ? (
+              <>
+                <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} />
+                <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
+              </>
+            ) : item.detail ? (
+              <TimelineDetailText detail={item.detail} status={status} />
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const openFilters = () => {
 
@@ -1470,6 +1774,8 @@ export default function HistoryPage() {
 
     setShowFilters(false);
 
+    setSendCopyStatus("");
+
   };
 
   const clearFilters = () => {
@@ -1487,6 +1793,7 @@ export default function HistoryPage() {
     setDraftEndDate("");
 
     setShowFilters(false);
+    setSendCopyStatus("");
 
     const latestDay = historyDays[0]?.day;
 
@@ -1498,6 +1805,164 @@ export default function HistoryPage() {
 
       setCalendarMonth(new Date(year, month - 1, 1));
 
+    }
+
+  };
+
+  const historyCopyDateRange = (start: string, end: string) => (
+    start || end
+      ? `${start || "Beginning"} to ${end || "Today"}`
+      : "All dates"
+  );
+
+  const historyCopyGeneratedDate = () => (
+    new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date())
+  );
+
+  const buildHistoryCopyText = (copyDays: HistoryDay[], copyFilter: HistoryFilter, dateRange: string, reportProfile: PetProfile, ownerName: string, generatedDate: string) => {
+
+    const lines = [
+      `${displayPetName(reportProfile)} History Report`,
+      "",
+      "Pet Information",
+      `Name: ${displayPetName(reportProfile)}`,
+      `Species: ${formatProfileValue(reportProfile.species)}`,
+      `Breed: ${formatProfileValue(reportProfile.breed)}`,
+      `Birthdate: ${formatProfileValue(formatProfileDate(reportProfile.birthday))}`,
+      `Microchip #: ${formatProfileValue(reportProfile.microchipNumber)}`,
+      `Age: ${formatProfileValue(displayPetAge(reportProfile))}`,
+      `Gender: ${formatProfileValue(reportProfile.sex ? reportProfile.sex[0].toUpperCase() + reportProfile.sex.slice(1) : "")}`,
+      `Spay/Neuter: ${formatProfileValue(reportProfile.spayNeuterStatus ? reportProfile.spayNeuterStatus[0].toUpperCase() + reportProfile.spayNeuterStatus.slice(1) : "")}`,
+      `Owner: ${formatProfileValue(ownerName)}`,
+      "",
+      "Report Summary",
+      `Filter: ${historyFilterLabels.get(copyFilter) ?? "All"}`,
+      `Date Range: ${dateRange}`,
+      `Matching Days: ${copyDays.length}`,
+      `Report Generated: ${generatedDate}`,
+      "",
+      "History",
+      "",
+    ];
+
+    if (!copyDays.length) {
+      lines.push("No records match this filter.");
+      return lines.join("\n");
+    }
+
+    copyDays.forEach((day) => {
+      lines.push(formatDayLabel(day.day));
+
+      day.meals.forEach((meal) => {
+        const statuses = [
+          isMissedMealRecord(meal) ? "Missed" : null,
+          isSkippedMealRecord(meal) ? "Skipped" : null,
+        ].filter(Boolean).join(", ");
+        const details = [
+          meal.food,
+          meal.fedNotes && !isMissedMealRecord(meal) && !isSkippedMealRecord(meal) ? `Notes: ${meal.fedNotes}` : null,
+          statuses ? `Status: ${statuses}` : null,
+        ].filter(Boolean).join(" | ");
+
+        lines.push(`- ${meal.actualTime} Meal: ${meal.name}${details ? ` - ${details}` : ""}`);
+
+        meal.careItems.forEach((item) => {
+          lines.push(`  - ${careKindLabel(item.kind)}: ${item.name}${item.dose ? `, ${item.dose}` : ""}${item.skipped ? " (Skipped)" : ""}`);
+        });
+      });
+
+      day.activities.forEach((activity) => {
+        const detail = renderActivityDetail(activity);
+        const notes = activity.notes ? ` | Notes: ${activity.notes.replace(/\n/g, " ")}` : "";
+        lines.push(`- ${formatActivityTime(activity.happenedAt)} ${displayActivityLabel(activity)}${detail ? ` - ${detail}` : ""}${notes}`);
+      });
+
+      day.weights.forEach((weight) => {
+        lines.push(`- Weight: ${weight.weight}${weight.note ? ` - ${weight.note}` : ""}`);
+      });
+
+      if (!day.meals.length && !day.activities.length && !day.weights.length) {
+        day.timelineItems.forEach((item) => {
+          lines.push(`- ${item.time} ${item.label}${item.detail ? ` - ${item.detail}` : ""}`);
+        });
+      }
+
+      lines.push("");
+    });
+
+    return lines.join("\n").trim();
+
+  };
+
+  const handleSendCopy = async () => {
+
+    const dateRange = historyCopyDateRange(startDate, endDate);
+    const generatedDate = historyCopyGeneratedDate();
+
+    setSendCopyStatus("");
+    setIsSendingCopy(true);
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const session = supabase ? await getSupabaseCurrentSession(supabase) : null;
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        setSendCopyStatus("Sign in again before sending the history report.");
+        return;
+      }
+
+      const metadata = session.user.user_metadata ?? {};
+      const metadataFirstName = typeof metadata.first_name === "string" ? metadata.first_name.trim() : "";
+      const metadataLastName = typeof metadata.last_name === "string" ? metadata.last_name.trim() : "";
+      const metadataFullName = typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
+      const activeNotebookAccess = supabase ? await resolveActiveNotebookAccess(supabase, session.user) : null;
+      const notebookOwnerId = activeNotebookAccess?.notebookOwnerId ?? session.user.id;
+      const signedInOwnerName = normalizeReportName([metadataFirstName, metadataLastName].filter(Boolean).join(" ") || metadataFullName || session.user.email || "");
+      const ownerName = notebookOwnerId === session.user.id ? signedInOwnerName : "";
+      const text = buildHistoryCopyText(filteredHistoryDays, activeFilter, dateRange, profile, ownerName, generatedDate);
+
+      const response = await fetch("/api/history-copy/email", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          filterLabel: historyFilterLabels.get(activeFilter) ?? "All",
+          dateRange,
+          generatedDate,
+          matchingDays: filteredHistoryDays.length,
+          profile: {
+            petName: displayPetName(profile),
+            petFirstName: profile.petFirstName,
+            petLastName: profile.petLastName,
+            species: profile.species,
+            breed: profile.breed,
+            birthday: profile.birthday,
+            microchipNumber: profile.microchipNumber,
+            age: displayPetAge(profile),
+            sex: profile.sex,
+            spayNeuterStatus: profile.spayNeuterStatus,
+            ownerName,
+            notebookOwnerId,
+            themeId: profile.themeId,
+          },
+        }),
+      });
+      const result = await response.json().catch(() => null) as { sent?: boolean; email?: string; error?: string } | null;
+
+      if (!response.ok || !result?.sent) {
+        setSendCopyStatus(result?.error || "Could not email the history report.");
+        return;
+      }
+
+      setSendCopyStatus(`History report sent: ${result.email || "your account email"}.`);
+    } catch {
+      setSendCopyStatus("Could not email the history report.");
+    } finally {
+      setIsSendingCopy(false);
     }
 
   };
@@ -1524,19 +1989,11 @@ export default function HistoryPage() {
 
       const hasMedicalRecord = day?.activities.some((activity) => ["sick", "medication"].includes(activity.activityType) || (activity.activityType === "wellness" && isMedicalWellnessDetail(activity.detail))) ?? false;
 
-      const hasWellnessRecord = day?.activities.some((activity) => activity.activityType === "supplement" || (activity.activityType === "wellness" && !isMedicalWellnessDetail(activity.detail))) ?? false;
-
-      const hasOtherRecord = day?.activities.some((activity) => activity.activityType === "other") ?? false;
-
       const dotClasses = day
 
         ? [
 
           hasMedicalRecord ? "bg-sky-500" : null,
-
-          hasWellnessRecord ? "bg-rose-500" : null,
-
-          hasOtherRecord ? "bg-[#8f8f98]" : null,
 
         ].filter(Boolean) as string[]
 
@@ -1877,15 +2334,7 @@ export default function HistoryPage() {
 
                   </Button>
 
-                  <Button type="button" className="rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60" disabled>
-
-                    Send Copy
-
-                  </Button>
-
                 </div>
-
-                <p className="text-xs text-zinc-500">PDF copy will be available once account email is set up.</p>
 
               </div>
 
@@ -1899,15 +2348,49 @@ export default function HistoryPage() {
 
             <div className="border-b border-[var(--hewie-ring,#cbd5e1)]/70 bg-white/45 px-5 py-3">
 
-              <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+              <div className="space-y-3 rounded-2xl bg-white/70 px-3 py-3 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
 
-                <p className="text-xs font-semibold text-[var(--hewie-active-text,#334155)]/70">Filtered results</p>
+                <div>
 
-                <Button type="button" variant="outline" className="h-8 rounded-full px-3 text-xs font-bold" onClick={clearFilters}>
+                  <p className="text-base font-extrabold text-[var(--hewie-active-text,#334155)]">
+                    {historyFilterLabels.get(activeFilter) ?? "All"}
+                  </p>
 
-                  Clear Filters
+                  <p className="mt-0.5 text-sm font-semibold text-[var(--hewie-active-text,#334155)]/60">
 
-                </Button>
+                    {historyCopyDateRange(startDate, endDate)}
+
+                  </p>
+
+                  <p className="mt-1 text-xs font-medium text-zinc-500">
+
+                    {filteredHistoryDays.length} matching day{filteredHistoryDays.length === 1 ? "" : "s"}
+
+                  </p>
+
+                  {sendCopyStatus ? (
+
+                    <p className="mt-1 text-xs font-medium text-zinc-500">{sendCopyStatus}</p>
+
+                  ) : null}
+
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+
+                  <Button type="button" className="h-8 rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60" onClick={() => void handleSendCopy()} disabled={isSendingCopy}>
+
+                    {isSendingCopy ? "Sending..." : "Send Copy"}
+
+                  </Button>
+
+                  <Button type="button" variant="outline" className="h-8 rounded-full px-3 text-xs font-bold" onClick={clearFilters}>
+
+                    Clear Filters
+
+                  </Button>
+
+                </div>
 
               </div>
 
@@ -1943,7 +2426,7 @@ export default function HistoryPage() {
 
                   onClick={() => setSelectedDay(cell.key)}
 
-                  className={`relative flex h-12 flex-col items-center justify-center rounded-2xl text-sm font-semibold transition ${
+                  className={`relative flex aspect-square w-full flex-col items-center justify-center rounded-[0.85rem] text-sm font-semibold transition ${
 
                     !cell.inMonth
 
@@ -2001,13 +2484,35 @@ export default function HistoryPage() {
 
               <h2 className="text-lg font-semibold">{isFilteredView ? "Filtered Results" : selectedHistoryDay ? formatDayLabel(selectedHistoryDay.day) : "Select A Day"}</h2>
 
-              <p className="text-sm text-zinc-500">
+              {isFilteredView ? (
 
-                {isFilteredView
+                <div className="mt-1 space-y-0.5">
 
-                  ? `${filteredHistoryDays.length} matching day${filteredHistoryDays.length === 1 ? "" : "s"}`
+                  <p className="text-sm font-semibold text-zinc-800">
 
-                  : selectedHistoryDay
+                    {historyFilterLabels.get(activeFilter) ?? "All"}
+
+                  </p>
+
+                  <p className="text-sm text-zinc-500">
+
+                    {historyCopyDateRange(startDate, endDate)}
+
+                  </p>
+
+                  <p className="text-sm text-zinc-500">
+
+                    {filteredHistoryDays.length} matching day{filteredHistoryDays.length === 1 ? "" : "s"}
+
+                  </p>
+
+                </div>
+
+              ) : (
+
+                <p className="text-sm text-zinc-500">
+
+                  {selectedHistoryDay
 
                     ? [
 
@@ -2021,7 +2526,9 @@ export default function HistoryPage() {
 
                     : "Days with records have dots on the calendar."}
 
-              </p>
+                </p>
+
+              )}
 
             </div>
 
@@ -2040,6 +2547,10 @@ export default function HistoryPage() {
                   <div key={`filtered-${day.day}`} className="space-y-2">
 
                     <h3 className="text-sm font-semibold text-zinc-700">{formatDayLabel(day.day)}</h3>
+
+                    {day.timelineItems
+                      .filter((item) => !item.activity && ["medication", "supplement"].includes(item.activityType))
+                      .map((item) => renderHistoryTimelineItem(item, `filtered-timeline-${day.day}-${item.key}`))}
 
                     {day.meals.map((meal) => {
 
@@ -2067,7 +2578,7 @@ export default function HistoryPage() {
 
                         <p className="mt-2 text-sm text-zinc-600">{meal.food}</p>
 
-                        {meal.fedNotes && !missedMeal && !skippedMeal ? <p className="mt-1 text-sm font-bold text-zinc-700">Notes: {meal.fedNotes}</p> : null}
+                        {meal.fedNotes && !missedMeal && !skippedMeal ? <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {meal.fedNotes}</ExpandableNoteText> : null}
 
                         {meal.careItems.length ? (
 
@@ -2125,13 +2636,13 @@ export default function HistoryPage() {
 
                               {splitTreatDetailText(renderActivityDetail(activity)).summary ? <p>{splitTreatDetailText(renderActivityDetail(activity)).summary}</p> : null}
 
-                              {splitTreatDetailText(renderActivityDetail(activity)).notes ? <p>Notes: {splitTreatDetailText(renderActivityDetail(activity)).notes}</p> : null}
+                              {splitTreatDetailText(renderActivityDetail(activity)).notes ? <ExpandableNoteText>Notes: {splitTreatDetailText(renderActivityDetail(activity)).notes}</ExpandableNoteText> : null}
 
                             </div>
 
                           ) : (
 
-                            <ActivityDetailAndNotes activity={activity} />
+                            <ActivityDetailAndNotes activity={activity} careTemplates={careTemplates} />
 
                           )}
 
@@ -2163,74 +2674,23 @@ export default function HistoryPage() {
 
                   <h3 className="mb-2 text-sm font-semibold text-zinc-700">Full Timeline</h3>
 
-                  <div className="space-y-3 rounded-2xl bg-zinc-50/80 p-4 ring-1 ring-zinc-200">
+                  <div className="space-y-2">
 
-                    {selectedHistoryDay.timelineItems.map((item) => {
-
-                      const treatParts = item.activityType === "treat" ? splitTreatDetailText(item.detail) : null;
-
-                      const careActivity = item.activity && ["medication", "supplement"].includes(item.activityType) ? item.activity : null;
-
-                      const status = timelineStatusFor(item);
+                    {selectedTimelineEntries.map((entry) => {
+                      if (entry.type === "item") {
+                        const item = entry.item;
+                        return renderHistoryTimelineItem(item, `${item.activityType ?? "item"}-${item.time}-${item.label}-${item.detail}`);
+                      }
 
                       return (
-
-                        <div key={item.key} className="grid grid-cols-[1.25rem_1fr] gap-3">
-
-                          <div className="flex w-5 justify-center">
-                            <EventFeedMarker activityType={item.activityType} />
-                          </div>
-
-                          <div className="min-w-0">
-
-                            <div className="flex flex-wrap items-center gap-2">
-
-                              <p className="text-sm font-medium text-zinc-900">
-
-                                {item.label} <span className="font-normal text-zinc-500">At {item.time}</span>
-
-                              </p>
-
-
-
+                        <div key={entry.id} className="overflow-hidden rounded-2xl bg-zinc-50/75 ring-1 ring-zinc-200/70">
+                          {entry.items.map((item, itemIndex) => (
+                            <div key={item.key} className={itemIndex > 0 ? "border-t border-zinc-200/70" : ""}>
+                              {renderHistoryTimelineItem(item, `${entry.id}-${itemIndex}`, true, itemIndex === 0)}
                             </div>
-
-                            {careActivity ? (
-
-                              <CareActivityDetail activity={careActivity} />
-
-                            ) : treatParts ? (
-
-                              <>
-
-                                {treatParts.summary ? <p className="mt-1 text-sm text-zinc-500">{treatParts.summary}</p> : null}
-
-                                {treatParts.notes ? <p className="mt-1 text-sm text-zinc-500">Notes: {treatParts.notes}</p> : null}
-
-                              </>
-
-                            ) : item.detail.includes(" • Notes: ") ? (
-
-                              <>
-
-                                <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} />
-
-                                <p className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</p>
-
-                              </>
-
-                            ) : item.detail ? (
-
-                              <TimelineDetailText detail={item.detail} status={status} />
-
-                            ) : null}
-
-                          </div>
-
+                          ))}
                         </div>
-
                       );
-
                     })}
 
                   </div>
@@ -2275,9 +2735,9 @@ export default function HistoryPage() {
 
                         <p className="mt-2 text-sm text-zinc-600">{meal.food}</p>
 
-                        {meal.notes ? <p className="mt-1 text-sm text-zinc-500">Default Notes: {meal.notes}</p> : null}
+                        {meal.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Default Notes: {meal.notes}</ExpandableNoteText> : null}
 
-                        {meal.fedNotes && !missedMeal && !skippedMeal ? <p className="mt-1 text-sm font-bold text-zinc-700">Notes: {meal.fedNotes}</p> : null}
+                        {meal.fedNotes && !missedMeal && !skippedMeal ? <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {meal.fedNotes}</ExpandableNoteText> : null}
 
                         {meal.careItems.length ? (
 
@@ -2351,13 +2811,13 @@ export default function HistoryPage() {
 
                               {splitTreatDetailText(renderActivityDetail(activity)).summary ? <p>{splitTreatDetailText(renderActivityDetail(activity)).summary}</p> : null}
 
-                              {splitTreatDetailText(renderActivityDetail(activity)).notes ? <p>Notes: {splitTreatDetailText(renderActivityDetail(activity)).notes}</p> : null}
+                              {splitTreatDetailText(renderActivityDetail(activity)).notes ? <ExpandableNoteText>Notes: {splitTreatDetailText(renderActivityDetail(activity)).notes}</ExpandableNoteText> : null}
 
                             </div>
 
                           ) : (
 
-                            <ActivityDetailAndNotes activity={activity} />
+                            <ActivityDetailAndNotes activity={activity} careTemplates={careTemplates} />
 
                           )}
 
@@ -2395,7 +2855,7 @@ export default function HistoryPage() {
 
                         </div>
 
-                        {weight.note ? <p className="mt-1 text-sm text-zinc-500">{weight.note}</p> : null}
+                        {weight.note ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">{weight.note}</ExpandableNoteText> : null}
 
                       </article>
 
@@ -2433,7 +2893,7 @@ export default function HistoryPage() {
 
                           </div>
 
-                          <p className={`mt-1 whitespace-pre-wrap text-sm ${resolved ? "text-[#b71f48]/55" : "text-[#b71f48]/72"}`}>{item.detail}</p>
+                          <ExpandableNoteText className={`mt-1 text-sm ${resolved ? "text-[#b71f48]/55" : "text-[#b71f48]/72"}`}>{item.detail}</ExpandableNoteText>
 
                         </article>
 

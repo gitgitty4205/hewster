@@ -6,7 +6,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
+import { ExpandableNoteText } from "@/components/expandable-note-text";
+import { useAuth } from "@/components/auth-provider";
 import {
+  ALERT_BADGE_COUNT_STORAGE_KEY,
   formatReminderTime,
   loadReminderAlertRules,
   reminderEventLabel,
@@ -14,15 +17,19 @@ import {
   saveReminderAlertRules,
   type ReminderAlertEvent,
   type ReminderAlertRule,
+  type ResolvedAlert,
 } from "@/lib/alerts";
-import { loadCareTemplatesFromSupabase, type CareItemTemplate } from "@/lib/care-settings";
+import { loadCareTemplates, loadCareTemplatesFromSupabase, mergeCareTemplateSources, type CareItemTemplate } from "@/lib/care-settings";
 import {
   type ActivityLog,
   type DailyMealState,
   deleteManualAlertInSupabase,
   type ManualAlert,
+  type MealLog,
   loadAppState,
   persistLocalState,
+  saveActivityLogToSupabase,
+  saveCompletedMealToSupabase,
   saveManualAlertToSupabase,
   type WeightLog,
   updateManualAlertInSupabase,
@@ -57,14 +64,135 @@ function timeIsPastToday(dayKey: string, time: string) {
   return scheduled.getTime() <= Date.now();
 }
 
+function alertRepeats(scope: ManualAlert["scope"]) {
+  return ["ongoing", "every-other-day", "certain-days"].includes(scope ?? "today");
+}
+
 function repeatHelperText(scope: ManualAlert["scope"]) {
-  if (scope === "ongoing") return "Starts today, then repeats every day.";
-  if (scope === "every-other-day") return "Starts today, then repeats every other day.";
-  if (scope === "certain-days") return "Starts today, then repeats on the selected days.";
+  if (scope === "ongoing") return "Repeats every day. If today's time already passed, it starts tomorrow.";
+  if (scope === "every-other-day") return "Repeats every other day. If today's time already passed, it starts tomorrow.";
+  if (scope === "certain-days") return "Repeats on the selected days. If today's time already passed, it starts on the next matching day.";
   return null;
 }
 
+function timeInputValueFromDisplay(value: string) {
+  const normalized = value.trim().replace(/\s+/g, " ").toUpperCase();
+  const twelveHourMatch = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/);
+  if (twelveHourMatch) {
+    let hours = Number(twelveHourMatch[1]);
+    const minutes = Number(twelveHourMatch[2] ?? "0");
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return "";
+    if (twelveHourMatch[3] === "PM" && hours < 12) hours += 12;
+    if (twelveHourMatch[3] === "AM" && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+
+  const twentyFourHourMatch = normalized.match(/^(\d{1,2}):(\d{2})$/);
+  if (!twentyFourHourMatch) return "";
+  const hours = Number(twentyFourHourMatch[1]);
+  const minutes = Number(twentyFourHourMatch[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || hours > 23 || minutes > 59) return "";
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function timeInputValueFromIso(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function displayTimeFromInput(value: string) {
+  const [hoursValue, minutesValue] = value.split(":").map(Number);
+  if (!Number.isFinite(hoursValue) || !Number.isFinite(minutesValue)) return value;
+  const suffix = hoursValue >= 12 ? "PM" : "AM";
+  const hours = hoursValue % 12 === 0 ? 12 : hoursValue % 12;
+  return `${hours}:${String(minutesValue).padStart(2, "0")} ${suffix}`;
+}
+
+function todayIsoFromTimeInput(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  const date = new Date();
+  if (Number.isFinite(hours) && Number.isFinite(minutes)) {
+    date.setHours(hours, minutes, 0, 0);
+  }
+  return date.toISOString();
+}
+
+function missedMealLogId(dayKey: string, mealId: number) {
+  return `${dayKey}-${mealId}-missed`;
+}
+
+function buildMealLog(meal: MealTemplate, actualTime: string, fedNotes: string | null, dayKey: string): MealLog {
+  return {
+    id: `${dayKey}-${meal.id}`,
+    profileSlug: HEWSTER_PROFILE_SLUG,
+    dayKey,
+    mealId: meal.id,
+    mealName: meal.name,
+    food: meal.food,
+    defaultNotes: meal.notes,
+    fedNotes,
+    skippedCareItemIds: [],
+    actualTime,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+type ReviewAction = NonNullable<ResolvedAlert["reviewAction"]>;
+
+function medicationTypeLabel(item: CareItemTemplate) {
+  if (item.kind !== "medication") return null;
+  if (item.medicationType === "topical") return "Topical";
+  if (item.medicationType === "injection") return "Injection";
+  if (item.medicationType === "other") return "Other";
+  return "Oral";
+}
+
+function customCareTimingLabel(item: CareItemTemplate) {
+  if (item.kind === "medication" && item.medicationType !== "oral") return null;
+  return item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food";
+}
+
+function customCareGiveText(item: CareItemTemplate) {
+  const medicationType = medicationTypeLabel(item);
+  return `Give ${item.dose || "as directed"}${medicationType ? ` (${medicationType})` : ""}`;
+}
+
+function syncStoredAlertBadgeCount(count: number) {
+  window.localStorage.setItem(ALERT_BADGE_COUNT_STORAGE_KEY, String(Math.max(0, count)));
+  window.dispatchEvent(new Event("alert-badge-count-updated"));
+}
+
+function buildCustomCareActivityLog(
+  action: Extract<ReviewAction, { type: "custom-care" }>,
+  status: "done" | "skipped",
+  happenedAt: string
+): ActivityLog {
+  const statusNote = status === "skipped" ? "Skipped" : "";
+
+  return {
+    id: status === "done" ? action.occurrenceKey : `${action.occurrenceKey}-skipped`,
+    profileSlug: HEWSTER_PROFILE_SLUG,
+    activityType: action.item.kind,
+    happenedAt,
+    detail: `${action.item.name}${action.item.dose && status === "done" ? ` • ${action.item.dose}` : ""}${status === "skipped" ? " Skipped" : ""}`,
+    notes: [
+      customCareGiveText(action.item),
+      customCareTimingLabel(action.item),
+      action.item.kind === "medication" ? medicationTypeLabel(action.item) : null,
+      statusNote,
+      action.item.notes ? `Notes: ${action.item.notes}` : "",
+    ].filter(Boolean).join("\n") || null,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export default function AlertsPage() {
+  const { loading: authLoading } = useAuth();
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -92,21 +220,20 @@ export default function AlertsPage() {
   const [editingReminderRuleId, setEditingReminderRuleId] = useState<string | null>(null);
   const [editingReminderEventValue, setEditingReminderEventValue] = useState<ReminderAlertEvent>("potty");
   const [editingReminderTimeValue, setEditingReminderTimeValue] = useState("15:00");
+  const [reviewMealTimeValues, setReviewMealTimeValues] = useState<Record<string, string>>({});
+  const [activeReviewLogId, setActiveReviewLogId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [alertMinuteKey, setAlertMinuteKey] = useState("");
   const supabaseReady = isSupabaseConfigured();
 
   useEffect(() => {
+    if (supabaseReady && authLoading) return;
+
     let cancelled = false;
-    const fallbackTimer = window.setTimeout(() => {
-      if (!cancelled) {
-        setHydrated(true);
-        setAlertMinuteKey(currentAlertMinuteKey());
-      }
-    }, 2200);
 
     async function hydrate() {
       try {
+        setReminderRules(loadReminderAlertRules());
         const state = await loadAppState();
         if (cancelled) return;
         setTemplates(state.templates);
@@ -114,16 +241,20 @@ export default function AlertsPage() {
         setActivityLogs(state.activityLogs);
         setWeightLogs(state.weightLogs ?? []);
         setManualAlerts(state.manualAlerts ?? []);
-        const [supplements, medications] = await Promise.all([
-          loadCareTemplatesFromSupabase("supplement"),
-          loadCareTemplatesFromSupabase("medication"),
+        const localSupplements = loadCareTemplates("supplement");
+        const localMedications = loadCareTemplates("medication");
+        const [remoteSupplements, remoteMedications] = await Promise.all([
+          loadCareTemplatesFromSupabase("supplement").catch(() => loadCareTemplates("supplement")),
+          loadCareTemplatesFromSupabase("medication").catch(() => loadCareTemplates("medication")),
         ]);
-        setCareTemplates([...supplements, ...medications]);
+        setCareTemplates([
+          ...mergeCareTemplateSources("supplement", localSupplements, remoteSupplements),
+          ...mergeCareTemplateSources("medication", localMedications, remoteMedications),
+        ]);
         setReminderRules(loadReminderAlertRules());
         setAlertMinuteKey(currentAlertMinuteKey());
       } finally {
         if (!cancelled) {
-          window.clearTimeout(fallbackTimer);
           setHydrated(true);
         }
       }
@@ -133,9 +264,8 @@ export default function AlertsPage() {
 
     return () => {
       cancelled = true;
-      window.clearTimeout(fallbackTimer);
     };
-  }, []);
+  }, [authLoading, supabaseReady]);
 
   useEffect(() => {
     const refreshAlertClock = () => setAlertMinuteKey(currentAlertMinuteKey());
@@ -161,25 +291,39 @@ export default function AlertsPage() {
     return resolveAlerts(templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates);
   }, [templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates, alertMinuteKey]);
   const alertCards = alerts.filter((alert) => alert.kind !== "reminder");
+  const unresolvedAlertCountFor = (
+    nextDailyMealState: DailyMealState[] = dailyMealState,
+    nextActivityLogs: ActivityLog[] = activityLogs,
+    nextManualAlerts: ManualAlert[] = manualAlerts
+  ) =>
+    resolveAlerts(templates, nextDailyMealState, nextActivityLogs, nextManualAlerts, reminderRules, careTemplates).filter(
+      (alert) => alert.kind !== "reminder"
+    ).length;
+
+  useEffect(() => {
+    if (!hydrated) return;
+    syncStoredAlertBadgeCount(alertCards.length);
+  }, [alertCards.length, hydrated]);
 
   const todayKey = dayKeyFromDate(new Date());
   const tomorrowKey = addDays(todayKey, 1);
 
-  const alertTargetDayKey = (scope: ManualAlert["scope"], dateValue: string) => {
+  const alertTargetDayKey = (scope: ManualAlert["scope"], dateValue: string, time: string) => {
     if (scope === "tomorrow") return tomorrowKey;
     if (scope === "date") return dateValue || todayKey;
+    if (alertRepeats(scope) && timeIsPastToday(todayKey, time)) return tomorrowKey;
     return todayKey;
   };
 
   const alertFormError = (scope: ManualAlert["scope"], time: string, dateValue: string, weekdays: number[]) => {
-    const targetDayKey = alertTargetDayKey(scope, dateValue);
+    const targetDayKey = alertTargetDayKey(scope, dateValue, time);
     if ((scope === "today" || scope === "date") && timeIsPastToday(targetDayKey, time)) return "Choose a future time for today.";
     if (scope === "date" && targetDayKey < todayKey) return "Choose today or a future date.";
     if (scope === "certain-days" && !weekdays.length) return "Choose at least one day.";
     return null;
   };
 
-  const manualAlertRepeats = (alert: Pick<ManualAlert, "scope">) => ["ongoing", "every-other-day", "certain-days"].includes(alert.scope ?? "today");
+  const manualAlertRepeats = (alert: Pick<ManualAlert, "scope">) => alertRepeats(alert.scope);
   const savedManualAlerts = manualAlerts.filter((alert) => !alert.resolved || manualAlertRepeats(alert));
 
   const alertScopeLabel = (alert: Pick<ManualAlert, "scope" | "createdDayKey">) => {
@@ -191,6 +335,105 @@ export default function AlertsPage() {
     if (dayKey === todayKey) return "Today";
     if (dayKey === tomorrowKey) return "Tomorrow";
     return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${dayKey}T00:00:00`));
+  };
+
+  const reviewMealTimeValue = (alertId: string, plannedTime: string) =>
+    reviewMealTimeValues[alertId] || timeInputValueFromDisplay(plannedTime) || new Intl.DateTimeFormat("en-CA", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date());
+
+  const updateReviewMealTime = (alertId: string, value: string) => {
+    setReviewMealTimeValues((current) => ({ ...current, [alertId]: value }));
+  };
+
+  const openReviewLogTime = (alertId: string, plannedTime: string) => {
+    setReviewMealTimeValues((current) => ({
+      ...current,
+      [alertId]: current[alertId] || timeInputValueFromDisplay(plannedTime) || plannedTime,
+    }));
+    setActiveReviewLogId(alertId);
+  };
+
+  const resolveReviewMeal = async (alertId: string, mealId: number, status: "done" | "skipped") => {
+    const template = templates.find((entry) => entry.id === mealId);
+    if (!template) return;
+
+    const actualTime = status === "done"
+      ? displayTimeFromInput(reviewMealTimeValue(alertId, template.plannedTime))
+      : template.plannedTime;
+    const fedNotes = status === "skipped" ? "Skipped" : null;
+    const mealLog = buildMealLog(template, actualTime, fedNotes, todayKey);
+
+    const foundExistingMealState = dailyMealState.some((meal) => meal.mealId === mealId && (meal.dayKey ?? todayKey) === todayKey);
+    const nextMealState: DailyMealState[] = foundExistingMealState
+      ? dailyMealState.map((meal) =>
+          meal.mealId === mealId && (meal.dayKey ?? todayKey) === todayKey
+            ? {
+                ...meal,
+                actualTime,
+                status: "done",
+                fedNotes,
+                skippedCareItemIds: [],
+                dayKey: todayKey,
+              }
+            : meal
+        )
+      : [
+          ...dailyMealState,
+          {
+            mealId,
+            actualTime,
+            status: "done",
+            fedNotes,
+            skippedCareItemIds: [],
+            dayKey: todayKey,
+          },
+        ];
+
+    setDailyMealState(nextMealState);
+    syncStoredAlertBadgeCount(unresolvedAlertCountFor(nextMealState));
+    setReviewMealTimeValues((current) => {
+      const next = { ...current };
+      delete next[alertId];
+      return next;
+    });
+    setActiveReviewLogId((current) => (current === alertId ? null : current));
+
+    try {
+      await saveCompletedMealToSupabase(mealLog, nextMealState, missedMealLogId(todayKey, mealId));
+    } catch {
+      // Local state is already updated; the shared save helper keeps its own local cache.
+    }
+  };
+
+  const resolveReviewCustomCare = async (
+    alertId: string,
+    action: Extract<ReviewAction, { type: "custom-care" }>,
+    status: "done" | "skipped"
+  ) => {
+    const timeValue = reviewMealTimeValue(alertId, timeInputValueFromIso(action.scheduledAt));
+    const activity = buildCustomCareActivityLog(action, status, todayIsoFromTimeInput(timeValue));
+    const nextActivityLogs = [
+      activity,
+      ...activityLogs.filter((entry) => entry.id !== action.occurrenceKey && entry.id !== `${action.occurrenceKey}-skipped` && entry.id !== `${action.occurrenceKey}-missed`),
+    ];
+
+    setActivityLogs(nextActivityLogs);
+    syncStoredAlertBadgeCount(unresolvedAlertCountFor(undefined, nextActivityLogs));
+    setReviewMealTimeValues((current) => {
+      const next = { ...current };
+      delete next[alertId];
+      return next;
+    });
+    setActiveReviewLogId((current) => (current === alertId ? null : current));
+
+    try {
+      await saveActivityLogToSupabase(activity);
+    } catch {
+      // Local state is already updated.
+    }
   };
 
   const weekdayOptions = [
@@ -215,7 +458,7 @@ export default function AlertsPage() {
   const addManualAlert = async () => {
     if (!titleValue.trim() || newAlertError) return;
 
-    const targetDayKey = alertTargetDayKey(scopeValue, alertDateValue);
+    const targetDayKey = alertTargetDayKey(scopeValue, alertDateValue, alertTimeValue);
 
     const alert: ManualAlert = {
       id: `manual-alert-${Date.now()}`,
@@ -228,6 +471,7 @@ export default function AlertsPage() {
       createdDayKey: targetDayKey,
       resolved: false,
       resolvedAt: null,
+      createdAt: new Date().toISOString(),
     };
 
     setManualAlerts((current) => [alert, ...current]);
@@ -271,7 +515,7 @@ export default function AlertsPage() {
   const saveEditedAlert = async () => {
     if (!editingAlertId || !editingTitleValue.trim() || editingAlertError) return;
 
-    const targetDayKey = alertTargetDayKey(editingScopeValue, editingAlertDateValue);
+    const targetDayKey = alertTargetDayKey(editingScopeValue, editingAlertDateValue, editingAlertTimeValue);
 
     const nextAlerts = manualAlerts.map((alert) =>
       alert.id === editingAlertId
@@ -388,6 +632,7 @@ export default function AlertsPage() {
     });
 
     setManualAlerts(nextAlerts);
+    syncStoredAlertBadgeCount(unresolvedAlertCountFor(undefined, undefined, nextAlerts));
 
     const resolvedAlert = nextAlerts.find((alert) => alert.id === alertId);
     if (supabaseReady && resolvedAlert) {
@@ -514,8 +759,8 @@ export default function AlertsPage() {
                 ) : null}
                 <textarea
                   value={messageValue}
-                  onChange={(event) => setMessageValue(event.target.value.slice(0, 180))}
-                  maxLength={180}
+                  onChange={(event) => setMessageValue(event.target.value.slice(0, 100))}
+                  maxLength={100}
                   rows={3}
                   placeholder="Alert Details / Message For Myself And Other Caretakers"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
@@ -527,6 +772,102 @@ export default function AlertsPage() {
                 </div>
               </div>
             )}
+
+            {alertCards.length ? (
+              <div className="space-y-3 border-t border-[#e6c8ce]/70 pt-3">
+                <h3 className="text-sm font-semibold text-[#8f1739]/80">Unresolved Alerts</h3>
+                {alertCards.map((alert) => {
+                  const mealReviewAction = alert.reviewAction?.type === "meal" ? alert.reviewAction : null;
+                  const customCareReviewAction = alert.reviewAction?.type === "custom-care" ? alert.reviewAction : null;
+                  const reviewPlannedTime = mealReviewAction?.plannedTime ?? (customCareReviewAction ? timeInputValueFromIso(customCareReviewAction.scheduledAt) : "");
+                  const showLogTime = activeReviewLogId === alert.id;
+                  const reviewActionButtonClass = "h-8 min-w-16 rounded-full px-3 text-xs font-semibold";
+
+                  return (
+                    <article key={alert.id} className="rounded-2xl bg-white/80 p-4 ring-1 ring-[#e6c8ce]/75">
+                      <div className="flex items-start gap-3">
+                        <TriangleAlert className="mt-0.5 size-4 shrink-0 text-[#8f1739]" />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-[#8f1739]">{alert.title}</p>
+                          <ExpandableNoteText className="mt-1 text-sm leading-5 text-[#b71f48]/70">{alert.detail}</ExpandableNoteText>
+                          {mealReviewAction || customCareReviewAction ? (
+                            <div className={`mt-3 items-center justify-end gap-2 ${showLogTime ? "grid grid-cols-[8.75rem_auto_auto]" : "flex"}`}>
+                              {showLogTime ? (
+                                <label className="min-w-0">
+                                  <span className="sr-only">Log time</span>
+                                  <input
+                                    type="time"
+                                    value={reviewMealTimeValue(alert.id, reviewPlannedTime)}
+                                    onChange={(event) => updateReviewMealTime(alert.id, event.target.value)}
+                                    className="h-10 w-full rounded-full border border-[#8f1739] bg-white px-3 text-sm font-semibold text-[#8f1739] outline-none transition focus:ring-4 focus:ring-[#e6c8ce]/55"
+                                  />
+                                </label>
+                              ) : null}
+                              {!showLogTime ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() =>
+                                    mealReviewAction
+                                      ? resolveReviewMeal(alert.id, mealReviewAction.mealId, "skipped")
+                                      : customCareReviewAction
+                                        ? resolveReviewCustomCare(alert.id, customCareReviewAction, "skipped")
+                                        : undefined
+                                  }
+                                  className={`${reviewActionButtonClass} border-[#e6c8ce] text-[#d91f56] hover:bg-[#fff0f1]`}
+                                >
+                                  Skip
+                                </Button>
+                              ) : null}
+                              {showLogTime ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => setActiveReviewLogId((current) => (current === alert.id ? null : current))}
+                                  className={`${reviewActionButtonClass} border-[#e6c8ce] text-[#d91f56] hover:bg-[#fff0f1]`}
+                                >
+                                  Cancel
+                                </Button>
+                              ) : null}
+                              <Button
+                                type="button"
+                                onClick={() => {
+                                  if (!showLogTime) {
+                                    openReviewLogTime(alert.id, reviewPlannedTime);
+                                    return;
+                                  }
+
+                                  if (mealReviewAction) {
+                                    void resolveReviewMeal(alert.id, mealReviewAction.mealId, "done");
+                                    return;
+                                  }
+
+                                  if (customCareReviewAction) {
+                                    void resolveReviewCustomCare(alert.id, customCareReviewAction, "done");
+                                  }
+                                }}
+                                className={`${reviewActionButtonClass} bg-[#8f1739] text-white hover:bg-[#7c1431]`}
+                              >
+                                {showLogTime ? "Done" : "Log"}
+                              </Button>
+                            </div>
+                          ) : null}
+                        </div>
+                        {alert.kind === "manual" ? (
+                          <Button
+                            type="button"
+                            onClick={() => resolveManualAlert(alert.id)}
+                            className="h-8 shrink-0 rounded-full bg-[#8f1739] px-3 text-xs text-white hover:bg-[#7c1431]"
+                          >
+                            Done
+                          </Button>
+                        ) : null}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : null}
 
             {savedManualAlerts.length ? (
               <div className="space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-3">
@@ -598,8 +939,8 @@ export default function AlertsPage() {
                       ) : null}
                       <textarea
                         value={editingMessageValue}
-                        onChange={(event) => setEditingMessageValue(event.target.value.slice(0, 180))}
-                        maxLength={180}
+                        onChange={(event) => setEditingMessageValue(event.target.value.slice(0, 100))}
+                        maxLength={100}
                         rows={3}
                         placeholder="Alert Details / Message For Myself And Other Caretakers"
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
@@ -615,13 +956,11 @@ export default function AlertsPage() {
                   ) : (
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-medium text-[#8f1739]">{alert.title}</p>
-                          <span className="rounded-full bg-[#fff0f1] px-2 py-0.5 text-xs font-semibold text-[#b71f48]/70 ring-1 ring-[#e6c8ce]/75">
-                            {alertScopeLabel(alert)}{alert.time ? ` • ${formatReminderTime(alert.time)}` : ""}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm text-[#b71f48]/65">{alert.message}</p>
+                        <p className="font-medium text-[#8f1739]">{alert.title}</p>
+                        <p className="mt-1 text-sm text-[#b71f48]/70">
+                          {alertScopeLabel(alert)}{alert.time ? ` ${formatReminderTime(alert.time)}` : ""}
+                        </p>
+                        <ExpandableNoteText className="mt-1 text-sm text-[#b71f48]/65">{alert.message}</ExpandableNoteText>
                       </div>
                       <button
                         type="button"

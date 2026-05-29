@@ -2,7 +2,9 @@ import { Check, Droplets, Ellipsis, Tablets, TriangleAlert } from "lucide-react"
 
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
 import { PottyDetailBadges, pottyDetailForBadge } from "@/components/potty-detail-badges";
+import { ExpandableNoteText } from "@/components/expandable-note-text";
 import type { ActivityLog } from "@/lib/hewster-data";
+import type { CareItemTemplate } from "@/lib/care-settings";
 import { compareActivitiesChronological, formatActivityLabel, formatActivityTime, groupActivitiesByDay, renderTreatDetailParts, splitTreatDetailText } from "@/lib/activity";
 
 type TimelineItem = {
@@ -11,6 +13,8 @@ type TimelineItem = {
   detail: string;
   activity?: ActivityLog;
   activityType?: ActivityLog["activityType"] | "meal" | "manual";
+  mealGroupId?: string;
+  careItem?: CareItemTemplate & { isLastDose?: boolean };
 };
 
 type Props = {
@@ -21,6 +25,7 @@ type Props = {
   grouped?: boolean;
   onSelectActivity?: (activity: ActivityLog) => void;
   renderInlineEditor?: (activity: ActivityLog) => React.ReactNode;
+  careTemplates?: CareItemTemplate[];
 };
 
 function TreatDetail({ activity }: { activity: ActivityLog }) {
@@ -29,7 +34,7 @@ function TreatDetail({ activity }: { activity: ActivityLog }) {
   return (
     <div className="mt-2 space-y-1 text-sm">
       {summary ? <p className="text-zinc-600">{summary}</p> : null}
-      {notes ? <p className="text-zinc-500">Notes: {notes}</p> : null}
+      {notes ? <ExpandableNoteText className="text-zinc-500">Notes: {notes}</ExpandableNoteText> : null}
     </div>
   );
 }
@@ -45,7 +50,75 @@ function splitActivityNotes(notes: string | null) {
   };
 }
 
-function CareActivityDetail({ activity }: { activity: ActivityLog }) {
+function careTemplateRouteLabel(item: CareItemTemplate | null) {
+  if (!item || item.kind !== "medication") return null;
+  if (item.medicationType === "topical") return "Topical";
+  if (item.medicationType === "injection") return "Injection";
+  if (item.medicationType === "other") return "Other";
+  return "Oral";
+}
+
+function careTemplateTimingLabel(item: CareItemTemplate | null) {
+  if (!item || item.kind !== "medication") return null;
+  return item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food";
+}
+
+function careTemplateGiveText(item: CareItemTemplate | null) {
+  if (!item) return null;
+  const route = careTemplateRouteLabel(item);
+  return `Give ${item.dose || "as directed"}${route ? ` (${route})` : ""}`;
+}
+
+function normalizedCareName(value: string | null) {
+  return (value ?? "")
+    .replace(/\s*(?:[•·-]\s*)?(?:Given|Skipped|Missed)\b/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function matchingCareTemplate(activity: ActivityLog, careTemplates: CareItemTemplate[] = []) {
+  if (!["medication", "supplement"].includes(activity.activityType)) return null;
+  const detailName = normalizedCareName(activity.detail);
+
+  return careTemplates.find((item) => {
+    if (item.kind !== activity.activityType) return false;
+    if (activity.id.includes(`${item.kind}-${item.id}-`)) return true;
+    const itemName = item.name.trim().toLowerCase();
+    if (!itemName) return false;
+    if (!detailName) return false;
+    return detailName === itemName || detailName.startsWith(`${itemName} `) || detailName.startsWith(`${itemName} •`) || detailName.startsWith(`${itemName} -`) || detailName.includes(itemName);
+  }) ?? null;
+}
+
+function CareTemplateTimelineDetail({ item, detail, skipped = false }: { item: CareItemTemplate & { isLastDose?: boolean }; detail: string; skipped?: boolean }) {
+  const timingLine = careTemplateTimingLabel(item);
+  const giveText = careTemplateGiveText(item);
+  const noteText = skipped ? "" : item.notes?.trim() ?? "";
+
+  return (
+    <div className="mt-2 space-y-1.5 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="font-semibold text-zinc-800">{item.name}</p>
+        {item.isLastDose ? <span className="inline-flex rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
+        {skipped ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
+      </div>
+      {giveText || timingLine ? (
+        <div className="flex flex-wrap items-center gap-2 text-zinc-600">
+          {giveText ? <p>{giveText}</p> : null}
+          {timingLine ? (
+            <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${item.kind === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : "bg-sky-100/80 text-sky-700/60"}`}>
+              {timingLine}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {noteText ? <ExpandableNoteText className="text-zinc-500"><span className="font-medium text-zinc-600">Notes:</span> {noteText}</ExpandableNoteText> : detail && !detail.includes(item.name) ? <p className="text-zinc-500">{detail}</p> : null}
+    </div>
+  );
+}
+
+function CareActivityDetail({ activity, careTemplates = [] }: { activity: ActivityLog; careTemplates?: CareItemTemplate[] }) {
   const { lines, attachmentLine } = splitActivityNotes(activity.notes);
   const detail = activity.detail ?? "";
   const skipped = /\bSkipped\b/i.test(detail) || lines.some((line) => line.startsWith("Skip Note: "));
@@ -53,14 +126,16 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
   const skipReason = lines.find((line) => line.startsWith("Skip Note: "))?.replace("Skip Note: ", "").trim() ?? null;
   const careLines = lines.filter((line) => line !== attachmentLine && !line.startsWith("Skip Note: ") && line !== "Missed");
   const isLastDose = careLines.includes("Last Dose");
-  const timingLine = careLines.find((line) => line === "With Food" || line === "Empty Stomach") ?? null;
+  const matchedTemplate = matchingCareTemplate(activity, careTemplates);
+  const timingLine = careLines.find((line) => line === "With Food" || line === "Empty Stomach") ?? careTemplateTimingLabel(matchedTemplate);
+  const routeLine = careLines.find((line) => line === "Oral" || line === "Topical" || line === "Injection" || line === "Other") ?? careTemplateRouteLabel(matchedTemplate);
   const giveLine = careLines.find((line) => line.startsWith("Give ")) ?? null;
-  const doseText = giveLine?.replace(/^Give\s+/i, "").replace(/\s*\([^)]*\)\s*$/, "").trim() ?? "";
-  const name = detail
+  const doseText = giveLine?.replace(/^Give\s+/i, "").replace(/\s*\([^)]*\)\s*$/, "").trim() ?? matchedTemplate?.dose ?? "";
+  const giveDetail = giveLine ?? (doseText || routeLine ? `Give ${doseText || "as directed"}${routeLine ? ` (${routeLine})` : ""}` : null);
+  const name = (matchedTemplate?.name || detail)
     .replace(/\s*(?:[•·-]\s*)?(?:Skipped|Missed)\b/i, "")
-    .replace(doseText ? new RegExp(`\\s*[•·]\\s*${doseText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : /$^/, "")
+    .replace(doseText ? new RegExp(`\\s*(?:[•·-]|—)\\s*${doseText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : /$^/, "")
     .trim();
-  const giveDetail = giveLine ?? null;
   const specialNotes = careLines.filter((line) => line.startsWith("Notes: ")).map((line) => line.replace("Notes: ", ""));
 
   return (
@@ -69,41 +144,49 @@ function CareActivityDetail({ activity }: { activity: ActivityLog }) {
         {name ? <p className="font-semibold text-zinc-800">{name}</p> : null}
         {skipped || missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{missed ? "Missed" : skipReason ? `Skipped — ${skipReason}` : "Skipped"}</span> : null}
       </div>
-      {giveDetail ? (
+      {giveDetail || timingLine ? (
         <div className="flex flex-wrap items-center gap-2 text-zinc-600">
-          <p>{giveDetail}</p>
+          {giveDetail ? <p>{giveDetail}</p> : null}
           {timingLine ? (
             <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${activity.activityType === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : "bg-sky-100/80 text-sky-700/60"}`}>
               {timingLine}
             </span>
           ) : null}
-          {isLastDose ? <span className="rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
         </div>
       ) : null}
-      {specialNotes.length ? <p className="text-zinc-500"><span className="font-medium text-zinc-600">Notes:</span> {specialNotes.join(" · ")}</p> : null}
-      {attachmentLine ? <p className="text-zinc-500">{attachmentLine}</p> : null}
+      {isLastDose ? <span className="inline-flex rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
+      {specialNotes.length ? <ExpandableNoteText className="text-zinc-500"><span className="font-medium text-zinc-600">Notes:</span> {specialNotes.join(" · ")}</ExpandableNoteText> : null}
+      {attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
     </div>
   );
 }
 
-function ActivityDetailAndNotes({ activity }: { activity: ActivityLog }) {
+function ActivityDetailAndNotes({ activity, careTemplates = [] }: { activity: ActivityLog; careTemplates?: CareItemTemplate[] }) {
   const { notesText, attachmentLine } = splitActivityNotes(activity.notes);
 
   if (["medication", "supplement"].includes(activity.activityType)) {
-    return <CareActivityDetail activity={activity} />;
+    return <CareActivityDetail activity={activity} careTemplates={careTemplates} />;
   }
 
   return (
     <div className="mt-2 space-y-1 text-sm text-zinc-600">
       {activity.detail ? <p>{activity.detail}</p> : null}
-      {notesText ? <p>Notes: {notesText}</p> : null}
-      {attachmentLine ? <p className="text-zinc-500">{attachmentLine}</p> : null}
+      {notesText ? <ExpandableNoteText>Notes: {notesText}</ExpandableNoteText> : null}
+      {attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
     </div>
   );
 }
 
 function displayActivityLabel(activity: ActivityLog) {
   return ["pee", "poop", "potty"].includes(activity.activityType) ? "Potty" : formatActivityLabel(activity.activityType);
+}
+
+function customCareDisplayDate(activity: ActivityLog) {
+  return new Date(activity.happenedAt);
+}
+
+function customCareDisplayTime(activity: ActivityLog) {
+  return formatActivityTime(customCareDisplayDate(activity).toISOString());
 }
 
 function timelineStatusFor(item: TimelineItem) {
@@ -123,10 +206,19 @@ function TimelineStatusBadge({ status }: { status: "Skipped" | "Missed" | null }
 
 function TimelineDetailText({ detail, status, className = "mt-1 text-sm leading-5 text-zinc-600" }: { detail: string; status: "Skipped" | "Missed" | null; className?: string }) {
   const cleanDetail = cleanTimelineDetail(detail, status);
+  const detailLines = cleanDetail.split("\n").filter(Boolean);
 
   return (
-    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-      {cleanDetail ? <span>{cleanDetail}</span> : null}
+    <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${className}`}>
+      {detailLines.length ? (
+        <span className="min-w-0">
+          {detailLines.map((line, index) => (
+            <span key={`${line}-${index}`} className="block">
+              {line}
+            </span>
+          ))}
+        </span>
+      ) : null}
       <TimelineStatusBadge status={status} />
     </div>
   );
@@ -328,6 +420,7 @@ export function ActivityFeed({
   grouped = false,
   onSelectActivity,
   renderInlineEditor,
+  careTemplates = [],
 }: Props) {
   if (grouped) {
     const groupedLogs = groupActivitiesByDay(activityLogs);
@@ -362,14 +455,14 @@ export function ActivityFeed({
                             </span>
                             <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
                           </div>
-                          <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+                          <p className="text-sm text-zinc-500">{customCareDisplayTime(activity)}</p>
                         </div>
                         {["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity) ? (
                           <PottyDetailBadges detail={pottyDetailForBadge(activity)} notes={activity.notes} />
                         ) : activity.activityType === "treat" ? (
                           <TreatDetail activity={activity} />
                         ) : (
-                          <ActivityDetailAndNotes activity={activity} />
+                          <ActivityDetailAndNotes activity={activity} careTemplates={careTemplates} />
                         )}
                       </button>
                       {inlineEditor ? <div className="mt-3">{inlineEditor}</div> : null}
@@ -393,7 +486,7 @@ export function ActivityFeed({
                     {item.detail.includes(" • Notes: ") ? (
                       <>
                         <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="mt-2 text-sm text-zinc-600" />
-                        <p className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</p>
+                        <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
                       </>
                     ) : (
                       <TimelineDetailText detail={item.detail} status={status} className="mt-2 text-sm text-zinc-600" />
@@ -440,14 +533,14 @@ export function ActivityFeed({
                             </span>
                             <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
                           </div>
-                          <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+                          <p className="text-sm text-zinc-500">{customCareDisplayTime(activity)}</p>
                         </div>
                         {["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity) ? (
                           <PottyDetailBadges detail={pottyDetailForBadge(activity)} notes={activity.notes} />
                         ) : activity.activityType === "treat" ? (
                           <TreatDetail activity={activity} />
                         ) : (
-                          <ActivityDetailAndNotes activity={activity} />
+                          <ActivityDetailAndNotes activity={activity} careTemplates={careTemplates} />
                         )}
                       </button>
                       {inlineEditor ? <div className="mt-3">{inlineEditor}</div> : null}
@@ -462,6 +555,63 @@ export function ActivityFeed({
     );
   }
 
+  const renderTimelineRow = (item: TimelineItem, key: string) => {
+    const style = getTimelineStyle(item.activityType);
+    const treatParts = item.activityType === "treat" ? splitTreatDetailText(item.detail) : null;
+    const careActivity = item.activity && ["medication", "supplement"].includes(item.activityType ?? "") ? item.activity : null;
+    const inlineEditor = item.activity && renderInlineEditor ? renderInlineEditor(item.activity) : null;
+    const status = timelineStatusFor(item);
+    const content = (
+      <>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+            {item.time}
+          </span>
+        </div>
+        {item.careItem ? (
+          <CareTemplateTimelineDetail item={item.careItem} detail={item.detail} skipped={status === "Skipped"} />
+        ) : careActivity ? (
+          <CareActivityDetail activity={careActivity} careTemplates={careTemplates} />
+        ) : treatParts ? (
+          <>
+            {treatParts.summary ? <p className="mt-1 text-sm text-zinc-500">{treatParts.summary}</p> : null}
+            {treatParts.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {treatParts.notes}</ExpandableNoteText> : null}
+          </>
+        ) : item.detail.includes(" • Notes: ") ? (
+          <>
+            <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="mt-1 text-sm text-zinc-500" />
+            <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
+          </>
+        ) : (
+          <TimelineDetailText detail={item.detail} status={status} />
+        )}
+      </>
+    );
+
+    return (
+      <div key={key} className="rounded-2xl bg-zinc-50/75 p-2.5 ring-1 ring-zinc-200/70">
+        <div className="grid grid-cols-[1.35rem_1fr] gap-2.5">
+          <div className="flex w-5 justify-center">
+            <div className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full shadow-sm ring-2 ring-white ${style.dot}`}>
+              {style.icon}
+            </div>
+          </div>
+          <div className="min-w-0">
+            {item.activity && onSelectActivity ? (
+              <button type="button" className="block w-full text-left" onClick={() => onSelectActivity(item.activity as ActivityLog)}>
+                {content}
+              </button>
+            ) : content}
+            {inlineEditor ? <div className="mt-3">{inlineEditor}</div> : null}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <section className="mb-4 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-zinc-200/80">
       <div className="mb-4">
@@ -470,61 +620,7 @@ export function ActivityFeed({
       </div>
       <div className="space-y-2">
         {timelineItems?.length ? (
-          timelineItems.map((item, index) => {
-            const style = getTimelineStyle(item.activityType);
-            const treatParts = item.activityType === "treat" ? splitTreatDetailText(item.detail) : null;
-            const careActivity = item.activity && ["medication", "supplement"].includes(item.activityType ?? "") ? item.activity : null;
-            const inlineEditor = item.activity && renderInlineEditor ? renderInlineEditor(item.activity) : null;
-            const status = timelineStatusFor(item);
-            const content = (
-              <>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
-
-                  </div>
-                  <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
-                    {item.time}
-                  </span>
-                </div>
-                {careActivity ? (
-                  <CareActivityDetail activity={careActivity} />
-                ) : treatParts ? (
-                  <>
-                    {treatParts.summary ? <p className="mt-1 text-sm text-zinc-500">{treatParts.summary}</p> : null}
-                    {treatParts.notes ? <p className="mt-1 text-sm text-zinc-500">Notes: {treatParts.notes}</p> : null}
-                  </>
-                ) : item.detail.includes(" • Notes: ") ? (
-                  <>
-                    <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="mt-1 text-sm text-zinc-500" />
-                    <p className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</p>
-                  </>
-                ) : (
-                  <TimelineDetailText detail={item.detail} status={status} />
-                )}
-              </>
-            );
-
-            return (
-              <div key={`${item.activityType ?? "item"}-${item.time}-${item.label}-${item.detail}-${index}`} className="rounded-2xl bg-zinc-50/75 p-2.5 ring-1 ring-zinc-200/70">
-                <div className="grid grid-cols-[1.35rem_1fr] gap-2.5">
-                  <div className="flex w-5 justify-center">
-                    <div className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full shadow-sm ring-2 ring-white ${style.dot}`}>
-                      {style.icon}
-                    </div>
-                  </div>
-                  <div className="min-w-0">
-                    {item.activity && onSelectActivity ? (
-                      <button type="button" className="block w-full text-left" onClick={() => onSelectActivity(item.activity as ActivityLog)}>
-                        {content}
-                      </button>
-                    ) : content}
-                    {inlineEditor ? <div className="mt-3">{inlineEditor}</div> : null}
-                  </div>
-                </div>
-              </div>
-            );
-          })
+          timelineItems.map((item, index) => renderTimelineRow(item, `${item.activityType ?? "item"}-${item.time}-${item.label}-${item.detail}-${index}`))
         ) : (
           <p className="text-sm text-zinc-500">No Events Logged Yet.</p>
         )}

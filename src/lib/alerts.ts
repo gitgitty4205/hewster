@@ -1,13 +1,17 @@
 import type { ActivityLog, DailyMealState, ManualAlert } from "@/lib/hewster-data";
-import type { CareItemKind, CareItemTemplate } from "@/lib/care-settings";
+import { careItemOccursWithMeal, customScheduledCareItems, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
+import { formatActivityTime } from "@/lib/activity";
 import type { MealTemplate } from "@/lib/meal-templates";
 
 export type ResolvedAlert = {
   id: string;
-  kind: "manual" | "reminder";
+  kind: "manual" | "reminder" | "review";
   title: string;
   detail: string;
   severity: "info" | "warning";
+  reviewAction?:
+    | { type: "meal"; mealId: number; plannedTime: string }
+    | { type: "custom-care"; occurrenceKey: string; scheduledAt: string; item: CareItemTemplate };
 };
 
 export type ReminderAlertEvent = "meal" | "potty" | "supplement" | "medication";
@@ -24,6 +28,8 @@ export type ReminderAlertRule = {
 };
 
 export const REMINDER_ALERT_RULES_STORAGE_KEY = "hewster.reminderAlertRules";
+export const ALERT_BADGE_COUNT_STORAGE_KEY = "hewster.alertBadgeCount";
+const DUE_REVIEW_GRACE_MINUTES = 60;
 
 export const defaultReminderAlertRules: ReminderAlertRule[] = [
   {
@@ -56,6 +62,36 @@ export function formatReminderTime(value: string) {
   const suffix = hoursValue >= 12 ? "PM" : "AM";
   const hours = hoursValue % 12 === 0 ? 12 : hoursValue % 12;
   return `${hours}:${String(minutesValue).padStart(2, "0")} ${suffix}`;
+}
+
+const manualAlertWeekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function formatManualAlertDate(dayKey?: string) {
+  if (!dayKey) return "Selected Date";
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${dayKey}T00:00:00`));
+}
+
+export function manualAlertScheduleLabel(alert: Pick<ManualAlert, "scope" | "weekdays" | "time" | "createdDayKey">) {
+  const scope = alert.scope ?? "today";
+  const schedule =
+    scope === "ongoing"
+      ? "Everyday"
+      : scope === "every-other-day"
+        ? "Every Other Day"
+        : scope === "certain-days"
+          ? (alert.weekdays?.length ? alert.weekdays.map((day) => manualAlertWeekdayLabels[day]).filter(Boolean).join(", ") : "Certain Days")
+          : scope === "tomorrow"
+            ? "Tomorrow"
+            : scope === "date"
+              ? formatManualAlertDate(alert.createdDayKey)
+              : "Today";
+
+  return [schedule, alert.time ? `at ${formatReminderTime(alert.time)}` : null].filter(Boolean).join(" ");
+}
+
+export function formatManualAlertTimelineDetail(alert: Pick<ManualAlert, "title" | "message" | "scope" | "weekdays" | "time" | "createdDayKey">) {
+  const summary = [alert.title, alert.message].filter(Boolean).join(": ");
+  return [summary, manualAlertScheduleLabel(alert)].filter(Boolean).join("\n");
 }
 
 export function reminderFrequencyLabel(rule: Pick<ReminderAlertRule, "frequency" | "weekdays">) {
@@ -134,6 +170,119 @@ function dayKeyFromDate(date: Date) {
   }).format(date);
 }
 
+function dateTimeForDayMinutes(dayKey: string, minutes: number) {
+  const date = dateFromDayKey(dayKey) ?? new Date();
+  date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return date;
+}
+
+function dateFromDateTimeLocal(value: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function sameScheduledMinute(first: Date, second: Date) {
+  return Math.abs(first.getTime() - second.getTime()) < 60 * 1000;
+}
+
+function careScheduleSteps(item: CareItemTemplate) {
+  const steps = item.scheduleSteps.length ? item.scheduleSteps : [{ id: 1, everyHours: item.repeatEveryHours, forDays: item.repeatForDays }];
+
+  return steps
+    .map((step) => ({
+      everyHours: Number.parseInt(step.everyHours, 10),
+      forDays: Number.parseInt(step.forDays, 10),
+    }))
+    .filter((step) => {
+      const hasFrequency = Number.isFinite(step.everyHours) && step.everyHours > 0;
+      if (item.ongoing || item.asNeeded) return hasFrequency;
+      return hasFrequency && Number.isFinite(step.forDays) && step.forDays > 0;
+    });
+}
+
+function customCareOccurrencesForDay(items: CareItemTemplate[], targetDayKey: string) {
+  return customScheduledCareItems(items).flatMap((item) => {
+    if (item.asNeeded) return [];
+
+    const startAt = dateFromDateTimeLocal(item.startDateTime);
+    if (!startAt) return [];
+
+    const scheduleCreatedAt = dateFromDateTimeLocal(item.customScheduleCreatedAt) ?? new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const [year, month, day] = targetDayKey.split("-").map(Number);
+    const dayStart = new Date(year, month - 1, day);
+    const dayEnd = new Date(year, month - 1, day + 1);
+
+    const steps = careScheduleSteps(item);
+    if (item.ongoing && !steps.length) {
+      const scheduledAt = new Date(year, month - 1, day, startAt.getHours(), startAt.getMinutes(), 0, 0);
+      if (scheduledAt < dayStart || scheduledAt >= dayEnd || scheduledAt < startAt) return [];
+
+      return [
+        {
+          key: `${item.kind}-${item.id}-schedule-daily-${scheduledAt.toISOString()}`,
+          item,
+          scheduledAt,
+        },
+      ];
+    }
+
+    const effectiveSteps = steps.length || item.ongoing
+      ? steps
+      : [{ everyHours: 0, forDays: 0 }];
+
+    return effectiveSteps.flatMap((step, stepIndex) => {
+      const isOneTime = step.everyHours <= 0;
+      const maxDoseCount = item.ongoing ? Number.POSITIVE_INFINITY : isOneTime ? 1 : Math.ceil((step.forDays * 24) / step.everyHours);
+      const firstOffset = isOneTime ? 0 : Math.max(0, Math.ceil((dayStart.getTime() - startAt.getTime()) / (step.everyHours * 60 * 60 * 1000)));
+      const occurrences: Array<{ key: string; item: CareItemTemplate; scheduledAt: Date }> = [];
+
+      for (let doseIndex = firstOffset; doseIndex < maxDoseCount; doseIndex += 1) {
+        const scheduledAt = new Date(startAt.getTime() + doseIndex * step.everyHours * 60 * 60 * 1000);
+        if (scheduledAt >= dayEnd) break;
+        const explicitStartDose = sameScheduledMinute(scheduledAt, startAt);
+        if (scheduledAt < dayStart || (!explicitStartDose && scheduledAt < scheduleCreatedAt)) continue;
+
+        occurrences.push({
+          key: `${item.kind}-${item.id}-schedule-${stepIndex + 1}-dose-${doseIndex + 1}-${scheduledAt.toISOString()}`,
+          item,
+          scheduledAt,
+        });
+      }
+
+      return occurrences;
+    });
+  });
+}
+
+function activityMatchesCustomCareOccurrence(activity: ActivityLog, occurrence: { item: CareItemTemplate; scheduledAt: Date }) {
+  if (activity.activityType !== occurrence.item.kind) return false;
+
+  const activityAt = new Date(activity.happenedAt);
+  if (Number.isNaN(activityAt.getTime())) return false;
+
+  const detail = activity.detail ?? "";
+  if (!detail.toLowerCase().startsWith(occurrence.item.name.toLowerCase())) return false;
+
+  const sameScheduledMinute = Math.abs(activityAt.getTime() - occurrence.scheduledAt.getTime()) < 60 * 1000;
+  if (sameScheduledMinute) return true;
+
+  const sameDay = dayKeyFromDate(activityAt) === dayKeyFromDate(occurrence.scheduledAt);
+  const singleDailyOngoingOccurrence = occurrence.item.ongoing && careScheduleSteps(occurrence.item).length === 0;
+  return sameDay && singleDailyOngoingOccurrence;
+}
+
+function activityMatchesMealLinkedCare(activity: ActivityLog, item: CareItemTemplate, mealAt: Date) {
+  if (activity.activityType !== item.kind) return false;
+
+  const activityAt = new Date(activity.happenedAt);
+  if (Number.isNaN(activityAt.getTime())) return false;
+  if (dayKeyFromDate(activityAt) !== dayKeyFromDate(mealAt)) return false;
+
+  const detail = (activity.detail ?? "").toLowerCase();
+  return detail.startsWith(item.name.toLowerCase());
+}
+
 function dateFromDayKey(dayKey: string) {
   const [year, month, day] = dayKey.split("-").map(Number);
   if (!year || !month || !day) return null;
@@ -142,16 +291,18 @@ function dateFromDayKey(dayKey: string) {
 
 function manualAlertAppliesToday(alert: ManualAlert, todayKey: string) {
   const scope = alert.scope ?? "today";
+  const startDayKey = alert.createdDayKey ?? todayKey;
+  if (todayKey < startDayKey) return false;
   if (scope === "ongoing") return true;
   if (scope === "certain-days") return (alert.weekdays ?? []).includes(new Date().getDay());
   if (scope === "every-other-day") {
-    const startDate = dateFromDayKey(alert.createdDayKey ?? todayKey);
+    const startDate = dateFromDayKey(startDayKey);
     const todayDate = dateFromDayKey(todayKey);
     if (!startDate || !todayDate) return true;
     const daysSinceStart = Math.floor((todayDate.getTime() - startDate.getTime()) / 86400000);
     return daysSinceStart >= 0 && daysSinceStart % 2 === 0;
   }
-  return (alert.createdDayKey ?? todayKey) === todayKey;
+  return startDayKey === todayKey;
 }
 
 function manualAlertRepeats(alert: ManualAlert) {
@@ -161,6 +312,15 @@ function manualAlertRepeats(alert: ManualAlert) {
 function manualAlertResolvedForToday(alert: ManualAlert, todayKey: string) {
   if (!manualAlertRepeats(alert) || !alert.resolvedAt) return false;
   return dayKeyFromDate(new Date(alert.resolvedAt)) === todayKey;
+}
+
+function manualAlertCreatedAfterScheduledTime(alert: ManualAlert, todayKey: string) {
+  if (!manualAlertRepeats(alert) || !alert.createdAt || !alert.time) return false;
+  const createdAt = new Date(alert.createdAt);
+  if (Number.isNaN(createdAt.getTime()) || dayKeyFromDate(createdAt) !== todayKey) return false;
+  const alertMinutes = parsePlannedTimeToMinutes(alert.time);
+  if (alertMinutes === null) return false;
+  return createdAt.getHours() * 60 + createdAt.getMinutes() > alertMinutes;
 }
 
 export function resolveAlerts(
@@ -176,20 +336,90 @@ export function resolveAlerts(
   const currentMinutes = nowMinutes();
   const todayKey = dayKeyFromDate(new Date());
 
+  const pushMealLinkedCareReviewAlerts = (meal: MealTemplate, mealAt: Date, skippedCareItemIds: string[] = []) => {
+    careTemplates
+      .filter((item) => item.scheduleKind === "meal" && careItemOccursWithMeal(item, meal, templates, todayKey))
+      .forEach((item) => {
+        const occurrenceKey = `${item.kind}-${item.id}-meal-${meal.id}-${todayKey}`;
+        if (skippedCareItemIds.includes(`${item.kind}-${item.id}`)) return;
+
+        const hasResolvedActivity = activityLogs.some(
+          (activity) =>
+            activity.id === occurrenceKey ||
+            activity.id === `${occurrenceKey}-skipped` ||
+            activity.id === `${occurrenceKey}-missed` ||
+            activityMatchesCustomCareOccurrence(activity, { item, scheduledAt: mealAt }) ||
+            activityMatchesMealLinkedCare(activity, item, mealAt)
+        );
+        if (hasResolvedActivity) return;
+
+        alerts.push({
+          id: `review-${occurrenceKey}`,
+          kind: "review",
+          title: `${item.name} missing`,
+          detail: `Scheduled with ${meal.name} at ${meal.plannedTime}.`,
+          severity: "warning",
+          reviewAction: {
+            type: "custom-care",
+            occurrenceKey,
+            scheduledAt: mealAt.toISOString(),
+            item,
+          },
+        });
+      });
+  };
+
   templates.forEach((meal) => {
     const state = stateByMealId.get(meal.id);
     const plannedMinutes = parsePlannedTimeToMinutes(meal.plannedTime);
     const isLogged = Boolean(state?.actualTime);
 
     if (!isLogged && plannedMinutes !== null && currentMinutes > plannedMinutes) {
+      const plannedAt = dateTimeForDayMinutes(todayKey, plannedMinutes);
+      const needsReview = Date.now() - plannedAt.getTime() > DUE_REVIEW_GRACE_MINUTES * 60 * 1000;
+
       alerts.push({
         id: `meal-${meal.id}`,
-        kind: "reminder",
-        title: `${meal.name} is overdue`,
-        detail: `Planned for ${meal.plannedTime} and still not logged.`,
-        severity: "info",
+        kind: needsReview ? "review" : "reminder",
+        title: needsReview ? `${meal.name} missing` : `${meal.name} is overdue`,
+        detail: `Planned for ${meal.plannedTime}.`,
+        severity: needsReview ? "warning" : "info",
+        reviewAction: needsReview ? { type: "meal", mealId: meal.id, plannedTime: meal.plannedTime } : undefined,
       });
+
+      if (needsReview) pushMealLinkedCareReviewAlerts(meal, plannedAt);
+      return;
     }
+
+    if (!isLogged || plannedMinutes === null) return;
+
+    const loggedTimeMinutes = state?.actualTime ? parsePlannedTimeToMinutes(state.actualTime) : null;
+    const mealAt = dateTimeForDayMinutes(todayKey, loggedTimeMinutes ?? plannedMinutes);
+    const needsCareReview = Date.now() - mealAt.getTime() > DUE_REVIEW_GRACE_MINUTES * 60 * 1000;
+    if (!needsCareReview) return;
+
+    pushMealLinkedCareReviewAlerts(meal, mealAt, state?.skippedCareItemIds ?? []);
+  });
+
+  customCareOccurrencesForDay(careTemplates, todayKey).forEach((occurrence) => {
+    if (Date.now() - occurrence.scheduledAt.getTime() <= DUE_REVIEW_GRACE_MINUTES * 60 * 1000) return;
+
+    const hasResolvedActivity = activityLogs.some((activity) => activity.id === occurrence.key || activity.id === `${occurrence.key}-skipped` || activity.id === `${occurrence.key}-missed` || activityMatchesCustomCareOccurrence(activity, occurrence));
+    if (hasResolvedActivity) return;
+
+    alerts.push({
+      id: `review-${occurrence.key}`,
+      kind: "review",
+      title: `${occurrence.item.name} missing`,
+      detail: `Scheduled for ${formatActivityTime(occurrence.scheduledAt.toISOString())}.`,
+      severity: "warning",
+      reviewAction: {
+        type: "custom-care",
+        occurrenceKey: occurrence.key,
+        scheduledAt: occurrence.scheduledAt.toISOString(),
+        item: occurrence.item,
+      },
+    });
   });
 
   reminderRules
@@ -207,7 +437,7 @@ export function resolveAlerts(
       });
 
       const hasFedMeal = dailyMealState.some((meal) => Boolean(meal.actualTime) && (meal.dayKey ?? todayKey) === todayKey);
-      const hasMealLinkedCare = ["supplement", "medication"].includes(rule.eventType)
+      const hasMealLinkedCare = rule.eventType === "supplement"
         ? dailyMealState.some((meal) => {
             if (!meal.actualTime || (meal.dayKey ?? todayKey) !== todayKey) return false;
             return careTemplates.some(
@@ -238,6 +468,7 @@ export function resolveAlerts(
     .filter((alert) => {
       if (alert.resolved) return false;
       if (manualAlertResolvedForToday(alert, todayKey)) return false;
+      if (manualAlertCreatedAfterScheduledTime(alert, todayKey)) return false;
       return manualAlertAppliesToday(alert, todayKey);
     })
     .filter((alert) => {

@@ -1,4 +1,5 @@
 import type { ActivityLog } from "@/lib/hewster-data";
+import { ExpandableNoteText } from "@/components/expandable-note-text";
 
 function poopBadgeClasses(detail: string | null) {
   const normalized = detail?.trim().toLowerCase() ?? "";
@@ -111,7 +112,7 @@ export function PottyDetailBadges({
           <span className={`${pottyBadgeClasses("Pee")} whitespace-nowrap`}>Potty Break</span>
         </div>
       ) : null}
-      {notes ? <p className="text-sm text-zinc-600">{notes}</p> : null}
+      {notes ? <ExpandableNoteText className="text-sm text-zinc-600">{notes}</ExpandableNoteText> : null}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
+import { ExpandableNoteText } from "@/components/expandable-note-text";
 import {
   type WeightLog,
   deleteWeightLogInSupabase,
@@ -254,7 +255,7 @@ export default function WeightPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="font-medium">{formatWeightDate(entry.date)}</p>
-          {entry.note ? <p className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/75">{entry.note}</p> : null}
+          {entry.note ? <ExpandableNoteText className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/75">{entry.note}</ExpandableNoteText> : null}
         </div>
         <p className="mr-5 shrink-0 text-sm font-semibold">{formatWeightWithUnit(entry.weight, profile.weightUnit)}</p>
       </div>

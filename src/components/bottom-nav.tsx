@@ -14,9 +14,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
+import {
+  ALERT_BADGE_COUNT_STORAGE_KEY,
+  loadReminderAlertRules,
+  resolveAlerts,
+} from "@/lib/alerts";
+import { loadCareTemplates } from "@/lib/care-settings";
+import { loadAppState } from "@/lib/hewster-data";
 import { applyPetTheme, loadPetProfile } from "@/lib/pet-profile";
 
 type Props = {
@@ -50,13 +57,85 @@ function PawIcon() {
   );
 }
 
-export function BottomNav({ alertsCount = 0 }: Props) {
+function normalizeStoredAlertsCount(snapshot: string) {
+  const value = Number.parseInt(snapshot, 10);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function loadStoredAlertsCountSnapshot() {
+  if (typeof window === "undefined") return "0";
+  return window.localStorage.getItem(ALERT_BADGE_COUNT_STORAGE_KEY) ?? "0";
+}
+
+function subscribeToStoredAlertsCount(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener("alert-badge-count-updated", onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener("alert-badge-count-updated", onStoreChange);
+  };
+}
+
+function syncStoredAlertsCount(count: number) {
+  window.localStorage.setItem(ALERT_BADGE_COUNT_STORAGE_KEY, String(Math.max(0, count)));
+  window.dispatchEvent(new Event("alert-badge-count-updated"));
+}
+
+export function BottomNav({ alertsCount }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const storedAlertsCountSnapshot = useSyncExternalStore(subscribeToStoredAlertsCount, loadStoredAlertsCountSnapshot, () => "0");
+  const storedAlertsCount = normalizeStoredAlertsCount(storedAlertsCountSnapshot);
+  const activeAlertsCount = alertsCount ?? storedAlertsCount;
 
   useEffect(() => {
     applyPetTheme(loadPetProfile().themeId);
   }, []);
+
+  useEffect(() => {
+    if (alertsCount === undefined) return;
+    syncStoredAlertsCount(alertsCount);
+  }, [alertsCount]);
+
+  useEffect(() => {
+    if (alertsCount !== undefined) return;
+
+    let cancelled = false;
+
+    async function refreshStoredBadgeFromState() {
+      try {
+        const state = await loadAppState();
+        if (cancelled) return;
+
+        const careTemplates = [
+          ...loadCareTemplates("supplement"),
+          ...loadCareTemplates("medication"),
+        ];
+        const unresolvedCount = resolveAlerts(
+          state.templates,
+          state.dailyMealState,
+          state.activityLogs,
+          state.manualAlerts ?? [],
+          loadReminderAlertRules(),
+          careTemplates
+        ).filter((alert) => alert.kind !== "reminder").length;
+
+        syncStoredAlertsCount(unresolvedCount);
+      } catch {
+        // Keep the visible nav usable; the Alerts page still owns the canonical count.
+      }
+    }
+
+    void refreshStoredBadgeFromState();
+    window.addEventListener("focus", refreshStoredBadgeFromState);
+    document.addEventListener("visibilitychange", refreshStoredBadgeFromState);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refreshStoredBadgeFromState);
+      document.removeEventListener("visibilitychange", refreshStoredBadgeFromState);
+    };
+  }, [alertsCount]);
 
   return (
     <>
@@ -89,7 +168,7 @@ export function BottomNav({ alertsCount = 0 }: Props) {
                 {pages.map((item) => {
                   const Icon = item.icon;
                   const active = pathname === item.href || (item.href === APP_BASE && pathname === "/");
-                  const showBadge = item.badge && alertsCount > 0;
+                  const showBadge = item.badge && activeAlertsCount > 0;
 
                   return (
                     <Link
@@ -108,7 +187,7 @@ export function BottomNav({ alertsCount = 0 }: Props) {
                         {item.iconKind === "paw" ? <PawIcon /> : Icon ? <Icon className="size-5" strokeWidth={2.25} /> : null}
                         {showBadge ? (
                           <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
-                            {alertsCount > 9 ? "9+" : alertsCount}
+                            {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
                           </span>
                         ) : null}
                         <span className="text-[13px] font-bold leading-tight text-[var(--hewie-accent-text,#ffffff)]">{item.label}</span>
@@ -125,13 +204,13 @@ export function BottomNav({ alertsCount = 0 }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-[max(1rem,calc((100vw-28rem)/2+1rem))] z-40 flex size-16 items-center justify-center rounded-[1.4rem] bg-[var(--hewie-bg,#979ca7)] text-[var(--hewie-accent-text,#ffffff)] shadow-[0_12px_28px_rgba(15,23,42,0.18)] ring-1 ring-white/45 transition hover:scale-105"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-[max(1rem,calc((100vw-28rem)/2+1rem))] z-[60] flex size-[4.25rem] items-center justify-center rounded-[1.45rem] bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] shadow-[0_16px_34px_rgba(15,23,42,0.28)] ring-2 ring-white/85 transition hover:scale-105"
         aria-label="Open notebook pages"
       >
-        <NotebookTabs className="size-8" />
-        {alertsCount > 0 ? (
+        <NotebookTabs className="size-8 drop-shadow-sm" strokeWidth={2.6} />
+        {activeAlertsCount > 0 ? (
           <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-white">
-            {alertsCount > 9 ? "9+" : alertsCount}
+            {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
           </span>
         ) : null}
       </button>

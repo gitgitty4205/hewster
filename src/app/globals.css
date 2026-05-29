@@ -217,6 +217,13 @@
   --hewie-priority-color: #b8c9dd;
 }
 
+.pet-note-text {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

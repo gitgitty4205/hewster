@@ -17,8 +17,8 @@ export function MealNoteForm({ mealName, note, onNoteChange, onSave, onCancel }:
         <span className="mb-2 block font-semibold text-[#4f2f1b]">Add Notes</span>
         <textarea
           value={note}
-          onChange={(event) => onNoteChange(event.target.value.slice(0, 180))}
-          maxLength={180}
+          onChange={(event) => onNoteChange(event.target.value.slice(0, 100))}
+          maxLength={100}
           rows={3}
           placeholder={`Notes for ${mealName}`}
           className="w-full rounded-2xl border-0 bg-white px-3 py-2.5 text-sm text-[#4f2f1b] shadow-sm outline-none ring-1 ring-[#d8b895]/60 transition placeholder:text-[#6b3f22]/40 focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"

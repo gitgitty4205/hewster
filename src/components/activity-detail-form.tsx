@@ -1421,9 +1421,9 @@ export function ActivityDetailForm({
 
             value={extraNotes}
 
-            onChange={(event) => onExtraNotesChange(event.target.value.slice(0, 180))}
+            onChange={(event) => onExtraNotesChange(event.target.value.slice(0, 100))}
 
-            maxLength={180}
+            maxLength={100}
 
             rows={2}
 
@@ -1471,9 +1471,9 @@ export function ActivityDetailForm({
 
           value={showTreatDetailField ? "" : notes}
 
-          onChange={(event) => onNotesChange(event.target.value.slice(0, 180))}
+          onChange={(event) => onNotesChange(event.target.value.slice(0, 100))}
 
-          maxLength={180}
+          maxLength={100}
 
           rows={activityType === "medication" || activityType === "supplement" ? 1 : activityType === "wellness" || isPottyLog ? 2 : 3}
 

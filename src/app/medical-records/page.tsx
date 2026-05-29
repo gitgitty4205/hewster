@@ -5,6 +5,7 @@ import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { ExpandableNoteText } from "@/components/expandable-note-text";
 import { formatActivityTime, formatActivityLabel } from "@/lib/activity";
 import { type ActivityLog, loadAppState } from "@/lib/hewster-data";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
@@ -168,7 +169,7 @@ export default function MedicalRecordsPage() {
                         </div>
                       </div>
                       {activity.detail ? <p className="mt-2 text-sm text-zinc-700">{activity.detail}</p> : null}
-                      {notes ? <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-600">Notes: {notes}</p> : null}
+                      {notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-600">Notes: {notes}</ExpandableNoteText> : null}
                       {attachments ? <p className="mt-1 text-sm text-zinc-500">{attachments}</p> : null}
                       {tags.length ? (
                         <div className="mt-3 flex flex-wrap gap-1.5">

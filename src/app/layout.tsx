@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+
+import { AuthProvider } from "@/components/auth-provider";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,7 +21,7 @@ export default function RootLayout({
         style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
         suppressHydrationWarning
       >
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
