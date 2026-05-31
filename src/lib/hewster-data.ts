@@ -6,6 +6,7 @@ import {
   canDeleteNotebookEntries,
   canEditNotebookEntries,
   resolveActiveNotebookAccess,
+  type NotebookMember,
   type NotebookAccessRole,
 } from "@/lib/notebook-access";
 import { getSupabaseBrowserClient, getSupabaseCurrentSession, HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
@@ -43,7 +44,15 @@ export type ActivityLog = {
   detail: string | null;
   notes: string | null;
   attachments?: ActivityAttachment[];
+  auditInfo?: NotebookEntryAuditInfo;
   createdAt?: string;
+};
+
+export type NotebookEntryAuditInfo = {
+  loggedBy: string | null;
+  loggedAt: string | null;
+  lastEditedBy: string | null;
+  lastEditedAt: string | null;
 };
 
 export type ActivityAttachment = {
@@ -317,7 +326,7 @@ async function getSignedInSupabase() {
   if (!user) return null;
 
   const access = await resolveActiveNotebookAccess(supabase, user);
-  return { supabase, userId: access.notebookOwnerId, accessRole: access.role };
+  return { supabase, userId: access.notebookOwnerId, accessRole: access.role, members: access.members };
 }
 
 function requireEntryEditAccess(accessRole: NotebookAccessRole) {
@@ -431,6 +440,8 @@ type AppAuditLogRow = {
   table_name: string;
   action: "INSERT" | "UPDATE" | "DELETE";
   occurred_at: string;
+  actor_user_id?: string | null;
+  row_pk?: Record<string, unknown> | null;
   old_row: Record<string, unknown> | null;
   new_row: Record<string, unknown> | null;
 };
@@ -797,6 +808,81 @@ function mergeHistoricalMealTemplates(currentTemplates: MealTemplate[], auditRow
   return sortMealTemplatesByTime([...templatesById.values()]);
 }
 
+function displayNameFromEmail(email: string) {
+  const localPart = email.split("@")[0] ?? email;
+  return localPart
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ") || email;
+}
+
+function memberDisplayNames(members: NotebookMember[]) {
+  const names = new Map<string, string>();
+
+  members.forEach((member) => {
+    if (member.memberUserId) {
+      names.set(member.memberUserId, displayNameFromEmail(member.memberEmail));
+    }
+    if (member.role === "owner") {
+      names.set(member.notebookOwnerId, displayNameFromEmail(member.memberEmail));
+    }
+  });
+
+  return names;
+}
+
+function actorDisplayName(actorUserId: string | null | undefined, memberNames: Map<string, string>) {
+  if (!actorUserId) return null;
+  return memberNames.get(actorUserId) ?? "Shared account";
+}
+
+function auditRowActivityId(row: AppAuditLogRow) {
+  const rowPkId = row.row_pk?.id;
+  if (typeof rowPkId === "string") return rowPkId;
+
+  const newRowId = row.new_row?.id;
+  if (typeof newRowId === "string") return newRowId;
+
+  const oldRowId = row.old_row?.id;
+  return typeof oldRowId === "string" ? oldRowId : null;
+}
+
+function activityAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[]) {
+  const memberNames = memberDisplayNames(members);
+  const byActivityId = new Map<string, NotebookEntryAuditInfo>();
+
+  auditRows
+    .filter((row) => row.table_name === "activity_logs" && row.action !== "DELETE")
+    .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at))
+    .forEach((row) => {
+      const activityId = auditRowActivityId(row);
+      if (!activityId) return;
+
+      const existing = byActivityId.get(activityId) ?? {
+        loggedBy: null,
+        loggedAt: null,
+        lastEditedBy: null,
+        lastEditedAt: null,
+      };
+      const actorName = actorDisplayName(row.actor_user_id, memberNames);
+
+      if (row.action === "INSERT" && !existing.loggedAt) {
+        existing.loggedBy = actorName;
+        existing.loggedAt = row.occurred_at;
+      }
+
+      if (row.action === "UPDATE") {
+        existing.lastEditedBy = actorName;
+        existing.lastEditedAt = row.occurred_at;
+      }
+
+      byActivityId.set(activityId, existing);
+    });
+
+  return byActivityId;
+}
+
 function mapTemplateToRow(template: MealTemplate, index: number, ownerId: string): MealTemplateRow {
   return {
     owner_id: ownerId,
@@ -970,7 +1056,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     return cacheAppState(localState);
   }
 
-  const { supabase, userId } = signedInSupabase;
+  const { supabase, userId, members } = signedInSupabase;
 
   const templatesPromise = supabase
     .from("meal_templates")
@@ -1051,10 +1137,10 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
       .order("created_at", { ascending: false }),
     supabase
       .from("app_audit_log")
-      .select("table_name, action, occurred_at, old_row, new_row")
+      .select("table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
       .eq("owner_id", userId)
       .eq("profile_slug", HEWSTER_PROFILE_SLUG)
-      .eq("table_name", "meal_templates")
+      .in("table_name", ["meal_templates", "activity_logs"])
       .order("occurred_at", { ascending: false })
       .limit(500),
   ]);
@@ -1088,10 +1174,9 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
       ? (templatesResult.data as MealTemplateRow[]).map(mapTemplateRowToTemplate)
       : localState.templates
   );
-  const historicalMealTemplates = mergeHistoricalMealTemplates(
-    templates,
-    !auditLogsResult.error && auditLogsResult.data?.length ? (auditLogsResult.data as AppAuditLogRow[]) : []
-  );
+  const auditRows = !auditLogsResult.error && auditLogsResult.data?.length ? (auditLogsResult.data as AppAuditLogRow[]) : [];
+  const historicalMealTemplates = mergeHistoricalMealTemplates(templates, auditRows);
+  const activityAuditInfo = activityAuditInfoById(auditRows, members);
 
   const remoteDailyMealHistory = dailyMealsResult.data?.length
     ? (dailyMealsResult.data as DailyMealRow[]).map((row) => {
@@ -1132,6 +1217,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
   const remoteActivityLogsWithAttachments = remoteActivityLogs.map((activity) => ({
     ...activity,
     attachments: attachmentsByActivityId.get(activity.id) ?? [],
+    auditInfo: activityAuditInfo.get(activity.id),
   }));
 
   const activityLogsById = new Map(localState.activityLogs.map((entry) => [entry.id, entry]));
@@ -1762,3 +1848,4 @@ export async function deleteManualAlertInSupabase(alertId: string) {
     throw error;
   }
 }
+

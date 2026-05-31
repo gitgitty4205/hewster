@@ -1533,6 +1533,8 @@ export default function HomeApp() {
       .sort((a, b) => b.happenedAt.localeCompare(a.happenedAt));
   }, [activityLogs, poopRecordsWindowDays]);
 
+  const editingActivity = editingActivityId ? activityLogs.find((entry) => entry.id === editingActivityId) : null;
+
   const markMealFed = async (mealId: number) => {
     const timestamp = formatCurrentTime();
     const activeTodayKey = todayKey || currentTodayKey();
@@ -2293,6 +2295,7 @@ export default function HomeApp() {
               onDelete={editingActivityId && canDeleteEntries ? deleteActivity : undefined}
               saving={activityState === "saving"}
               savedCareItems={careTemplates.filter((item) => item.asNeeded && (item.kind === detailActivityType || (detailActivityType === "sick" && item.kind === "medication") || (detailActivityType === "wellness" && item.kind === "supplement")))}
+              auditInfo={editingActivity?.auditInfo}
             />
           ) : null}
         </QuickLogCard>
