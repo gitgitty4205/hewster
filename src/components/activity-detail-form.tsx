@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import type { ActivityType, NotebookEntryAuditInfo } from "@/lib/hewster-data";
+import type { ActivityType } from "@/lib/hewster-data";
 
 import type { CareItemTemplate } from "@/lib/care-settings";
 
@@ -24,17 +24,6 @@ import {
 } from "@/lib/pet-profile";
 
 const MAX_ATTACHMENT_FILES = 5;
-
-function formatAuditTime(value: string | null | undefined) {
-  if (!value) return "Not recorded";
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
 
 
 
@@ -83,8 +72,6 @@ type Props = {
   saving: boolean;
 
   savedCareItems?: CareItemTemplate[];
-
-  auditInfo?: NotebookEntryAuditInfo;
 
 };
 
@@ -829,11 +816,7 @@ export function ActivityDetailForm({
 
   savedCareItems = [],
 
-  auditInfo,
-
 }: Props) {
-
-  const [auditOpen, setAuditOpen] = useState(false);
 
   const profileSnapshot = useSyncExternalStore(
 
@@ -1641,43 +1624,6 @@ export function ActivityDetailForm({
 
         </div>
 
-      ) : null}
-
-
-
-      {isEditing ? (
-        <div className="mt-4 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
-          <button
-            type="button"
-            onClick={() => setAuditOpen((current) => !current)}
-            className="flex w-full items-center justify-between gap-3 text-left text-sm font-semibold text-zinc-700"
-            aria-expanded={auditOpen}
-          >
-            <span>Entry Info</span>
-            <span className="text-xs font-medium text-zinc-400">{auditOpen ? "Hide" : "Show"}</span>
-          </button>
-
-          {auditOpen ? (
-            <div className="mt-3 grid gap-2 text-xs leading-5 text-zinc-500">
-              <p>
-                <span className="font-semibold text-zinc-600">Logged by:</span>{" "}
-                {auditInfo?.loggedBy ?? "Not recorded"}
-              </p>
-              <p>
-                <span className="font-semibold text-zinc-600">Logged time:</span>{" "}
-                {formatAuditTime(auditInfo?.loggedAt)}
-              </p>
-              <p>
-                <span className="font-semibold text-zinc-600">Last edited by:</span>{" "}
-                {auditInfo?.lastEditedBy ?? "No edits recorded"}
-              </p>
-              <p>
-                <span className="font-semibold text-zinc-600">Last edited time:</span>{" "}
-                {formatAuditTime(auditInfo?.lastEditedAt)}
-              </p>
-            </div>
-          ) : null}
-        </div>
       ) : null}
 
 

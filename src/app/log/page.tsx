@@ -1388,8 +1388,6 @@ export default function LogPage() {
 
                     savedCareItems={careTemplates.filter((item) => item.asNeeded && (item.kind === detailActivityType || (detailActivityType === "sick" && item.kind === "medication") || (detailActivityType === "wellness" && item.kind === "supplement")))}
 
-                    auditInfo={activity.auditInfo}
-
                   />
 
                 )
