@@ -16,6 +16,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/components/auth-provider";
 
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 import {
 
@@ -27,6 +28,8 @@ import {
   type MealLog,
 
   type WeightLog,
+
+  currentTodayKey,
 
   loadAppState,
   loadFreshAppState,
@@ -1819,17 +1822,21 @@ export default function HistoryPage() {
 
   }, [activeFilter, endDate, historyDays, startDate]);
 
+  const hasActiveHistoryFilter = activeFilter !== "all" || Boolean(startDate) || Boolean(endDate);
+
   useEffect(() => {
 
     if (!filteredHistoryDays.length) {
 
-      setSelectedDay(null);
+      if (hasActiveHistoryFilter) {
+        setSelectedDay(null);
+      }
 
       return;
 
     }
 
-    if (!selectedDay || !filteredHistoryDays.some((day) => day.day === selectedDay)) {
+    if (!selectedDay || (hasActiveHistoryFilter && !filteredHistoryDays.some((day) => day.day === selectedDay))) {
 
       setSelectedDay(filteredHistoryDays[0].day);
 
@@ -1839,7 +1846,7 @@ export default function HistoryPage() {
 
     }
 
-  }, [filteredHistoryDays, selectedDay]);
+  }, [filteredHistoryDays, hasActiveHistoryFilter, selectedDay]);
 
   const historyDaysByKey = useMemo(() => {
 
@@ -1848,6 +1855,7 @@ export default function HistoryPage() {
   }, [filteredHistoryDays]);
 
   const selectedHistoryDay = selectedDay ? historyDaysByKey.get(selectedDay) ?? null : null;
+  const selectedEmptyDay = selectedDay && !selectedHistoryDay ? selectedDay : null;
 
   const selectedDayAlerts = selectedHistoryDay?.timelineItems.filter((item) => item.activityType === "manual") ?? [];
 
@@ -2152,6 +2160,7 @@ export default function HistoryPage() {
       const key = historyDayKeyFromDate(date);
 
       const day = historyDaysByKey.get(key);
+      const selectable = date.getMonth() === month && key <= currentTodayKey();
 
       const hasMedicalRecord = day?.activities.some((activity) => ["sick", "medication"].includes(activity.activityType) || (activity.activityType === "wellness" && isMedicalWellnessDetail(activity.detail))) ?? false;
 
@@ -2175,6 +2184,8 @@ export default function HistoryPage() {
 
         hasData: Boolean(day),
 
+        selectable,
+
         dotClasses,
 
       };
@@ -2183,7 +2194,7 @@ export default function HistoryPage() {
 
   }, [calendarMonth, historyDaysByKey]);
 
-  const isFilteredView = activeFilter !== "all" || Boolean(startDate) || Boolean(endDate);
+  const isFilteredView = hasActiveHistoryFilter;
 
   const showEventFeed = selectedHistoryDay && activeFilter === "all";
 
@@ -2602,7 +2613,7 @@ export default function HistoryPage() {
 
                   type="button"
 
-                  disabled={!cell.hasData}
+                  disabled={!cell.selectable}
 
                   onClick={() => setSelectedDay(cell.key)}
 
@@ -2620,7 +2631,9 @@ export default function HistoryPage() {
 
                           ? "bg-white/70 text-[var(--hewie-active-text,#334155)] ring-1 ring-[var(--hewie-ring,#cbd5e1)] hover:bg-white/85"
 
-                          : "bg-white/25 text-[var(--hewie-active-text,#334155)]/45 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/35"
+                          : cell.selectable
+                            ? "bg-white/45 text-[var(--hewie-active-text,#334155)]/60 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/45 hover:bg-white/65"
+                            : "bg-white/25 text-[var(--hewie-active-text,#334155)]/30 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/25"
 
                   }`}
 
@@ -2662,7 +2675,7 @@ export default function HistoryPage() {
 
             <div>
 
-              <h2 className="text-lg font-semibold">{isFilteredView ? "Filtered Results" : selectedHistoryDay ? formatDayLabel(selectedHistoryDay.day) : "Select A Day"}</h2>
+              <h2 className="text-lg font-semibold">{isFilteredView ? "Filtered Results" : selectedHistoryDay ? formatDayLabel(selectedHistoryDay.day) : selectedEmptyDay ? formatDayLabel(selectedEmptyDay) : "Select A Day"}</h2>
 
               {isFilteredView ? (
 
@@ -2704,7 +2717,9 @@ export default function HistoryPage() {
 
                       ].filter(Boolean).join(" • ")
 
-                    : "Days with records have dots on the calendar."}
+                    : selectedEmptyDay
+                      ? "No records logged yet."
+                      : "Days with records have dots on the calendar."}
 
                 </p>
 
@@ -3100,6 +3115,18 @@ export default function HistoryPage() {
                 <p className="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-500 ring-1 ring-zinc-200">No records match this filter for the selected day.</p>
 
               )}
+
+            </div>
+
+          ) : selectedEmptyDay ? (
+
+            <div className="space-y-3">
+
+              <p className="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-500 ring-1 ring-zinc-200">No records yet for this day.</p>
+
+              <Button asChild className="h-9 rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90">
+                <Link href={`/hewie/log?date=${selectedEmptyDay}`}>Log This Day</Link>
+              </Button>
 
             </div>
 

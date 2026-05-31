@@ -49,6 +49,7 @@ import {
   persistDailyMealStateLocally,
 
   saveCompletedMealToSupabase,
+  saveMealLogToSupabase,
 
   saveActivityLogToSupabase,
   saveActivityAttachmentsToSupabase,
@@ -102,11 +103,34 @@ function toTimeInputValue(isoString: string) {
 
 
 
-function mergeTodayWithTime(timeValue: string) {
+function isValidDayKey(value: string | null) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00`);
+  return !Number.isNaN(date.getTime()) && currentTodayKeyFromDate(date) === value;
+}
+
+function currentTodayKeyFromDate(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function formatLogDayLabel(dayKey: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${dayKey}T00:00:00`));
+}
+
+function mergeDayWithTime(dayKey: string, timeValue: string) {
 
   const [hours, minutes] = timeValue.split(":").map(Number);
 
-  const now = new Date();
+  const now = new Date(`${dayKey}T00:00:00`);
 
   now.setHours(hours, minutes, 0, 0);
 
@@ -347,6 +371,7 @@ function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: Me
 }
 
 function TodayMealPlanCard({
+  dayKey,
   templates,
   dailyMealState,
   mealLogs,
@@ -364,6 +389,7 @@ function TodayMealPlanCard({
   onUndoMeal,
   canUndoMeal,
 }: {
+  dayKey: string;
   templates: MealTemplate[];
   dailyMealState: DailyMealState[];
   mealLogs: MealLog[];
@@ -381,8 +407,8 @@ function TodayMealPlanCard({
   onUndoMeal: (mealId: number) => void;
   canUndoMeal: boolean;
 }) {
-  const today = currentTodayKey();
-  const todayMealLogs = mealLogs.filter((mealLog) => mealLog.dayKey === today);
+  const dayMealLogs = mealLogs.filter((mealLog) => mealLog.dayKey === dayKey);
+  const dayMealState = dailyMealState.filter((meal) => (meal.dayKey ?? currentTodayKey()) === dayKey);
 
   return (
     <section className="mb-4 rounded-3xl bg-[#f4eadf]/90 p-5 text-[#6b3f22] shadow-sm ring-1 ring-[#d8b895]/65">
@@ -393,15 +419,15 @@ function TodayMealPlanCard({
 
       <div className="space-y-3">
         {templates.map((meal) => {
-          const mealState = dailyMealState.find((entry) => entry.mealId === meal.id);
-          const mealLog = todayMealLogs.find((entry) => entry.mealId === meal.id && !isMissedMealLog(entry)) ?? todayMealLogs.find((entry) => entry.mealId === meal.id);
+          const mealState = dayMealState.find((entry) => entry.mealId === meal.id);
+          const mealLog = dayMealLogs.find((entry) => entry.mealId === meal.id && !isMissedMealLog(entry)) ?? dayMealLogs.find((entry) => entry.mealId === meal.id);
           const status = mealLogStatus(mealLog, mealState?.status ?? "upcoming");
           const actualTime = mealLog?.actualTime ?? mealState?.actualTime ?? null;
           const fedNotes = mealLog?.fedNotes ?? mealState?.fedNotes ?? null;
           const skipped = mealLog ? isSkippedMealLog(mealLog) : fedNotes === "Skipped";
           const missed = mealLog ? isMissedMealLog(mealLog) : false;
           const checked = status === "done" && !skipped && !missed;
-          const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, templates, today);
+          const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, templates, dayKey);
           const skippedCareItemIds = mealLog?.skippedCareItemIds ?? mealState?.skippedCareItemIds ?? [];
 
           return (
@@ -495,6 +521,8 @@ function resolveActivityTypeForSave(activityType: ActivityType, detail: string):
 
 
 export default function LogPage() {
+  const [logDayKey, setLogDayKey] = useState(currentTodayKey);
+  const isTodayLog = logDayKey === currentTodayKey();
 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
@@ -542,9 +570,16 @@ export default function LogPage() {
 
   const supabaseReady = isSupabaseConfigured();
   const activeTemplates = useMemo(
-    () => templates.filter((template) => isMealTemplateActiveForDay(template, currentTodayKey())),
-    [templates]
+    () => templates.filter((template) => isMealTemplateActiveForDay(template, logDayKey)),
+    [logDayKey, templates]
   );
+
+  useEffect(() => {
+    const requestedDay = new URLSearchParams(window.location.search).get("date");
+    if (requestedDay && isValidDayKey(requestedDay) && requestedDay <= currentTodayKey()) {
+      setLogDayKey(requestedDay);
+    }
+  }, []);
 
 
 
@@ -675,9 +710,7 @@ export default function LogPage() {
 
 
 
-  const todayActivityLogs = useMemo(() => {
-
-    const today = currentTodayKey();
+  const selectedDayActivityLogs = useMemo(() => {
 
     return activityLogs.filter((activity) => {
 
@@ -693,11 +726,11 @@ export default function LogPage() {
 
 
 
-      return activityDayKey === today;
+      return activityDayKey === logDayKey;
 
     });
 
-  }, [activityLogs]);
+  }, [activityLogs, logDayKey]);
 
   const careTemplates = useMemo(
     () => [...supplementTemplates, ...medicationTemplates],
@@ -710,7 +743,7 @@ export default function LogPage() {
   };
 
   const openMealTimeEditor = (mealId: number, actualTime: string | null) => {
-    const mealState = dailyMealState.find((entry) => entry.mealId === mealId);
+    const mealState = dailyMealState.find((entry) => entry.mealId === mealId && (entry.dayKey ?? currentTodayKey()) === logDayKey);
     setEditingMealTimeId(mealId);
     setEditingMealTimeValue(actualTime ?? nowForTimeInput());
     setEditingMealNoteValue(mealState?.fedNotes ?? "");
@@ -733,41 +766,48 @@ export default function LogPage() {
   const saveMealTime = async () => {
     if (editingMealTimeId === null) return;
 
-    const today = currentTodayKey();
     const template = templates.find((entry) => entry.id === editingMealTimeId);
     if (!template) return;
 
     const actualTime = editingMealTimeValue.trim();
-    const mealLogId = `${today}-${editingMealTimeId}`;
-    const nextMealState = dailyMealState.map((meal) =>
-      meal.mealId === editingMealTimeId
-        ? {
-            ...meal,
-            actualTime: actualTime || null,
-            status: actualTime ? ("done" as const) : meal.status,
-            fedNotes: editingMealNoteValue.trim() || null,
-            skippedCareItemIds: editingSkippedCareItemIds,
-            dayKey: today,
-          }
-        : meal
-    );
+    const mealLogId = `${logDayKey}-${editingMealTimeId}`;
+    const updatedMealState = {
+      mealId: editingMealTimeId,
+      actualTime: actualTime || null,
+      status: actualTime ? ("done" as const) : ("upcoming" as const),
+      fedNotes: editingMealNoteValue.trim() || null,
+      skippedCareItemIds: editingSkippedCareItemIds,
+      dayKey: logDayKey,
+    };
+    const nextMealState = [
+      updatedMealState,
+      ...dailyMealState.filter((meal) => !(meal.mealId === editingMealTimeId && (meal.dayKey ?? currentTodayKey()) === logDayKey)),
+    ];
 
     let nextMealLogs = mealLogs;
     if (actualTime) {
-      const mealLog = buildMealLog(template, actualTime, editingMealNoteValue.trim() || null, today, editingSkippedCareItemIds);
-      nextMealLogs = [mealLog, ...mealLogs.filter((entry) => entry.id !== mealLogId && entry.id !== missedMealLogId(today, editingMealTimeId))];
+      const mealLog = buildMealLog(template, actualTime, editingMealNoteValue.trim() || null, logDayKey, editingSkippedCareItemIds);
+      nextMealLogs = [mealLog, ...mealLogs.filter((entry) => entry.id !== mealLogId && entry.id !== missedMealLogId(logDayKey, editingMealTimeId))];
       if (supabaseReady) {
         try {
-          await saveCompletedMealToSupabase(mealLog, nextMealState, missedMealLogId(today, editingMealTimeId));
+          if (isTodayLog) {
+            await saveCompletedMealToSupabase(mealLog, nextMealState, missedMealLogId(logDayKey, editingMealTimeId));
+          } else {
+            await saveMealLogToSupabase(mealLog);
+          }
         } catch {
           // local fallback already captured
         }
       }
     }
 
-    setDailyMealState(nextMealState);
+    if (isTodayLog) {
+      setDailyMealState(nextMealState);
+      persistMealState(nextMealState, nextMealLogs);
+    } else {
+      window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextMealLogs));
+    }
     setMealLogs(nextMealLogs);
-    persistMealState(nextMealState, nextMealLogs);
     cancelMealTimeEditor();
   };
 
@@ -775,40 +815,45 @@ export default function LogPage() {
     const confirmed = window.confirm("Undo this fed meal entry?");
     if (!confirmed) return;
 
-    const today = currentTodayKey();
-    const mealLogId = `${today}-${mealId}`;
+    const mealLogId = `${logDayKey}-${mealId}`;
     const nextMealState = dailyMealState.map((meal) =>
-      meal.mealId === mealId
+      meal.mealId === mealId && (meal.dayKey ?? currentTodayKey()) === logDayKey
         ? {
             ...meal,
             actualTime: null,
             status: "upcoming" as const,
             fedNotes: null,
             skippedCareItemIds: [],
-            dayKey: today,
+            dayKey: logDayKey,
           }
         : meal
     );
     const nextMealLogs = mealLogs.filter((entry) => entry.id !== mealLogId);
 
-    setDailyMealState(nextMealState);
+    if (isTodayLog) {
+      setDailyMealState(nextMealState);
+      persistMealState(nextMealState, nextMealLogs);
+    } else {
+      window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextMealLogs));
+    }
     setMealLogs(nextMealLogs);
-    persistMealState(nextMealState, nextMealLogs);
     cancelMealTimeEditor();
 
     if (supabaseReady) {
       try {
         await deleteMealLogInSupabase(mealLogId);
-        await saveDailyMealsToSupabase(nextMealState);
+        if (isTodayLog) {
+          await saveDailyMealsToSupabase(nextMealState);
+        }
       } catch {
         // local fallback already captured
       }
     }
   };
 
-  const todayEventItems = useMemo(() => {
+  const selectedDayEventItems = useMemo(() => {
 
-    const activityItems = todayActivityLogs.map((activity) => {
+    const activityItems = selectedDayActivityLogs.map((activity) => {
 
       const happenedAt = customCareDisplayDate(activity);
 
@@ -834,7 +879,7 @@ export default function LogPage() {
 
     return activityItems.sort((a, b) => a.sortMinutes - b.sortMinutes || a.sortKey.localeCompare(b.sortKey));
 
-  }, [todayActivityLogs]);
+  }, [selectedDayActivityLogs]);
 
 
 
@@ -980,7 +1025,7 @@ export default function LogPage() {
 
       activityType,
 
-      happenedAt: new Date().toISOString(),
+      happenedAt: mergeDayWithTime(logDayKey, nowForTimeInput()),
 
       detail: null,
 
@@ -1038,7 +1083,7 @@ export default function LogPage() {
 
       activityType: resolvedActivityType,
 
-      happenedAt: mergeTodayWithTime(happenedAtValue),
+      happenedAt: mergeDayWithTime(logDayKey, happenedAtValue),
 
       detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : isCareActivityType(detailActivityType) ? careDetailForSave(existingActivity?.detail ?? null, trimmedDetail || "Given") : trimmedDetail || null,
 
@@ -1207,7 +1252,7 @@ export default function LogPage() {
 
           <p className="mt-2 text-sm leading-6 text-zinc-600">
 
-            Review and edit today&apos;s events, meals, care, and anything else you want to remember.
+            Review and edit {isTodayLog ? "today's" : formatLogDayLabel(logDayKey)} events, meals, care, and anything else you want to remember.
 
           </p>
 
@@ -1322,15 +1367,15 @@ export default function LogPage() {
 
         <ActivityFeed
 
-          activityLogs={todayActivityLogs}
+          activityLogs={selectedDayActivityLogs}
 
-          timelineItems={todayEventItems}
+          timelineItems={selectedDayEventItems}
 
           grouped
 
-          title="Today&apos;s Events"
+          title={isTodayLog ? "Today's Events" : `${formatLogDayLabel(logDayKey)} Events`}
 
-          subtitle="Review and edit today&apos;s events and meal plan."
+          subtitle={`Review and edit ${isTodayLog ? "today's" : "this day's"} events and meal plan.`}
 
           onSelectActivity={canEditEntries ? openEditorForActivity : undefined}
 
@@ -1338,7 +1383,7 @@ export default function LogPage() {
 
           renderInlineEditor={(activity) =>
 
-            activity.id === editingActivityId || (!editingActivityId && detailActivityType === activity.activityType && activity.happenedAt === todayActivityLogs[0]?.happenedAt)
+            activity.id === editingActivityId || (!editingActivityId && detailActivityType === activity.activityType && activity.happenedAt === selectedDayActivityLogs[0]?.happenedAt)
 
               ? (
 
@@ -1401,6 +1446,7 @@ export default function LogPage() {
 
 
         <TodayMealPlanCard
+          dayKey={logDayKey}
           templates={activeTemplates}
           dailyMealState={dailyMealState}
           mealLogs={mealLogs}
