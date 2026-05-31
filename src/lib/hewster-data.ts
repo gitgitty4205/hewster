@@ -119,6 +119,7 @@ export type HewsterAppState = {
 };
 
 export type MealTemplateAuditSnapshot = {
+  id?: number;
   action: "INSERT" | "UPDATE" | "DELETE";
   occurredAt: string;
   oldTemplate: MealTemplate | null;
@@ -136,6 +137,7 @@ export const TODAY_KEY_STORAGE_KEY = "hewster.todayKey";
 
 const RETIRED_WEIGHT_LOG_IDS = new Set(["weight-1778383254313", "weight-1778383263011"]);
 const APP_STATE_CACHE_TTL_MS = 30_000;
+const ACTIVITY_AUDIT_DETAILS_LIMIT = 99;
 let appStateCache: { state: HewsterAppState; cachedAt: number } | null = null;
 let appStateLoadPromise: Promise<HewsterAppState> | null = null;
 
@@ -445,6 +447,7 @@ type ManualAlertRow = {
 };
 
 type AppAuditLogRow = {
+  id?: number;
   table_name: string;
   action: "INSERT" | "UPDATE" | "DELETE";
   occurred_at: string;
@@ -806,6 +809,7 @@ function mapMealTemplateAuditSnapshots(auditRows: AppAuditLogRow[] = []): MealTe
   return auditRows
     .filter((auditRow) => auditRow.table_name === "meal_templates")
     .map((auditRow) => ({
+      id: auditRow.id,
       action: auditRow.action,
       occurredAt: auditRow.occurred_at,
       oldTemplate: isHistoricalMealTemplateRow(auditRow.old_row) ? mapHistoricalTemplateRowToTemplate(auditRow.old_row) : null,
@@ -823,7 +827,11 @@ export function mealTemplatesForHistoryDay(
 
   auditSnapshots
     .filter((snapshot) => snapshot.occurredAt > targetEnd)
-    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+    .sort((a, b) => {
+      const timeOrder = b.occurredAt.localeCompare(a.occurredAt);
+      if (timeOrder !== 0) return timeOrder;
+      return (b.id ?? 0) - (a.id ?? 0);
+    })
     .forEach((snapshot) => {
       const newId = snapshot.newTemplate?.id;
       const oldTemplate = snapshot.oldTemplate;
@@ -1195,19 +1203,21 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
       .order("created_at", { ascending: false }),
     supabase
       .from("app_audit_log")
-      .select("table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
+      .select("id, table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
       .eq("owner_id", userId)
       .eq("profile_slug", HEWSTER_PROFILE_SLUG)
       .eq("table_name", "meal_templates")
-      .order("occurred_at", { ascending: false }),
+      .order("occurred_at", { ascending: false })
+      .order("id", { ascending: false }),
     supabase
       .from("app_audit_log")
-      .select("table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
+      .select("id, table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
       .eq("owner_id", userId)
       .eq("profile_slug", HEWSTER_PROFILE_SLUG)
       .eq("table_name", "activity_logs")
       .order("occurred_at", { ascending: false })
-      .limit(500),
+      .order("id", { ascending: false })
+      .limit(ACTIVITY_AUDIT_DETAILS_LIMIT),
   ]);
 
   if (activityLogsResult.error) {
