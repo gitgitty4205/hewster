@@ -154,7 +154,13 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
       return [{ ...currentPet, role: notebookRole ?? "owner" as NotebookAccessRole, notebookOwnerId: "local" }];
     }
 
+    const hasSharedNotebook = memberships.some((member) => member.notebookOwnerId !== user?.id && member.role !== "owner");
+
     return memberships
+      .filter((member) => {
+        const isOwnNotebook = member.notebookOwnerId === user?.id;
+        return !(isOwnNotebook && hasSharedNotebook && !ownedPrimaryPet);
+      })
       .map((member) => {
         const isOwnNotebook = member.notebookOwnerId === user?.id;
         const displayedPet = isOwnNotebook && ownedPrimaryPet ? ownedPrimaryPet : currentPet;
