@@ -2,7 +2,12 @@ import { compareActivitiesReverseChronological } from "@/lib/activity";
 import type { CareItemKind, CareItemTemplate } from "@/lib/care-settings";
 import type { MealStatus, MealTemplate } from "@/lib/meal-templates";
 import { initialTemplates, isMealTemplateArray, sortMealTemplatesByTime, STORAGE_KEY } from "@/lib/meal-templates";
-import { resolveActiveNotebookAccess } from "@/lib/notebook-access";
+import {
+  canDeleteNotebookEntries,
+  canEditNotebookEntries,
+  resolveActiveNotebookAccess,
+  type NotebookAccessRole,
+} from "@/lib/notebook-access";
 import { getSupabaseBrowserClient, getSupabaseCurrentSession, HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 
 export type DailyMealState = {
@@ -313,6 +318,28 @@ async function getSignedInSupabase() {
 
   const access = await resolveActiveNotebookAccess(supabase, user);
   return { supabase, userId: access.notebookOwnerId, accessRole: access.role };
+}
+
+function requireEntryEditAccess(accessRole: NotebookAccessRole) {
+  if (!canEditNotebookEntries(accessRole)) {
+    throw new Error("Only owners and co-owners can edit saved notebook entries.");
+  }
+}
+
+function requireEntryDeleteAccess(accessRole: NotebookAccessRole) {
+  if (!canDeleteNotebookEntries(accessRole)) {
+    throw new Error("Only the notebook owner can delete saved notebook entries.");
+  }
+}
+
+export async function loadNotebookEntryPermissions() {
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return { canEditEntries: true, canDeleteEntries: true };
+
+  return {
+    canEditEntries: canEditNotebookEntries(signedInSupabase.accessRole),
+    canDeleteEntries: canDeleteNotebookEntries(signedInSupabase.accessRole),
+  };
 }
 
 type MealTemplateRow = {
@@ -1334,12 +1361,15 @@ export async function saveActivityLogToSupabase(activity: ActivityLog) {
 }
 
 export async function updateActivityLogInSupabase(activity: ActivityLog) {
-  cacheActivityLog(activity);
-
   const signedInSupabase = await getSignedInSupabase();
-  if (!signedInSupabase) return;
+  if (!signedInSupabase) {
+    cacheActivityLog(activity);
+    return;
+  }
 
-  const { supabase, userId } = signedInSupabase;
+  const { supabase, userId, accessRole } = signedInSupabase;
+  requireEntryEditAccess(accessRole);
+  cacheActivityLog(activity);
   const { error } = await supabase
     .from("activity_logs")
     .update({
@@ -1431,12 +1461,15 @@ export async function saveActivityAttachmentsToSupabase(activity: ActivityLog, f
 }
 
 export async function deleteActivityLogInSupabase(activityId: string) {
-  removeCachedActivityLog(activityId);
-
   const signedInSupabase = await getSignedInSupabase();
-  if (!signedInSupabase) return;
+  if (!signedInSupabase) {
+    removeCachedActivityLog(activityId);
+    return;
+  }
 
-  const { supabase, userId } = signedInSupabase;
+  const { supabase, userId, accessRole } = signedInSupabase;
+  requireEntryDeleteAccess(accessRole);
+  removeCachedActivityLog(activityId);
   const { error } = await supabase
     .from("activity_logs")
     .delete()
@@ -1530,7 +1563,8 @@ export async function updateWeightLogInSupabase(weight: WeightLog) {
   const signedInSupabase = await getSignedInSupabase();
   if (!signedInSupabase) return;
 
-  const { supabase, userId } = signedInSupabase;
+  const { supabase, userId, accessRole } = signedInSupabase;
+  requireEntryEditAccess(accessRole);
   const { error } = await supabase
     .from("weight_logs")
     .update(mapWeightLogToRow(weight, userId))
@@ -1547,7 +1581,8 @@ export async function deleteWeightLogInSupabase(weightLogId: string) {
   const signedInSupabase = await getSignedInSupabase();
   if (!signedInSupabase) return;
 
-  const { supabase, userId } = signedInSupabase;
+  const { supabase, userId, accessRole } = signedInSupabase;
+  requireEntryDeleteAccess(accessRole);
   const { error } = await supabase
     .from("weight_logs")
     .delete()
@@ -1652,12 +1687,15 @@ export async function saveCompletedMealToSupabase(mealLog: MealLog, dailyMealSta
 }
 
 export async function deleteMealLogInSupabase(mealLogId: string) {
-  removeCachedMealLog(mealLogId);
-
   const signedInSupabase = await getSignedInSupabase();
-  if (!signedInSupabase) return;
+  if (!signedInSupabase) {
+    removeCachedMealLog(mealLogId);
+    return;
+  }
 
-  const { supabase, userId } = signedInSupabase;
+  const { supabase, userId, accessRole } = signedInSupabase;
+  requireEntryDeleteAccess(accessRole);
+  removeCachedMealLog(mealLogId);
   const { error } = await supabase
     .from("meal_logs")
     .delete()

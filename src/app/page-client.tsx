@@ -31,6 +31,7 @@ import {
   WEIGHT_LOGS_STORAGE_KEY,
   loadAppState,
   loadFreshAppState,
+  loadNotebookEntryPermissions,
   persistLocalState,
   saveActivityLogToSupabase,
   saveActivityAttachmentsToSupabase,
@@ -722,6 +723,7 @@ export default function HomeApp() {
   const [upcomingOverflowExpanded, setUpcomingOverflowExpanded] = useState(false);
   const [upcomingNoteModal, setUpcomingNoteModal] = useState<{ title: string; subtitle: string; text: string } | null>(null);
   const [petRemembered, setPetRemembered] = useState(false);
+  const [canDeleteEntries, setCanDeleteEntries] = useState(true);
   const initialLoadComplete = useRef(false);
   const previousTodayKeyRef = useRef<string | null>(null);
   const missedRolloverRef = useRef<string | null>(null);
@@ -735,6 +737,24 @@ export default function HomeApp() {
     return () => {
       window.removeEventListener("pet-profile-updated", refreshPetProfile);
       window.removeEventListener("storage", refreshPetProfile);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshPermissions = () => {
+      void loadNotebookEntryPermissions().then((permissions) => {
+        if (!cancelled) setCanDeleteEntries(permissions.canDeleteEntries);
+      });
+    };
+
+    refreshPermissions();
+    window.addEventListener("petnotebook-active-notebook-updated", refreshPermissions);
+    window.addEventListener("focus", refreshPermissions);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("petnotebook-active-notebook-updated", refreshPermissions);
+      window.removeEventListener("focus", refreshPermissions);
     };
   }, []);
 
@@ -2270,7 +2290,7 @@ export default function HomeApp() {
               onHappenedAtChange={setHappenedAtValue}
               onSave={saveDetailedActivity}
               onCancel={resetActivityEditor}
-              onDelete={editingActivityId ? deleteActivity : undefined}
+              onDelete={editingActivityId && canDeleteEntries ? deleteActivity : undefined}
               saving={activityState === "saving"}
               savedCareItems={careTemplates.filter((item) => item.asNeeded && (item.kind === detailActivityType || (detailActivityType === "sick" && item.kind === "medication") || (detailActivityType === "wellness" && item.kind === "supplement")))}
             />

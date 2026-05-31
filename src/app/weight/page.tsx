@@ -11,6 +11,7 @@ import {
   type WeightLog,
   deleteWeightLogInSupabase,
   loadAppState,
+  loadNotebookEntryPermissions,
   markWeightLogDeleted,
   loadLocalState,
   persistLocalState,
@@ -68,6 +69,8 @@ export default function WeightPage() {
   const [expandedYears, setExpandedYears] = useState<string[]>(() => [todayInputValue().slice(0, 4)]);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [hydrated, setHydrated] = useState(false);
+  const [canEditEntries, setCanEditEntries] = useState(true);
+  const [canDeleteEntries, setCanDeleteEntries] = useState(true);
   const hasSetInitialOpenYear = useRef(false);
   const supabaseReady = isSupabaseConfigured();
   const theme = appThemes[themeId];
@@ -77,6 +80,27 @@ export default function WeightPage() {
     setProfile(updated);
     savePetProfile(updated);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshPermissions = () => {
+      void loadNotebookEntryPermissions().then((permissions) => {
+        if (!cancelled) {
+          setCanEditEntries(permissions.canEditEntries);
+          setCanDeleteEntries(permissions.canDeleteEntries);
+        }
+      });
+    };
+
+    refreshPermissions();
+    window.addEventListener("petnotebook-active-notebook-updated", refreshPermissions);
+    window.addEventListener("focus", refreshPermissions);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("petnotebook-active-notebook-updated", refreshPermissions);
+      window.removeEventListener("focus", refreshPermissions);
+    };
+  }, []);
 
   useEffect(() => {
     const refreshTheme = () => setThemeId(loadUserTheme());
@@ -263,14 +287,16 @@ export default function WeightPage() {
       key={entry.id}
       className="relative rounded-2xl bg-white/70 p-4 pr-10 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.045)]"
     >
-      <button
-        type="button"
-        onClick={() => editWeight(entry)}
-        className="absolute right-2.5 top-2.5 flex size-7 items-center justify-center rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/55 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/45 transition hover:bg-white hover:text-[var(--hewie-active-text,#334155)]"
-        aria-label={`Edit weight from ${formatWeightDate(entry.date)}`}
-      >
-        <Ellipsis className="size-3.5" />
-      </button>
+      {canEditEntries ? (
+        <button
+          type="button"
+          onClick={() => editWeight(entry)}
+          className="absolute right-2.5 top-2.5 flex size-7 items-center justify-center rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/55 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/45 transition hover:bg-white hover:text-[var(--hewie-active-text,#334155)]"
+          aria-label={`Edit weight from ${formatWeightDate(entry.date)}`}
+        >
+          <Ellipsis className="size-3.5" />
+        </button>
+      ) : null}
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="font-medium">{formatWeightDate(entry.date)}</p>
@@ -336,9 +362,11 @@ export default function WeightPage() {
             <Button variant="outline" onClick={cancelEdit} className="rounded-full">
               Cancel
             </Button>
-            <Button variant="outline" onClick={() => deleteWeight(entry)} className="rounded-full border-rose-200 text-rose-600 hover:bg-rose-50">
-              Delete
-            </Button>
+            {canDeleteEntries ? (
+              <Button variant="outline" onClick={() => deleteWeight(entry)} className="rounded-full border-rose-200 text-rose-600 hover:bg-rose-50">
+                Delete
+              </Button>
+            ) : null}
           </div>
         </div>
       ) : null}

@@ -45,6 +45,7 @@ import {
   MEAL_LOGS_STORAGE_KEY,
 
   loadAppState,
+  loadNotebookEntryPermissions,
   persistDailyMealStateLocally,
 
   saveCompletedMealToSupabase,
@@ -361,6 +362,7 @@ function TodayMealPlanCard({
   onSaveMeal,
   onCancelMealEdit,
   onUndoMeal,
+  canUndoMeal,
 }: {
   templates: MealTemplate[];
   dailyMealState: DailyMealState[];
@@ -377,6 +379,7 @@ function TodayMealPlanCard({
   onSaveMeal: () => void;
   onCancelMealEdit: () => void;
   onUndoMeal: (mealId: number) => void;
+  canUndoMeal: boolean;
 }) {
   const today = currentTodayKey();
   const todayMealLogs = mealLogs.filter((mealLog) => mealLog.dayKey === today);
@@ -458,7 +461,7 @@ function TodayMealPlanCard({
                     onSave={onSaveMeal}
                     saveLabel={actualTime ? "Save Meal" : "Mark Fed"}
                     onCancel={onCancelMealEdit}
-                    onUndo={actualTime ? () => onUndoMeal(meal.id) : undefined}
+                    onUndo={actualTime && canUndoMeal ? () => onUndoMeal(meal.id) : undefined}
                     careItems={mealCareItems}
                     skippedCareItemIds={editingSkippedCareItemIds}
                     onToggleCareItem={onToggleCareItem}
@@ -534,6 +537,8 @@ export default function LogPage() {
   const [happenedAtValue, setHappenedAtValue] = useState(nowForTimeInput());
 
   const [hydrated, setHydrated] = useState(false);
+  const [canEditEntries, setCanEditEntries] = useState(true);
+  const [canDeleteEntries, setCanDeleteEntries] = useState(true);
 
   const supabaseReady = isSupabaseConfigured();
   const activeTemplates = useMemo(
@@ -542,6 +547,27 @@ export default function LogPage() {
   );
 
 
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshPermissions = () => {
+      void loadNotebookEntryPermissions().then((permissions) => {
+        if (!cancelled) {
+          setCanEditEntries(permissions.canEditEntries);
+          setCanDeleteEntries(permissions.canDeleteEntries);
+        }
+      });
+    };
+
+    refreshPermissions();
+    window.addEventListener("petnotebook-active-notebook-updated", refreshPermissions);
+    window.addEventListener("focus", refreshPermissions);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("petnotebook-active-notebook-updated", refreshPermissions);
+      window.removeEventListener("focus", refreshPermissions);
+    };
+  }, []);
 
   useEffect(() => {
 
@@ -1306,7 +1332,7 @@ export default function LogPage() {
 
           subtitle="Review and edit today&apos;s events and meal plan."
 
-          onSelectActivity={openEditorForActivity}
+          onSelectActivity={canEditEntries ? openEditorForActivity : undefined}
 
           careTemplates={careTemplates}
 
@@ -1354,7 +1380,7 @@ export default function LogPage() {
 
                     onCancel={resetEditor}
 
-                    onDelete={editingActivityId ? deleteActivity : undefined}
+                    onDelete={editingActivityId && canDeleteEntries ? deleteActivity : undefined}
 
                     saveLabel="Save"
 
@@ -1383,13 +1409,14 @@ export default function LogPage() {
           editingMealTimeValue={editingMealTimeValue}
           editingMealNoteValue={editingMealNoteValue}
           editingSkippedCareItemIds={editingSkippedCareItemIds}
-          onOpenMealEditor={openMealTimeEditor}
+          onOpenMealEditor={canEditEntries ? openMealTimeEditor : () => undefined}
           onActualTimeChange={setEditingMealTimeValue}
           onFedNoteChange={setEditingMealNoteValue}
           onToggleCareItem={toggleEditingCareItem}
           onSaveMeal={saveMealTime}
           onCancelMealEdit={cancelMealTimeEditor}
           onUndoMeal={undoMealFed}
+          canUndoMeal={canDeleteEntries}
         />
 
 

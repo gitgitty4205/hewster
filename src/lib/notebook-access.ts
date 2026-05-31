@@ -54,6 +54,14 @@ export function canExportNotebook(role: NotebookAccessRole) {
   return role === "owner" || role === "co-owner";
 }
 
+export function canEditNotebookEntries(role: NotebookAccessRole | null | undefined) {
+  return role === "owner" || role === "co-owner";
+}
+
+export function canDeleteNotebookEntries(role: NotebookAccessRole | null | undefined) {
+  return role === "owner";
+}
+
 export const notebookInviteRoles: NotebookAccessRole[] = ["co-owner", "caretaker", "pet-sitter"];
 
 export function activeNotebookOwnerIdFromStorage() {
