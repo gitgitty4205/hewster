@@ -48,6 +48,7 @@ import {
   type DailyMeal,
   type MealTemplate,
   initialTemplates,
+  isInitialMealTemplatePlan,
   isMealTemplateActiveForDay,
 } from "@/lib/meal-templates";
 import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail } from "@/lib/activity";
@@ -754,7 +755,7 @@ export default function HomeApp() {
   }, []);
 
   const applySharedNotebookState = useCallback((state: Awaited<ReturnType<typeof loadAppState>>) => {
-    const hasOnlySeedState = supabaseReady && state.source === "seed";
+    const hasOnlySeedState = supabaseReady && (state.source === "seed" || (state.source === "local" && isInitialMealTemplatePlan(state.templates)));
 
     setNotebookDataUnavailable(hasOnlySeedState);
     if (hasOnlySeedState) {

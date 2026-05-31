@@ -66,6 +66,17 @@ export function sortMealTemplatesByTime(templates: MealTemplate[]) {
   return [...templates].sort(compareMealTemplatesByTime);
 }
 
+export function isInitialMealTemplatePlan(templates: MealTemplate[]) {
+  const compactTemplate = (template: MealTemplate) => ({
+    name: template.name,
+    plannedTime: template.plannedTime,
+    food: template.food,
+    notes: template.notes,
+  });
+
+  return JSON.stringify(templates.map(compactTemplate)) === JSON.stringify(initialTemplates.map(compactTemplate));
+}
+
 function dayKeyFromDate(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric",

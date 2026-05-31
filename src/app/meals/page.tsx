@@ -15,6 +15,7 @@ import {
 import {
   type MealTemplate,
   initialTemplates,
+  isInitialMealTemplatePlan,
   parseMealTemplateTimeToMinutes,
   sortMealTemplatesByTime,
 } from "@/lib/meal-templates";
@@ -51,6 +52,7 @@ export default function MealsPage() {
   const [editingDraft, setEditingDraft] = useState<MealDraft | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [storageMode, setStorageMode] = useState<"browser" | "supabase">("browser");
+  const [mealDataUnavailable, setMealDataUnavailable] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const initialLoadComplete = useRef(false);
   const supabaseReady = isSupabaseConfigured();
@@ -65,10 +67,21 @@ export default function MealsPage() {
         const state = await loadAppState();
         if (cancelled) return;
 
+        const hasOnlyDefaultLocalFallback = supabaseReady && (state.source === "seed" || (state.source === "local" && isInitialMealTemplatePlan(state.templates)));
+        if (hasOnlyDefaultLocalFallback) {
+          setTemplates([]);
+          setMealDataUnavailable(true);
+          setStorageMode("browser");
+          return;
+        }
+
+        setMealDataUnavailable(false);
         setTemplates(sortMealTemplatesByTime(state.templates));
         setStorageMode(state.source === "supabase" ? "supabase" : "browser");
       } catch {
         if (cancelled) return;
+        setMealDataUnavailable(true);
+        setTemplates([]);
         setStorageMode("browser");
       } finally {
         if (!cancelled) {
@@ -87,13 +100,15 @@ export default function MealsPage() {
 
   useEffect(() => {
     if (!hydrated || !initialLoadComplete.current) return;
+    if (mealDataUnavailable) return;
 
     persistLocalState(templates, undefined, undefined);
     window.dispatchEvent(new CustomEvent("hewster:meal-templates-updated"));
-  }, [templates, hydrated]);
+  }, [templates, hydrated, mealDataUnavailable]);
 
   useEffect(() => {
     if (!hydrated || !initialLoadComplete.current) return;
+    if (mealDataUnavailable || !templates.length) return;
 
     let cancelled = false;
 
@@ -131,7 +146,7 @@ export default function MealsPage() {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [templates, hydrated, supabaseReady]);
+  }, [templates, hydrated, supabaseReady, mealDataUnavailable]);
 
   const visibleTemplates = editingDraft?.isNew
     ? sortMealTemplatesByTime([...templates, editingDraft.meal])
@@ -280,15 +295,21 @@ export default function MealsPage() {
           </div>
 
           <div className="mb-4 flex flex-wrap gap-2">
-            <Button variant="outline" className="rounded-full" disabled={Boolean(editingDraft)} onClick={addMealTemplate}>
+            <Button variant="outline" className="rounded-full" disabled={Boolean(editingDraft) || mealDataUnavailable} onClick={addMealTemplate}>
               <Plus className="size-4" />
               Add Meal
             </Button>
-            <Button variant="outline" className="rounded-full" disabled={Boolean(editingDraft)} onClick={resetTemplates}>
+            <Button variant="outline" className="rounded-full" disabled={Boolean(editingDraft) || mealDataUnavailable} onClick={resetTemplates}>
               <RotateCcw className="size-4" />
               Reset Meal Plan
             </Button>
           </div>
+
+          {mealDataUnavailable ? (
+            <div className="mb-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-800 ring-1 ring-amber-200">
+              Saved meal plan could not be loaded. Default sample meals are hidden so they do not replace the real plan.
+            </div>
+          ) : null}
 
           <div className="space-y-4">
             {visibleTemplates.map((meal) => {
