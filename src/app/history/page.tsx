@@ -2552,9 +2552,6 @@ export default function HistoryPage() {
                     />
                     <span>
                       Include log details
-                      <span className="block pt-0.5 text-[11px] font-medium leading-4 text-zinc-400">
-                        Adds who logged or edited entries to the report.
-                      </span>
                     </span>
                   </label>
                 ) : null}
