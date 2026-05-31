@@ -1239,23 +1239,23 @@ export default function LogPage() {
 
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
 
-          <header className="mb-6">
+          <header className="mb-5">
 
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 rounded-2xl bg-white/28 p-3 pr-4 ring-1 ring-white/35">
 
-              <div>
+              <PetAvatarMenu className="size-[4.5rem] rounded-full object-cover object-center ring-2 ring-[#fff8ea]/95 shadow-md" width={72} height={72} />
 
-                <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <div className="min-w-0 flex-1">
 
-                <div className="skeleton-pulse mt-1 h-10 w-36 rounded-xl bg-white/40" />
+                <PetNotebookTitle href="/hewie" className="text-xs font-semibold text-[var(--hewie-active-text,#6d28d9)]/75" />
+
+                <div className="skeleton-pulse mt-1 h-8 w-36 rounded-xl bg-white/40" />
+
+                <div className="skeleton-pulse mt-2 h-4 w-full max-w-[15rem] rounded-xl bg-white/30" />
 
               </div>
 
-              <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
-
             </div>
-
-            <div className="skeleton-pulse mt-2 h-4 w-72 rounded-xl bg-white/30" />
 
           </header>
 
@@ -1289,27 +1289,27 @@ export default function LogPage() {
 
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
 
-        <header className="mb-6">
+        <header className="mb-5">
 
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 rounded-2xl bg-white/28 p-3 pr-4 ring-1 ring-white/35">
 
-            <div>
+            <PetAvatarMenu className="size-[4.5rem] rounded-full object-cover object-center ring-2 ring-[#fff8ea]/95 shadow-md" width={72} height={72} />
 
-              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+            <div className="min-w-0 flex-1">
 
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Event Details</h1>
+              <PetNotebookTitle href="/hewie" className="text-xs font-semibold text-[var(--hewie-active-text,#6d28d9)]/75" />
+
+              <h1 className="mt-0.5 text-[1.35rem] font-bold leading-tight tracking-tight text-zinc-800">Event Details</h1>
+
+              <p className="mt-1.5 text-[0.8rem] leading-5 text-zinc-600">
+
+                Review {isTodayLog ? "today's" : formatLogDayLabel(logDayKey)} events, meals, care, and notes.
+
+              </p>
 
             </div>
 
-            <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
-
           </div>
-
-          <p className="mt-2 text-sm leading-6 text-zinc-600">
-
-            Review and edit {isTodayLog ? "today's" : formatLogDayLabel(logDayKey)} events, meals, care, and anything else you want to remember.
-
-          </p>
 
         </header>
 
