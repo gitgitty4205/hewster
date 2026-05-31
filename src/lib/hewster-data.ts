@@ -107,6 +107,7 @@ export type ManualAlert = {
 export type HewsterAppState = {
   templates: MealTemplate[];
   historicalMealTemplates?: MealTemplate[];
+  mealTemplateAuditSnapshots?: MealTemplateAuditSnapshot[];
   dailyMealState: DailyMealState[];
   activityLogs: ActivityLog[];
   weightLogs: WeightLog[];
@@ -115,6 +116,13 @@ export type HewsterAppState = {
   manualAlerts: ManualAlert[];
   todayKey: string;
   source: "supabase" | "local" | "seed";
+};
+
+export type MealTemplateAuditSnapshot = {
+  action: "INSERT" | "UPDATE" | "DELETE";
+  occurredAt: string;
+  oldTemplate: MealTemplate | null;
+  newTemplate: MealTemplate | null;
 };
 
 export const DAILY_MEAL_STORAGE_KEY = "hewster.dailyMeals";
@@ -574,6 +582,7 @@ function buildSeedState(): HewsterAppState {
     templates: initialTemplates,
     dailyMealState: buildFreshDailyMealState(initialTemplates),
     historicalMealTemplates: initialTemplates,
+    mealTemplateAuditSnapshots: [],
     activityLogs: [],
     weightLogs: [],
     mealLogs: [],
@@ -619,6 +628,7 @@ export function loadLocalState(): HewsterAppState {
     return {
       templates: resolvedTemplates,
       historicalMealTemplates: resolvedTemplates,
+      mealTemplateAuditSnapshots: [],
       dailyMealState: isStaleDay ? buildFreshDailyMealState(resolvedTemplates) : resolvedDailyMeals,
       dailyMealHistory: localDailyMealHistory,
       activityLogs: isActivityLogArray(activityLogs) ? activityLogs : seed.activityLogs,
@@ -669,6 +679,7 @@ export function persistLocalState(
   cacheAppState({
     templates,
     historicalMealTemplates: existingState.historicalMealTemplates ?? templates,
+    mealTemplateAuditSnapshots: existingState.mealTemplateAuditSnapshots ?? [],
     dailyMealState: resolvedDailyMealState,
     activityLogs: resolvedActivityLogs,
     weightLogs: resolvedWeightLogs,
@@ -789,6 +800,45 @@ function mapHistoricalTemplateRowToTemplate(row: HistoricalMealTemplateRow): Mea
     food: row.food,
     notes: row.notes,
   };
+}
+
+function mapMealTemplateAuditSnapshots(auditRows: AppAuditLogRow[] = []): MealTemplateAuditSnapshot[] {
+  return auditRows
+    .filter((auditRow) => auditRow.table_name === "meal_templates")
+    .map((auditRow) => ({
+      action: auditRow.action,
+      occurredAt: auditRow.occurred_at,
+      oldTemplate: isHistoricalMealTemplateRow(auditRow.old_row) ? mapHistoricalTemplateRowToTemplate(auditRow.old_row) : null,
+      newTemplate: isHistoricalMealTemplateRow(auditRow.new_row) ? mapHistoricalTemplateRowToTemplate(auditRow.new_row) : null,
+    }));
+}
+
+export function mealTemplatesForHistoryDay(
+  currentTemplates: MealTemplate[],
+  auditSnapshots: MealTemplateAuditSnapshot[] = [],
+  dayKey: string
+) {
+  const targetEnd = new Date(`${dayKey}T23:59:59.999`).toISOString();
+  const templatesById = new Map(currentTemplates.map((template) => [template.id, template]));
+
+  auditSnapshots
+    .filter((snapshot) => snapshot.occurredAt > targetEnd)
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+    .forEach((snapshot) => {
+      const newId = snapshot.newTemplate?.id;
+      const oldTemplate = snapshot.oldTemplate;
+
+      if (snapshot.action === "INSERT" && newId) {
+        templatesById.delete(newId);
+        return;
+      }
+
+      if ((snapshot.action === "UPDATE" || snapshot.action === "DELETE") && oldTemplate) {
+        templatesById.set(oldTemplate.id, oldTemplate);
+      }
+    });
+
+  return sortMealTemplatesByTime([...templatesById.values()]);
 }
 
 function mergeHistoricalMealTemplates(currentTemplates: MealTemplate[], auditRows: AppAuditLogRow[] = []) {
@@ -1182,6 +1232,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     !auditLogsResult.error && auditLogsResult.data?.length ? (auditLogsResult.data as AppAuditLogRow[]) : []
   );
   const auditRows = !auditLogsResult.error && auditLogsResult.data?.length ? (auditLogsResult.data as AppAuditLogRow[]) : [];
+  const mealTemplateAuditSnapshots = mapMealTemplateAuditSnapshots(auditRows);
   const activityAuditInfo = activityAuditInfoById(auditRows, members);
 
   const remoteDailyMealHistory = dailyMealsResult.data?.length
@@ -1325,6 +1376,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
   return cacheAppState({
     templates,
     historicalMealTemplates,
+    mealTemplateAuditSnapshots,
     dailyMealState: resolvedDailyMealState,
     dailyMealHistory: [...dailyMealHistoryByKey.values()],
     activityLogs,

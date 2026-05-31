@@ -41,11 +41,13 @@ import {
   type DailyMealState,
 
   type MealLog,
+  type MealTemplateAuditSnapshot,
 
   MEAL_LOGS_STORAGE_KEY,
 
   loadAppState,
   loadNotebookEntryPermissions,
+  mealTemplatesForHistoryDay,
   persistDailyMealStateLocally,
 
   saveCompletedMealToSupabase,
@@ -372,6 +374,7 @@ function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: Me
 
 function TodayMealPlanCard({
   dayKey,
+  isToday,
   templates,
   dailyMealState,
   mealLogs,
@@ -390,6 +393,7 @@ function TodayMealPlanCard({
   canUndoMeal,
 }: {
   dayKey: string;
+  isToday: boolean;
   templates: MealTemplate[];
   dailyMealState: DailyMealState[];
   mealLogs: MealLog[];
@@ -414,7 +418,7 @@ function TodayMealPlanCard({
     <section className="mb-4 rounded-3xl bg-[#f4eadf]/90 p-5 text-[#6b3f22] shadow-sm ring-1 ring-[#d8b895]/65">
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-[#5f3a22]">Meal Plan</h2>
-        <p className="text-sm text-[#6b3f22]/62">Today&apos;s meals, checked off as they&apos;re logged.</p>
+        <p className="text-sm text-[#6b3f22]/62">{isToday ? "Today's meals, checked off as they're logged." : "Meals for this day, checked off as they're logged."}</p>
       </div>
 
       <div className="space-y-3">
@@ -427,6 +431,7 @@ function TodayMealPlanCard({
           const skipped = mealLog ? isSkippedMealLog(mealLog) : fedNotes === "Skipped";
           const missed = mealLog ? isMissedMealLog(mealLog) : false;
           const checked = status === "done" && !skipped && !missed;
+          const notLoggedPast = !isToday && !actualTime && !skipped && !missed;
           const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, templates, dayKey);
           const skippedCareItemIds = mealLog?.skippedCareItemIds ?? mealState?.skippedCareItemIds ?? [];
 
@@ -444,6 +449,8 @@ function TodayMealPlanCard({
                       <span className="mt-0.5 shrink-0 whitespace-nowrap rounded-full bg-rose-50/80 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200/70">Skipped</span>
                     ) : missed ? (
                       <span className="mt-0.5 shrink-0 whitespace-nowrap rounded-full bg-rose-50/80 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200/70">Missed</span>
+                    ) : notLoggedPast ? (
+                      <span className="mt-0.5 shrink-0 whitespace-nowrap rounded-full bg-white/75 px-2.5 py-1 text-xs font-medium text-[#7a5636]/70 ring-1 ring-[#d8b895]/55">Not logged</span>
                     ) : (
                       <span className={`mt-0.5 shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusClasses(status)}`}>{status}</span>
                     )}
@@ -529,6 +536,7 @@ export default function LogPage() {
   const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
 
   const [templates, setTemplates] = useState<MealTemplate[]>(initialTemplates);
+  const [mealTemplateAuditSnapshots, setMealTemplateAuditSnapshots] = useState<MealTemplateAuditSnapshot[]>([]);
 
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>([]);
 
@@ -569,9 +577,13 @@ export default function LogPage() {
   const [canDeleteEntries, setCanDeleteEntries] = useState(true);
 
   const supabaseReady = isSupabaseConfigured();
+  const templatesForLogDay = useMemo(
+    () => isTodayLog ? templates : mealTemplatesForHistoryDay(templates, mealTemplateAuditSnapshots, logDayKey),
+    [isTodayLog, logDayKey, mealTemplateAuditSnapshots, templates]
+  );
   const activeTemplates = useMemo(
-    () => templates.filter((template) => isMealTemplateActiveForDay(template, logDayKey)),
-    [logDayKey, templates]
+    () => templatesForLogDay.filter((template) => isMealTemplateActiveForDay(template, logDayKey)),
+    [logDayKey, templatesForLogDay]
   );
 
   useEffect(() => {
@@ -633,6 +645,7 @@ export default function LogPage() {
         setMealLogs(state.mealLogs ?? []);
 
         setTemplates(state.templates ?? initialTemplates);
+        setMealTemplateAuditSnapshots(state.mealTemplateAuditSnapshots ?? []);
 
         setDailyMealState(state.dailyMealState ?? []);
 
@@ -766,7 +779,7 @@ export default function LogPage() {
   const saveMealTime = async () => {
     if (editingMealTimeId === null) return;
 
-    const template = templates.find((entry) => entry.id === editingMealTimeId);
+    const template = templatesForLogDay.find((entry) => entry.id === editingMealTimeId) ?? templates.find((entry) => entry.id === editingMealTimeId);
     if (!template) return;
 
     const actualTime = editingMealTimeValue.trim();
@@ -1174,6 +1187,48 @@ export default function LogPage() {
 
   };
 
+  const activityFeed = (
+    <ActivityFeed
+      activityLogs={selectedDayActivityLogs}
+      timelineItems={selectedDayEventItems}
+      grouped
+      title={isTodayLog ? "Today's Events" : `${formatLogDayLabel(logDayKey)} Events`}
+      subtitle={`Review and edit ${isTodayLog ? "today's" : "this day's"} events and meal plan.`}
+      onSelectActivity={canEditEntries ? openEditorForActivity : undefined}
+      careTemplates={careTemplates}
+      renderInlineEditor={(activity) =>
+        activity.id === editingActivityId || (!editingActivityId && detailActivityType === activity.activityType && activity.happenedAt === selectedDayActivityLogs[0]?.happenedAt)
+          ? (
+              <ActivityDetailForm
+                activityType={detailActivityType as Exclude<ActivityType, "pee">}
+                detail={detailValue}
+                notes={notesValue}
+                extraNotes={extraNotesValue}
+                happenedAt={happenedAtValue}
+                isEditing={Boolean(editingActivityId)}
+                embedded
+                onDetailChange={setDetailValue}
+                onNotesChange={setNotesValue}
+                onExtraNotesChange={setExtraNotesValue}
+                attachmentFiles={attachmentFiles}
+                attachmentNames={attachmentFiles.map((file) => file.name)}
+                onAttachmentsChange={setAttachmentFiles}
+                recordTags={recordTags}
+                onRecordTagsChange={setRecordTags}
+                onHappenedAtChange={setHappenedAtValue}
+                onSave={saveDetailedActivity}
+                onCancel={resetEditor}
+                onDelete={editingActivityId && canDeleteEntries ? deleteActivity : undefined}
+                saveLabel="Save"
+                saving={activityState === "saving"}
+                savedCareItems={careTemplates.filter((item) => item.asNeeded && (item.kind === detailActivityType || (detailActivityType === "sick" && item.kind === "medication") || (detailActivityType === "wellness" && item.kind === "supplement")))}
+              />
+            )
+          : null
+      }
+    />
+  );
+
 
 
   if (!hydrated) {
@@ -1259,6 +1314,7 @@ export default function LogPage() {
         </header>
 
 
+        {!isTodayLog ? activityFeed : null}
 
         {logEventOpen ? (
           <div className="relative mb-7 [&>section]:mb-0">
@@ -1365,88 +1421,13 @@ export default function LogPage() {
 
 
 
-        <ActivityFeed
-
-          activityLogs={selectedDayActivityLogs}
-
-          timelineItems={selectedDayEventItems}
-
-          grouped
-
-          title={isTodayLog ? "Today's Events" : `${formatLogDayLabel(logDayKey)} Events`}
-
-          subtitle={`Review and edit ${isTodayLog ? "today's" : "this day's"} events and meal plan.`}
-
-          onSelectActivity={canEditEntries ? openEditorForActivity : undefined}
-
-          careTemplates={careTemplates}
-
-          renderInlineEditor={(activity) =>
-
-            activity.id === editingActivityId || (!editingActivityId && detailActivityType === activity.activityType && activity.happenedAt === selectedDayActivityLogs[0]?.happenedAt)
-
-              ? (
-
-                  <ActivityDetailForm
-
-                    activityType={detailActivityType as Exclude<ActivityType, "pee">}
-
-                    detail={detailValue}
-
-                    notes={notesValue}
-
-                    extraNotes={extraNotesValue}
-
-                    happenedAt={happenedAtValue}
-
-                    isEditing={Boolean(editingActivityId)}
-
-                    embedded
-
-                    onDetailChange={setDetailValue}
-
-                    onNotesChange={setNotesValue}
-
-                    onExtraNotesChange={setExtraNotesValue}
-
-                    attachmentFiles={attachmentFiles}
-
-                    attachmentNames={attachmentFiles.map((file) => file.name)}
-
-                    onAttachmentsChange={setAttachmentFiles}
-
-                    recordTags={recordTags}
-
-                    onRecordTagsChange={setRecordTags}
-
-                    onHappenedAtChange={setHappenedAtValue}
-
-                    onSave={saveDetailedActivity}
-
-                    onCancel={resetEditor}
-
-                    onDelete={editingActivityId && canDeleteEntries ? deleteActivity : undefined}
-
-                    saveLabel="Save"
-
-                    saving={activityState === "saving"}
-
-                    savedCareItems={careTemplates.filter((item) => item.asNeeded && (item.kind === detailActivityType || (detailActivityType === "sick" && item.kind === "medication") || (detailActivityType === "wellness" && item.kind === "supplement")))}
-
-                  />
-
-                )
-
-              : null
-
-          }
-
-        />
+        {isTodayLog ? activityFeed : null}
 
 
 
         <TodayMealPlanCard
           dayKey={logDayKey}
+          isToday={isTodayLog}
           templates={activeTemplates}
           dailyMealState={dailyMealState}
           mealLogs={mealLogs}
