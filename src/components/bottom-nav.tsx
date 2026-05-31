@@ -272,8 +272,8 @@ export function BottomNav({ alertsCount }: Props) {
   return (
     <>
       {open ? (
-        <div className="fixed inset-0 z-50 bg-zinc-950/25 px-3 py-6 backdrop-blur-sm">
-          <div className="relative mx-auto flex h-[82vh] max-h-[720px] min-h-[620px] w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+        <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/25 px-3 py-4 backdrop-blur-sm sm:py-6">
+          <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]">
             <div
               className="absolute inset-0 bg-cover bg-center grayscale"
               style={{ backgroundImage: "url('/hewster-profile.jpg')" }}
@@ -295,7 +295,7 @@ export function BottomNav({ alertsCount }: Props) {
               </button>
             </div>
 
-            <div className="relative flex flex-1 items-center overflow-y-auto px-6 py-10">
+            <div className="relative flex flex-1 items-center overflow-y-auto px-6 py-8 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:py-10">
               <div className="grid w-full grid-cols-3 justify-items-center gap-x-6 gap-y-9">
                 {pages.map((item) => {
                   const Icon = item.icon;
@@ -333,6 +333,7 @@ export function BottomNav({ alertsCount }: Props) {
         </div>
       ) : null}
 
+      {!open ? (
       <button
         ref={floatingMenuButtonRef}
         type="button"
@@ -406,6 +407,7 @@ export function BottomNav({ alertsCount }: Props) {
           </span>
         ) : null}
       </button>
+      ) : null}
     </>
   );
 }
