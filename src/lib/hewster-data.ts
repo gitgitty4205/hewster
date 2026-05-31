@@ -921,6 +921,17 @@ function mapActivityLogRowToActivity(row: ActivityLogRow): ActivityLog {
   };
 }
 
+function mealTemplatesMatchInitial(templates: MealTemplate[]) {
+  const compactTemplate = (template: MealTemplate) => ({
+    name: template.name,
+    plannedTime: template.plannedTime,
+    food: template.food,
+    notes: template.notes,
+  });
+
+  return JSON.stringify(templates.map(compactTemplate)) === JSON.stringify(initialTemplates.map(compactTemplate));
+}
+
 function mapActivityAttachmentRowToAttachment(row: ActivityAttachmentRow): ActivityAttachment {
   return {
     id: row.id,
@@ -1169,10 +1180,13 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     console.warn("Audit log unavailable, history will use current meal templates only", auditLogsResult.error);
   }
 
+  const localTemplatesAreUserPlan = localState.source === "local" && !mealTemplatesMatchInitial(localState.templates);
   const templates = sortMealTemplatesByTime(
     templatesResult.data?.length
       ? (templatesResult.data as MealTemplateRow[]).map(mapTemplateRowToTemplate)
-      : localState.templates
+      : localTemplatesAreUserPlan
+        ? localState.templates
+        : []
   );
   const auditRows = !auditLogsResult.error && auditLogsResult.data?.length ? (auditLogsResult.data as AppAuditLogRow[]) : [];
   const historicalMealTemplates = mergeHistoricalMealTemplates(templates, auditRows);

@@ -678,15 +678,9 @@ async function importBridgePayload(payload: HewsterBridgePayload) {
 
 export default function HomeApp() {
   const { loading: authLoading } = useAuth();
-  const [templates, setTemplates] = useState<MealTemplate[]>(initialTemplates);
+  const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>(
-    initialTemplates.map((template) => ({
-      mealId: template.id,
-      actualTime: null,
-      status: "upcoming" as const,
-      fedNotes: null,
-      dayKey: currentTodayKey(),
-    }))
+    []
   );
   const [detailActivityType, setDetailActivityType] = useState<ActivityType | null>(null);
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
@@ -724,6 +718,7 @@ export default function HomeApp() {
   const [upcomingNoteModal, setUpcomingNoteModal] = useState<{ title: string; subtitle: string; text: string } | null>(null);
   const [petRemembered, setPetRemembered] = useState(false);
   const [canDeleteEntries, setCanDeleteEntries] = useState(true);
+  const [notebookDataUnavailable, setNotebookDataUnavailable] = useState(false);
   const initialLoadComplete = useRef(false);
   const previousTodayKeyRef = useRef<string | null>(null);
   const missedRolloverRef = useRef<string | null>(null);
@@ -759,6 +754,19 @@ export default function HomeApp() {
   }, []);
 
   const applySharedNotebookState = useCallback((state: Awaited<ReturnType<typeof loadAppState>>) => {
+    const hasOnlySeedState = supabaseReady && state.source === "seed";
+
+    setNotebookDataUnavailable(hasOnlySeedState);
+    if (hasOnlySeedState) {
+      setTemplates([]);
+      setDailyMealState([]);
+      setActivityLogs([]);
+      setManualAlerts([]);
+      setMealLogs([]);
+      setTodayKey(state.todayKey);
+      return;
+    }
+
     setTemplates(state.templates);
     const activeTemplates = state.templates.filter((template) => isMealTemplateActiveForDay(template, state.todayKey));
     setDailyMealState(
@@ -780,7 +788,7 @@ export default function HomeApp() {
     setManualAlerts(state.manualAlerts ?? []);
     setMealLogs(state.mealLogs ?? []);
     setTodayKey(state.todayKey);
-  }, []);
+  }, [supabaseReady]);
 
   useEffect(() => {
     const handleBridgeRequest = (event: MessageEvent) => {
@@ -844,6 +852,9 @@ export default function HomeApp() {
         setAlertMinuteKey(currentAlertMinuteKey());
       } catch {
         if (cancelled) return;
+        setNotebookDataUnavailable(true);
+        setTemplates([]);
+        setDailyMealState([]);
         setHeaderDateTime(formatTodayHeaderDateTime());
         setAlertMinuteKey(currentAlertMinuteKey());
         setTodayKey((current) => current || currentTodayKey());
@@ -867,9 +878,10 @@ export default function HomeApp() {
 
   useEffect(() => {
     if (!hydrated || !initialLoadComplete.current) return;
+    if (notebookDataUnavailable) return;
 
     persistLocalState(templates, dailyMealState, activityLogs, undefined, todayKey, manualAlerts, mealLogs);
-  }, [templates, dailyMealState, activityLogs, hydrated, todayKey, manualAlerts, mealLogs]);
+  }, [templates, dailyMealState, activityLogs, hydrated, todayKey, manualAlerts, mealLogs, notebookDataUnavailable]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -938,11 +950,13 @@ export default function HomeApp() {
 
   useEffect(() => {
     if (!hydrated || !initialLoadComplete.current) return;
+    if (notebookDataUnavailable) return;
 
     let cancelled = false;
 
     async function persistTemplates() {
       try {
+        if (!templates.length) return;
         if (supabaseReady) {
           await saveTemplatesToSupabase(templates);
         }
@@ -956,7 +970,7 @@ export default function HomeApp() {
     return () => {
       cancelled = true;
     };
-  }, [templates, hydrated, supabaseReady]);
+  }, [templates, hydrated, supabaseReady, notebookDataUnavailable]);
 
   useEffect(() => {
     if (!hydrated || mealActionState === "idle") return;
@@ -1897,6 +1911,27 @@ export default function HomeApp() {
             Shared Meal Tracking And Potty Logs For Hewster.
           </p>
         </header>
+
+        {notebookDataUnavailable ? (
+          <section className="mb-3 rounded-3xl bg-amber-50 px-4 py-3 text-amber-900 shadow-sm ring-1 ring-amber-200">
+            <div className="flex items-start gap-3">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold leading-5">Notebook data is reconnecting</p>
+                <p className="mt-0.5 text-xs leading-4 text-amber-900/70">
+                  Your saved meal plan did not load yet, so the default plan is hidden.
+                </p>
+              </div>
+              <Button
+                type="button"
+                className="h-8 shrink-0 rounded-full bg-amber-900 px-3 text-xs font-semibold text-amber-50 hover:bg-amber-800"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </div>
+          </section>
+        ) : null}
 
         {todayAlertCards.length ? (
           <section className="mb-3 space-y-2">
