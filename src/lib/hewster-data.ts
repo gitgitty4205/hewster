@@ -1154,7 +1154,15 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     return cacheAppState(localState);
   }
 
-  const [activityLogsResult, activityAttachmentsResult, weightLogsResult, mealLogsResult, manualAlertsResult, auditLogsResult] = await Promise.all([
+  const [
+    activityLogsResult,
+    activityAttachmentsResult,
+    weightLogsResult,
+    mealLogsResult,
+    manualAlertsResult,
+    mealTemplateAuditLogsResult,
+    activityAuditLogsResult,
+  ] = await Promise.all([
     supabase
       .from("activity_logs")
       .select("id, owner_id, profile_slug, activity_type, happened_at, detail, notes, created_at")
@@ -1190,7 +1198,14 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
       .select("table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
       .eq("owner_id", userId)
       .eq("profile_slug", HEWSTER_PROFILE_SLUG)
-      .in("table_name", ["meal_templates", "activity_logs"])
+      .eq("table_name", "meal_templates")
+      .order("occurred_at", { ascending: false }),
+    supabase
+      .from("app_audit_log")
+      .select("table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
+      .eq("owner_id", userId)
+      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("table_name", "activity_logs")
       .order("occurred_at", { ascending: false })
       .limit(500),
   ]);
@@ -1215,8 +1230,12 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     console.warn("Manual alerts unavailable, falling back locally", manualAlertsResult.error);
   }
 
-  if (auditLogsResult.error) {
-    console.warn("Audit log unavailable, history will use current meal templates only", auditLogsResult.error);
+  if (mealTemplateAuditLogsResult.error) {
+    console.warn("Meal template audit log unavailable, history will use current meal templates only", mealTemplateAuditLogsResult.error);
+  }
+
+  if (activityAuditLogsResult.error) {
+    console.warn("Activity audit log unavailable, entry log details will be limited", activityAuditLogsResult.error);
   }
 
   const localTemplatesAreUserPlan = localState.source === "local" && !isInitialMealTemplatePlan(localState.templates);
@@ -1227,13 +1246,20 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
         ? localState.templates
         : []
   );
+  const mealTemplateAuditRows =
+    !mealTemplateAuditLogsResult.error && mealTemplateAuditLogsResult.data?.length
+      ? (mealTemplateAuditLogsResult.data as AppAuditLogRow[])
+      : [];
+  const activityAuditRows =
+    !activityAuditLogsResult.error && activityAuditLogsResult.data?.length
+      ? (activityAuditLogsResult.data as AppAuditLogRow[])
+      : [];
   const historicalMealTemplates = mergeHistoricalMealTemplates(
     templates,
-    !auditLogsResult.error && auditLogsResult.data?.length ? (auditLogsResult.data as AppAuditLogRow[]) : []
+    mealTemplateAuditRows
   );
-  const auditRows = !auditLogsResult.error && auditLogsResult.data?.length ? (auditLogsResult.data as AppAuditLogRow[]) : [];
-  const mealTemplateAuditSnapshots = mapMealTemplateAuditSnapshots(auditRows);
-  const activityAuditInfo = activityAuditInfoById(auditRows, members);
+  const mealTemplateAuditSnapshots = mapMealTemplateAuditSnapshots(mealTemplateAuditRows);
+  const activityAuditInfo = activityAuditInfoById(activityAuditRows, members);
 
   const remoteDailyMealHistory = dailyMealsResult.data?.length
     ? (dailyMealsResult.data as DailyMealRow[]).map((row) => {
