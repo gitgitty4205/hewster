@@ -30,6 +30,7 @@ import {
   type WeightLog,
 
   currentTodayKey,
+  loadActivityAuditInfoForReport,
 
   loadAppState,
   loadFreshAppState,
@@ -426,6 +427,31 @@ function filterHistoryDays(historyDays: HistoryDay[], filter: HistoryFilter, sta
       return { ...day, meals, activities, weights, timelineItems };
     })
     .filter((day) => day.meals.length || day.activities.length || day.weights.length || day.timelineItems.length);
+}
+
+function reportActivityIds(days: HistoryDay[]) {
+  return days.flatMap((day) => day.activities.map((activity) => activity.id));
+}
+
+function withReportActivityAuditInfo(days: HistoryDay[], auditInfoById: Map<string, ActivityLog["auditInfo"]>) {
+  if (!auditInfoById.size) return days;
+
+  return days.map((day) => ({
+    ...day,
+    activities: day.activities.map((activity) =>
+      auditInfoById.has(activity.id) ? { ...activity, auditInfo: auditInfoById.get(activity.id) } : activity
+    ),
+    timelineItems: day.timelineItems.map((item) => {
+      if (!item.activity || !auditInfoById.has(item.activity.id)) return item;
+      return {
+        ...item,
+        activity: {
+          ...item.activity,
+          auditInfo: auditInfoById.get(item.activity.id),
+        },
+      };
+    }),
+  }));
 }
 
 function CareItemHistoryLine({ item }: { item: CareItemTemplate & { skipped: boolean; isLastDose?: boolean } }) {
@@ -2094,7 +2120,10 @@ export default function HistoryPage() {
       const signedInOwnerName = normalizeReportName([metadataFirstName, metadataLastName].filter(Boolean).join(" ") || metadataFullName || session.user.email || "");
       const ownerName = notebookOwnerId === session.user.id ? signedInOwnerName : "";
       const includeLogDetailsInReport = includeLogDetails && Boolean(activeNotebookAccess?.role && canExportNotebook(activeNotebookAccess.role));
-      const text = buildHistoryCopyText(filteredHistoryDays, activeFilter, dateRange, profile, ownerName, generatedDate, includeLogDetailsInReport);
+      const reportDays = includeLogDetailsInReport
+        ? withReportActivityAuditInfo(filteredHistoryDays, await loadActivityAuditInfoForReport(reportActivityIds(filteredHistoryDays)))
+        : filteredHistoryDays;
+      const text = buildHistoryCopyText(reportDays, activeFilter, dateRange, profile, ownerName, generatedDate, includeLogDetailsInReport);
 
       const response = await fetch("/api/history-copy/email", {
         method: "POST",

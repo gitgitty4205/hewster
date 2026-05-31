@@ -941,6 +941,27 @@ function activityAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMem
   return byActivityId;
 }
 
+export async function loadActivityAuditInfoForReport(activityIds: string[]) {
+  const signedInSupabase = await getSignedInSupabase();
+  const uniqueActivityIds = [...new Set(activityIds)].filter(Boolean);
+  if (!signedInSupabase || !uniqueActivityIds.length) return new Map<string, NotebookEntryAuditInfo>();
+
+  const { supabase, userId, members } = signedInSupabase;
+  const { data, error } = await supabase.rpc("report_activity_audit_log", {
+    report_owner_id: userId,
+    report_profile_slug: HEWSTER_PROFILE_SLUG,
+    report_activity_ids: uniqueActivityIds,
+    report_row_limit: ACTIVITY_AUDIT_DETAILS_LIMIT,
+  });
+
+  if (error) {
+    console.warn("Report activity audit log unavailable, entry log details will be limited", error);
+    return new Map<string, NotebookEntryAuditInfo>();
+  }
+
+  return activityAuditInfoById((data ?? []) as AppAuditLogRow[], members);
+}
+
 function mapTemplateToRow(template: MealTemplate, index: number, ownerId: string): MealTemplateRow {
   return {
     owner_id: ownerId,
