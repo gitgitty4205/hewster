@@ -716,7 +716,16 @@ export default function HomeApp() {
   const [expandedAlertIds, setExpandedAlertIds] = useState<Set<string>>(() => new Set());
   const [expandedMealCareKey, setExpandedMealCareKey] = useState<string | null>(null);
   const [upcomingOverflowExpanded, setUpcomingOverflowExpanded] = useState(false);
-  const [upcomingNoteModal, setUpcomingNoteModal] = useState<{ title: string; subtitle: string; text: string } | null>(null);
+  const [upcomingNoteModal, setUpcomingNoteModal] = useState<{
+    title: string;
+    subtitle: string;
+    text: string;
+    tone: {
+      panel: string;
+      closeButton: string;
+      noteBox: string;
+    };
+  } | null>(null);
   const [petRemembered, setPetRemembered] = useState(false);
   const [canDeleteEntries, setCanDeleteEntries] = useState(true);
   const [notebookDataUnavailable, setNotebookDataUnavailable] = useState(false);
@@ -2090,6 +2099,12 @@ export default function HomeApp() {
                     const mealCareKey = `${mealDayKey}-${card.meal.id}`;
                     const mealNoteText = card.meal.notes?.trim().slice(0, 100) ?? "";
                     const isMealCareExpanded = expandedMealCareKey === mealCareKey;
+                    const mealNoteButtonClassName = "bg-[var(--hewie-active-text,#334155)]/12 text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]/80 hover:bg-[var(--hewie-active-text,#334155)]/18";
+                    const mealNoteModalTone = {
+                      panel: "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]",
+                      closeButton: "bg-white/55 text-current/58 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white/80 hover:text-current/75",
+                      noteBox: "bg-white/55 text-current/75 ring-[var(--hewie-ring,#cbd5e1)]/80",
+                    };
 
                     const mealPriorityClassName = priorityScheduleTime === card.sortAt.getTime() && upcomingScheduleCards.length > 1
                       ? "hewie-priority-border"
@@ -2109,11 +2124,12 @@ export default function HomeApp() {
                             <button
                               type="button"
                               aria-label="Show notes"
-                              className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-white/55 text-[var(--hewie-active-text,#334155)] ring-1 ring-white/70 transition hover:bg-white/75"
+                              className={`mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full ring-1 transition ${mealNoteButtonClassName}`}
                               onClick={() => setUpcomingNoteModal({
                                 title: card.meal.name,
                                 subtitle: plannedTimeLabel,
                                 text: mealNoteText,
+                                tone: mealNoteModalTone,
                               })}
                             >
                               <StickyNote className="size-3.5" />
@@ -2157,6 +2173,17 @@ export default function HomeApp() {
                   const noteButtonClassName = isSupplement
                     ? "bg-[#d8e4f1] text-[#1f3d5c] ring-[#8ca8c3]/70 hover:bg-[#cfdeee]"
                     : "bg-sky-100 text-sky-700 ring-sky-300/80 hover:bg-sky-200/70";
+                  const noteModalTone = isSupplement
+                    ? {
+                        panel: "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]",
+                        closeButton: "bg-white/55 text-current/58 ring-[#b8c9dd]/80 transition hover:bg-white/80 hover:text-current/75",
+                        noteBox: "bg-white/55 text-current/75 ring-[#b8c9dd]/80",
+                      }
+                    : {
+                        panel: "bg-sky-50 text-sky-700 ring-sky-200",
+                        closeButton: "bg-white/55 text-current/58 ring-sky-200 transition hover:bg-white/80 hover:text-current/75",
+                        noteBox: "bg-white/55 text-current/75 ring-sky-200/80",
+                      };
                   const noteText = occurrence.item.notes?.trim() ?? "";
 
                   return (
@@ -2185,6 +2212,7 @@ export default function HomeApp() {
                                 title: occurrence.item.name,
                                 subtitle: occurrenceTimeLabel,
                                 text: noteText,
+                                tone: noteModalTone,
                               })}
                             >
                               <StickyNote className="size-3.5" />
@@ -2280,7 +2308,7 @@ export default function HomeApp() {
               className="absolute inset-0 cursor-default"
               onClick={() => setUpcomingNoteModal(null)}
             />
-            <div className="relative w-full max-w-md rounded-3xl bg-sky-50 p-4 text-sky-700 shadow-2xl ring-1 ring-sky-200">
+            <div className={`relative w-full max-w-md rounded-3xl p-4 shadow-2xl ring-1 ${upcomingNoteModal.tone.panel}`}>
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p id="upcoming-note-title" className="truncate text-base font-semibold">{upcomingNoteModal.title}</p>
@@ -2289,7 +2317,7 @@ export default function HomeApp() {
                 <button
                   type="button"
                   aria-label="Close notes"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/55 text-lg leading-none text-current/58 ring-1 ring-sky-200 transition hover:bg-white/80 hover:text-current/75"
+                  className={`flex size-8 shrink-0 items-center justify-center rounded-full text-lg leading-none ring-1 ${upcomingNoteModal.tone.closeButton}`}
                   onClick={() => setUpcomingNoteModal(null)}
                 >
                   ×
@@ -2299,7 +2327,7 @@ export default function HomeApp() {
                 <StickyNote className="size-3.5" />
                 <span>Notes</span>
               </div>
-              <div className="max-h-[45vh] overflow-y-auto whitespace-pre-wrap break-words rounded-2xl bg-white/55 p-3 text-sm leading-6 text-current/75 ring-1 ring-sky-200/80">
+              <div className={`max-h-[45vh] overflow-y-auto whitespace-pre-wrap break-words rounded-2xl p-3 text-sm leading-6 ring-1 ${upcomingNoteModal.tone.noteBox}`}>
                 {upcomingNoteModal.text}
               </div>
             </div>
