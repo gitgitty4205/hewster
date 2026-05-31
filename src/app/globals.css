@@ -152,6 +152,25 @@
   animation: contentFadeIn 220ms ease-out;
 }
 
+@keyframes logEventHandleSheen {
+  0%, 100% {
+    opacity: 0.58;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  42% {
+    opacity: 0.95;
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.58)) drop-shadow(0 0 7px rgba(255, 255, 255, 0.32));
+  }
+  56% {
+    opacity: 0.82;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.42));
+  }
+}
+
+.log-event-handle-sheen {
+  animation: logEventHandleSheen 1.55s ease-in-out infinite;
+}
+
 @keyframes hewiePriorityBorderPulse {
   0%, 100% {
     outline-offset: 0;

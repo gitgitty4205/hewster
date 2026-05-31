@@ -1375,7 +1375,7 @@ export default function LogPage() {
               className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/90"
               aria-label="Collapse Log Event"
             >
-              <span className="h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
+              <span className="log-event-handle-sheen h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
             </button>
           </div>
         ) : (
@@ -1388,7 +1388,7 @@ export default function LogPage() {
             <ChevronDown className="size-5 opacity-75 transition group-hover:translate-y-0.5 group-hover:opacity-95" strokeWidth={2.5} />
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
               <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90">
-                <span className="h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
+                <span className="log-event-handle-sheen h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
               </div>
             </div>
           </button>
