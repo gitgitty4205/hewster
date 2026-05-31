@@ -2113,18 +2113,18 @@ export default function HomeApp() {
                     return (
                       <div key={card.sortKey} className={`${mealPriorityClassName} relative flex aspect-square min-w-0 overflow-hidden flex-col justify-between rounded-2xl bg-white/32 p-2.5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/55`}>
                         <div className="min-h-0 min-w-0">
-                          <p className="text-[10px] font-bold uppercase leading-3 tracking-wide text-current/55">Next Meal</p>
-                          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
+                          <p className="pr-7 text-[10px] font-bold uppercase leading-3 tracking-wide text-current/55">Next Meal</p>
+                          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 pr-7">
                             <p className="truncate text-sm font-semibold leading-4 text-current/95">{card.meal.name}</p>
                             {card.meal.status === "late" ? <span className="rounded-full bg-white/75 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-current/75 ring-1 ring-current/15">Late</span> : null}
                           </div>
-                          <p className="text-[13px] font-semibold leading-4 text-current/70">{plannedTimeLabel}</p>
-                          <p className="mt-0.5 line-clamp-1 text-[12px] leading-4 text-current/72">{card.meal.food}</p>
+                          <p className="pr-7 text-[13px] font-semibold leading-4 text-current/70">{plannedTimeLabel}</p>
+                          <p className="mt-0.5 line-clamp-1 pr-7 text-[12px] leading-4 text-current/72">{card.meal.food}</p>
                           {mealNoteText ? (
                             <button
                               type="button"
                               aria-label="Show notes"
-                              className={`mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full ring-1 transition ${mealNoteButtonClassName}`}
+                              className={`absolute right-2.5 top-2.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full ring-1 transition ${mealNoteButtonClassName}`}
                               onClick={() => setUpcomingNoteModal({
                                 title: card.meal.name,
                                 subtitle: plannedTimeLabel,
@@ -2200,27 +2200,27 @@ export default function HomeApp() {
                         </div>
                         <p className="text-[13px] font-semibold leading-4 text-current/70">{occurrenceTimeLabel}</p>
                         <p className="mt-0.5 line-clamp-1 text-[12px] leading-4 text-current/68">{customCareGiveText(occurrence.item)}</p>
-                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1 pr-7">
                           {occurrence.isLastDose ? <span className="inline-flex shrink-0 rounded-full bg-amber-100/80 px-1.5 py-0 text-[10px] font-semibold leading-4 text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
                           {timingLabel ? <span className={`inline-flex shrink-0 rounded-full px-1.5 py-0 text-[10px] font-normal leading-4 ${timingBadgeClassName}`}>{timingLabel}</span> : null}
-                          {noteText ? (
-                            <button
-                              type="button"
-                              aria-label="Show notes"
-                              className={`inline-flex size-5 shrink-0 items-center justify-center rounded-full ring-1 transition ${noteButtonClassName}`}
-                              onClick={() => setUpcomingNoteModal({
-                                title: occurrence.item.name,
-                                subtitle: occurrenceTimeLabel,
-                                text: noteText,
-                                tone: noteModalTone,
-                              })}
-                            >
-                              <StickyNote className="size-3.5" />
-                            </button>
-                          ) : null}
                         </div>
                         {occurrence.frequencyText ? <p className="mt-0.5 truncate text-[11px] font-normal leading-4 text-current/45">{occurrence.frequencyText}</p> : null}
                       </div>
+                      {noteText ? (
+                        <button
+                          type="button"
+                          aria-label="Show notes"
+                          className={`absolute right-2.5 top-11 inline-flex size-5 shrink-0 items-center justify-center rounded-full ring-1 transition ${noteButtonClassName}`}
+                          onClick={() => setUpcomingNoteModal({
+                            title: occurrence.item.name,
+                            subtitle: occurrenceTimeLabel,
+                            text: noteText,
+                            tone: noteModalTone,
+                          })}
+                        >
+                          <StickyNote className="size-3.5" />
+                        </button>
+                      ) : null}
                       {customCareSkipKey === occurrence.key ? (
                         <div className="mt-1.5 space-y-1">
                           <textarea
