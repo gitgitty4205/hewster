@@ -6,14 +6,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import {
-  activeNotebookOwnerIdFromStorage,
   loadNotebookMembers,
   selectActiveNotebookMembership,
   setActiveNotebookOwnerId,
   type NotebookAccessRole,
   type NotebookMember,
 } from "@/lib/notebook-access";
-import { defaultPetProfile, loadPetProfile, type PetProfile } from "@/lib/pet-profile";
+import { defaultPetProfile, loadPetProfile, savePetProfile, type PetProfile } from "@/lib/pet-profile";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 const PET_ROSTER_STORAGE_KEY = "hewster.petRoster";
@@ -93,7 +92,6 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
   const [profile, setProfile] = useState<PetProfile>(() => defaultPetProfile);
   const [pets, setPets] = useState<RosterPet[]>([]);
   const [memberships, setMemberships] = useState<NotebookMember[]>([]);
-  const [activeNotebookOwnerId, setActiveNotebookOwnerIdState] = useState<string | null>(null);
   const [notebookRole, setNotebookRole] = useState<NotebookAccessRole | null>(null);
   const [ownNotebook, setOwnNotebook] = useState<NotebookMember | null>(null);
   const [adding, setAdding] = useState(false);
@@ -104,7 +102,6 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
     const id = window.setTimeout(() => {
       setProfile(loadPetProfile());
       setPets(readRoster(user?.id));
-      setActiveNotebookOwnerIdState(activeNotebookOwnerIdFromStorage());
     }, 0);
 
     return () => window.clearTimeout(id);
@@ -129,7 +126,6 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
       if (active) {
         setPets(userRoster);
         setMemberships(visibleMemberships);
-        setActiveNotebookOwnerIdState(activeMembership?.notebookOwnerId ?? null);
         setNotebookRole(activeMembership?.role ?? null);
         setOwnNotebook(loadedOwnNotebook);
       }
@@ -145,10 +141,6 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
   const currentPet = useMemo(() => currentPetToRosterPet(profile), [profile]);
   const canManagePets = notebookRole === "owner";
   const ownedPrimaryPet = pets[0] ?? null;
-  const activeMembership = useMemo(
-    () => memberships.find((member) => member.notebookOwnerId === activeNotebookOwnerId) ?? null,
-    [activeNotebookOwnerId, memberships],
-  );
   const accessibleNotebooks = useMemo(() => {
     if (!memberships.length) {
       return [{ ...currentPet, role: notebookRole ?? "owner" as NotebookAccessRole, notebookOwnerId: "local" }];
@@ -181,6 +173,15 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
     const name = newPetName.trim();
     const species = newPetSpecies.trim() || "Pet";
     if (!name) return;
+    const [petFirstName, ...petLastNameParts] = name.split(/\s+/).filter(Boolean);
+    const newProfile = {
+      ...profile,
+      petName: name,
+      petFirstName: petFirstName || name,
+      petLastName: petLastNameParts.join(" "),
+      species,
+      archivedFromPetSwitcher: false,
+    };
 
     const nextPets = [
       ...pets,
@@ -188,14 +189,16 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
         id: `pet-${Date.now()}`,
         name,
         species,
+        photoUrl: newProfile.photoUrl || "/hewster-profile.jpg",
       },
     ];
 
+    setProfile(newProfile);
+    savePetProfile(newProfile);
     setPets(nextPets);
     saveRoster(nextPets, user?.id);
     if (user) {
       setActiveNotebookOwnerId(user.id);
-      setActiveNotebookOwnerIdState(user.id);
       setNotebookRole("owner");
     }
     setNewPetName("");
@@ -206,7 +209,6 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
   const switchNotebook = (ownerId: string) => {
     if (ownerId === "local") return;
     setActiveNotebookOwnerId(ownerId);
-    setActiveNotebookOwnerIdState(ownerId);
     setOpen(false);
     window.location.reload();
   };
@@ -262,7 +264,7 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
                     className="flex items-center gap-4 rounded-[1.45rem] bg-[var(--hewie-active-bg,#f1f5f9)]/88 p-4 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition"
                   >
                     <span className="flex min-w-0 flex-1 items-center gap-4 text-left">
-                      <span className="relative flex size-[4.75rem] shrink-0 overflow-hidden rounded-[1.45rem] bg-white/20 shadow-sm ring-1 ring-white/35">
+                      <span className="relative flex size-[4.75rem] shrink-0 overflow-hidden rounded-full bg-white/20 shadow-sm ring-1 ring-white/35">
                         {pet.photoUrl ? (
                           <Image src={pet.photoUrl} alt={pet.name} fill className="object-cover object-center" sizes="76px" />
                         ) : (
@@ -334,9 +336,6 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
                 </button>
               ) : null}
 
-              <p className="rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)]/80 px-3 py-2 text-xs leading-5 text-[var(--hewie-active-text,#334155)]/65 ring-1 ring-[var(--hewie-ring,#cbd5e1)] backdrop-blur-[1px]">
-                {activeMembership?.role === "owner" ? "Owner tools only apply to the active owned notebook." : "Shared accounts only show pet notebooks they have been invited to."}
-              </p>
             </div>
           </div>
         </div>
