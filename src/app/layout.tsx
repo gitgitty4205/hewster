@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { AuthProvider } from "@/components/auth-provider";
 
@@ -7,6 +7,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Pet Notebook",
   description: "A calm pet care tracker for meals, activity, alerts, and weight.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

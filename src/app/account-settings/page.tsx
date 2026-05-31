@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
-import { Check, Ellipsis, LogOut, UserRound } from "lucide-react";
+import { Check, Ellipsis, KeyRound, LogOut, UserRound } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
@@ -18,14 +18,27 @@ import {
 import { getStoredSupabaseSession, getSupabaseBrowserClient, refreshSupabaseCurrentSession } from "@/lib/supabase";
 import {
   PET_PROFILE_STORAGE_KEY,
+  PET_THEME_UPDATED_EVENT,
   appThemes,
   applyPetTheme,
   defaultPetProfile,
+  loadUserTheme,
   normalizePetProfile,
+  type ThemeId,
 } from "@/lib/pet-profile";
 
 const defaultPetProfileSnapshot = JSON.stringify(defaultPetProfile);
 const ACCOUNT_INFO_STORAGE_KEY = "petnotebook.accountInfoSnapshot";
+type TwoFactorMethod = "email" | "sms";
+type AccountInfoSnapshot = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  phoneVerified: boolean;
+  twoFactorEnabled: boolean;
+  twoFactorMethod: TwoFactorMethod;
+};
 
 const planOptions = [
   {
@@ -71,6 +84,10 @@ function accountInfoFromUser(user: User | null) {
   const metadata = user.user_metadata ?? {};
   const metadataFirstName = typeof metadata.first_name === "string" ? metadata.first_name : "";
   const metadataLastName = typeof metadata.last_name === "string" ? metadata.last_name : "";
+  const metadataPhoneNumber = typeof metadata.phone_number === "string" ? metadata.phone_number : "";
+  const metadataPhoneVerified = metadata.phone_verified === true;
+  const metadataTwoFactorEnabled = metadata.two_factor_enabled === true || metadata.sms_two_factor_enabled === true;
+  const metadataTwoFactorMethod: TwoFactorMethod = metadata.two_factor_method === "sms" || metadata.sms_two_factor_enabled === true ? "sms" : "email";
   const metadataFullName = typeof metadata.full_name === "string"
     ? metadata.full_name
     : typeof metadata.name === "string"
@@ -82,6 +99,10 @@ function accountInfoFromUser(user: User | null) {
     firstName: metadataFirstName || fullNameParts[0] || "",
     lastName: metadataLastName || fullNameParts.slice(1).join(" "),
     email: user.email ?? "",
+    phoneNumber: user.phone || metadataPhoneNumber,
+    phoneVerified: Boolean(user.phone_confirmed_at) || metadataPhoneVerified,
+    twoFactorEnabled: metadataTwoFactorEnabled,
+    twoFactorMethod: metadataTwoFactorMethod,
   };
 }
 
@@ -94,19 +115,24 @@ function loadStoredAccountInfo() {
   try {
     const stored = window.localStorage.getItem(ACCOUNT_INFO_STORAGE_KEY);
     if (!stored) return null;
-    const parsed = JSON.parse(stored) as Partial<{ firstName: string; lastName: string; email: string }>;
+    const parsed = JSON.parse(stored) as Partial<AccountInfoSnapshot> & { smsTwoFactorEnabled?: boolean };
     if (typeof parsed.email !== "string" || !parsed.email) return null;
+    const twoFactorMethod: TwoFactorMethod = parsed.twoFactorMethod === "sms" || parsed.smsTwoFactorEnabled === true ? "sms" : "email";
     return {
       firstName: typeof parsed.firstName === "string" ? parsed.firstName : "",
       lastName: typeof parsed.lastName === "string" ? parsed.lastName : "",
       email: parsed.email,
+      phoneNumber: typeof parsed.phoneNumber === "string" ? parsed.phoneNumber : "",
+      phoneVerified: parsed.phoneVerified === true,
+      twoFactorEnabled: parsed.twoFactorEnabled === true || parsed.smsTwoFactorEnabled === true,
+      twoFactorMethod,
     };
   } catch {
     return null;
   }
 }
 
-function saveStoredAccountInfo(info: { firstName: string; lastName: string; email: string }) {
+function saveStoredAccountInfo(info: AccountInfoSnapshot) {
   if (typeof window === "undefined" || !info.email) return;
   window.localStorage.setItem(ACCOUNT_INFO_STORAGE_KEY, JSON.stringify(info));
 }
@@ -117,7 +143,11 @@ export default function AccountSettingsPage() {
   const [ownerFirstName, setOwnerFirstName] = useState("");
   const [ownerLastName, setOwnerLastName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
-  const [savedOwnerInfo, setSavedOwnerInfo] = useState({ firstName: "", lastName: "", email: "" });
+  const [ownerPhoneNumber, setOwnerPhoneNumber] = useState("");
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorMethod, setTwoFactorMethod] = useState<TwoFactorMethod>("email");
+  const [savedOwnerInfo, setSavedOwnerInfo] = useState<AccountInfoSnapshot>({ firstName: "", lastName: "", email: "", phoneNumber: "", phoneVerified: false, twoFactorEnabled: false, twoFactorMethod: "email" });
   const [ownerInfoEditing, setOwnerInfoEditing] = useState(false);
   const [accountStatus, setAccountStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [accountMessage, setAccountMessage] = useState("");
@@ -125,6 +155,14 @@ export default function AccountSettingsPage() {
   const [notebookRoleLoaded, setNotebookRoleLoaded] = useState(false);
   const [membershipPlanVisible, setMembershipPlanVisible] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("Plus");
+  const [passwordEditing, setPasswordEditing] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordStatus, setPasswordStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [twoFactorStatus, setTwoFactorStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [twoFactorMessage, setTwoFactorMessage] = useState("");
+  const [themeId, setThemeId] = useState<ThemeId>(defaultPetProfile.themeId);
 
   const profileSnapshot = useSyncExternalStore(
     subscribeToPetProfile,
@@ -140,8 +178,29 @@ export default function AccountSettingsPage() {
   }, [profileSnapshot]);
 
   useEffect(() => {
-    applyPetTheme(profile.themeId);
-  }, [profile.themeId]);
+    const refreshTheme = () => setThemeId(loadUserTheme(user?.id));
+    refreshTheme();
+    window.addEventListener(PET_THEME_UPDATED_EVENT, refreshTheme);
+    window.addEventListener("storage", refreshTheme);
+    return () => {
+      window.removeEventListener(PET_THEME_UPDATED_EVENT, refreshTheme);
+      window.removeEventListener("storage", refreshTheme);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    applyPetTheme(themeId);
+  }, [themeId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("resetPassword") !== "1") return;
+
+    setPasswordEditing(true);
+    setPasswordStatus("idle");
+    setPasswordMessage("Choose a new password for this account.");
+  }, []);
 
   useEffect(() => {
     const refreshStoredUser = () => setStoredUser(getStoredSupabaseSession()?.user ?? null);
@@ -173,7 +232,11 @@ export default function AccountSettingsPage() {
         setOwnerFirstName("");
         setOwnerLastName("");
         setOwnerEmail("");
-        setSavedOwnerInfo({ firstName: "", lastName: "", email: "" });
+        setOwnerPhoneNumber("");
+        setPhoneVerified(false);
+        setTwoFactorEnabled(false);
+        setTwoFactorMethod("email");
+        setSavedOwnerInfo({ firstName: "", lastName: "", email: "", phoneNumber: "", phoneVerified: false, twoFactorEnabled: false, twoFactorMethod: "email" });
         setNotebookRole(null);
         setNotebookRoleLoaded(true);
         return;
@@ -184,6 +247,10 @@ export default function AccountSettingsPage() {
       setOwnerFirstName(nextOwnerInfo.firstName);
       setOwnerLastName(nextOwnerInfo.lastName);
       setOwnerEmail(nextOwnerInfo.email);
+      setOwnerPhoneNumber(nextOwnerInfo.phoneNumber);
+      setPhoneVerified(nextOwnerInfo.phoneVerified);
+      setTwoFactorEnabled(nextOwnerInfo.twoFactorEnabled);
+      setTwoFactorMethod(nextOwnerInfo.phoneNumber ? nextOwnerInfo.twoFactorMethod : "email");
       setSavedOwnerInfo(nextOwnerInfo);
       saveStoredAccountInfo(nextOwnerInfo);
       setOwnerInfoEditing(false);
@@ -241,6 +308,7 @@ export default function AccountSettingsPage() {
     setOwnerFirstName(savedOwnerInfo.firstName);
     setOwnerLastName(savedOwnerInfo.lastName);
     setOwnerEmail(savedOwnerInfo.email);
+    setOwnerPhoneNumber(savedOwnerInfo.phoneNumber);
     setOwnerInfoEditing(false);
     setAccountStatus("idle");
     setAccountMessage("");
@@ -250,6 +318,7 @@ export default function AccountSettingsPage() {
     const trimmedFirstName = ownerFirstName.trim();
     const trimmedLastName = ownerLastName.trim();
     const trimmedEmail = ownerEmail.trim().toLowerCase();
+    const trimmedPhoneNumber = ownerPhoneNumber.trim();
 
     if (!displayUser) {
       setAccountStatus("error");
@@ -278,6 +347,11 @@ export default function AccountSettingsPage() {
         first_name: trimmedFirstName,
         last_name: trimmedLastName,
         full_name: `${trimmedFirstName} ${trimmedLastName}`,
+        phone_number: trimmedPhoneNumber,
+        phone_verified: trimmedPhoneNumber && trimmedPhoneNumber === savedOwnerInfo.phoneNumber ? savedOwnerInfo.phoneVerified : false,
+        two_factor_enabled: savedOwnerInfo.twoFactorEnabled,
+        two_factor_method: trimmedPhoneNumber ? savedOwnerInfo.twoFactorMethod : "email",
+        sms_two_factor_enabled: false,
       },
       ...(trimmedEmail && trimmedEmail !== displayUser.email ? { email: trimmedEmail } : {}),
     };
@@ -293,26 +367,144 @@ export default function AccountSettingsPage() {
     setOwnerFirstName(trimmedFirstName);
     setOwnerLastName(trimmedLastName);
     setOwnerEmail(trimmedEmail || displayUser.email || "");
+    setOwnerPhoneNumber(trimmedPhoneNumber);
+    const nextPhoneVerified = trimmedPhoneNumber && trimmedPhoneNumber === savedOwnerInfo.phoneNumber ? savedOwnerInfo.phoneVerified : false;
+    const nextTwoFactorMethod = trimmedPhoneNumber ? savedOwnerInfo.twoFactorMethod : "email";
+    const nextTwoFactorEnabled = savedOwnerInfo.twoFactorEnabled;
+    setPhoneVerified(nextPhoneVerified);
+    setTwoFactorEnabled(nextTwoFactorEnabled);
+    setTwoFactorMethod(nextTwoFactorMethod);
     setSavedOwnerInfo({
       firstName: trimmedFirstName,
       lastName: trimmedLastName,
       email: trimmedEmail || displayUser.email || "",
+      phoneNumber: trimmedPhoneNumber,
+      phoneVerified: nextPhoneVerified,
+      twoFactorEnabled: nextTwoFactorEnabled,
+      twoFactorMethod: nextTwoFactorMethod,
     });
     saveStoredAccountInfo({
       firstName: trimmedFirstName,
       lastName: trimmedLastName,
       email: trimmedEmail || displayUser.email || "",
+      phoneNumber: trimmedPhoneNumber,
+      phoneVerified: nextPhoneVerified,
+      twoFactorEnabled: nextTwoFactorEnabled,
+      twoFactorMethod: nextTwoFactorMethod,
     });
     setOwnerInfoEditing(false);
     setAccountStatus("saved");
     setAccountMessage(trimmedEmail && trimmedEmail !== displayUser.email ? "Account info saved. Check the new email address to confirm the email change." : "Account info saved.");
   }
 
-  const theme = appThemes[profile.themeId];
+  function resetPasswordForm() {
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setPasswordEditing(false);
+    setPasswordStatus("idle");
+    setPasswordMessage("");
+  }
+
+  async function handleSavePassword() {
+    if (!displayUser) {
+      setPasswordStatus("error");
+      setPasswordMessage("Sign in before changing your password.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordStatus("error");
+      setPasswordMessage("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordStatus("error");
+      setPasswordMessage("Passwords do not match.");
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setPasswordStatus("error");
+      setPasswordMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    setPasswordStatus("saving");
+    setPasswordMessage("");
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      setPasswordStatus("error");
+      setPasswordMessage(error.message);
+      return;
+    }
+
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setPasswordEditing(false);
+    setPasswordStatus("saved");
+    setPasswordMessage("Password updated.");
+  }
+
+  async function handleSaveTwoFactorSettings(nextEnabled: boolean, nextMethod = twoFactorMethod) {
+    if (nextEnabled && nextMethod === "sms" && !savedOwnerInfo.phoneNumber) {
+      setTwoFactorStatus("error");
+      setTwoFactorMessage("Add a phone number before choosing SMS verification.");
+      return;
+    }
+
+    if (!displayUser) {
+      setTwoFactorStatus("error");
+      setTwoFactorMessage("Sign in before changing verification settings.");
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setTwoFactorStatus("error");
+      setTwoFactorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const previousEnabled = twoFactorEnabled;
+    const previousMethod = twoFactorMethod;
+    setTwoFactorEnabled(nextEnabled);
+    setTwoFactorMethod(nextMethod);
+    setTwoFactorStatus("saving");
+    setTwoFactorMessage("");
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        two_factor_enabled: nextEnabled,
+        two_factor_method: nextMethod,
+        sms_two_factor_enabled: false,
+      },
+    });
+
+    if (error) {
+      setTwoFactorEnabled(previousEnabled);
+      setTwoFactorMethod(previousMethod);
+      setTwoFactorStatus("error");
+      setTwoFactorMessage(error.message);
+      return;
+    }
+
+    const nextOwnerInfo = { ...savedOwnerInfo, twoFactorEnabled: nextEnabled, twoFactorMethod: nextMethod };
+    setSavedOwnerInfo(nextOwnerInfo);
+    saveStoredAccountInfo(nextOwnerInfo);
+    setTwoFactorStatus("saved");
+    setTwoFactorMessage(nextEnabled ? `2FA enabled with ${nextMethod === "sms" ? "SMS" : "email"} codes.` : "2FA disabled.");
+  }
+
+  const theme = appThemes[themeId];
   const canViewMembershipPlan = membershipPlanVisible && notebookRole === "owner";
   const displayedNotebookRole = canViewMembershipPlan ? "owner" : notebookRole === "owner" ? null : notebookRole;
   const accountInfoTitle = `${notebookRoleLabel(displayedNotebookRole)} Info`;
   const showAccountInfoTitle = (!authLoading && !displayUser) || notebookRoleLoaded;
+  const canUseSmsTwoFactor = Boolean(savedOwnerInfo.phoneNumber);
 
   return (
     <main className="min-h-[100dvh] bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
@@ -402,6 +594,20 @@ export default function AccountSettingsPage() {
                 }`}
               />
             </label>
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
+              Phone Number
+              <input
+                type="tel"
+                value={ownerPhoneNumber}
+                onChange={(event) => setOwnerPhoneNumber(event.target.value)}
+                placeholder={authLoading ? "Loading account..." : "Optional for account recovery"}
+                disabled={!ownerInfoEditing}
+                autoComplete="tel"
+                className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
+                  ownerInfoEditing ? "bg-zinc-50 ring-zinc-200" : "bg-zinc-100 text-zinc-600 ring-zinc-200"
+                }`}
+              />
+            </label>
           </div>
 
           {accountMessage ? (
@@ -428,6 +634,126 @@ export default function AccountSettingsPage() {
                 disabled={!displayUser || accountStatus === "saving"}
               >
                 {accountStatus === "saving" ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <span
+                className="flex size-11 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: theme.accent, color: theme.accentText }}
+              >
+                <KeyRound className="size-5" />
+              </span>
+              <div>
+                <h2 className="text-lg font-semibold">Security</h2>
+                <p className="mt-1 text-sm leading-5 text-zinc-500">Update password and login verification settings.</p>
+              </div>
+            </div>
+          </div>
+
+          {passwordEditing ? (
+            <div className="space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                New Password
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  placeholder="New password"
+                  autoComplete="new-password"
+                  minLength={6}
+                  className="mt-2 w-full rounded-2xl border-0 bg-zinc-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-zinc-200 placeholder:text-zinc-400"
+                />
+              </label>
+              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                Confirm Password
+                <input
+                  type="password"
+                  value={confirmNewPassword}
+                  onChange={(event) => setConfirmNewPassword(event.target.value)}
+                  placeholder="Confirm password"
+                  autoComplete="new-password"
+                  minLength={6}
+                  className="mt-2 w-full rounded-2xl border-0 bg-zinc-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-zinc-200 placeholder:text-zinc-400"
+                />
+              </label>
+            </div>
+          ) : null}
+
+          <div className="mt-2">
+            <div className="flex items-center gap-3 rounded-2xl bg-zinc-50 px-4 py-2 ring-1 ring-zinc-200">
+              <p className="shrink-0 text-sm font-semibold text-zinc-800">2FA</p>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={twoFactorEnabled}
+                onClick={() => void handleSaveTwoFactorSettings(!twoFactorEnabled)}
+                className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition ${
+                  twoFactorEnabled ? "justify-end bg-[var(--hewie-accent,#64748b)]" : "justify-start bg-zinc-300"
+                }`}
+                disabled={!displayUser || twoFactorStatus === "saving"}
+              >
+                <span className="size-5 rounded-full bg-white shadow-sm" />
+              </button>
+              <div className={`grid min-w-0 flex-1 grid-cols-2 gap-1.5 ${twoFactorEnabled ? "" : "opacity-60"}`}>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveTwoFactorSettings(true, "email")}
+                  className={`rounded-xl px-3 py-1.5 text-left ring-1 transition ${
+                    twoFactorMethod === "email" ? "bg-[var(--hewie-active-bg,#f1f5f9)] ring-[var(--hewie-ring,#cbd5e1)]" : "bg-white ring-zinc-200"
+                  }`}
+                  disabled={!displayUser || twoFactorStatus === "saving" || !twoFactorEnabled}
+                >
+                  <span className="block text-center text-sm font-semibold text-zinc-800">Email</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveTwoFactorSettings(true, "sms")}
+                  className={`rounded-xl px-3 py-1.5 text-left ring-1 transition ${
+                    twoFactorMethod === "sms" ? "bg-[var(--hewie-active-bg,#f1f5f9)] ring-[var(--hewie-ring,#cbd5e1)]" : "bg-white ring-zinc-200"
+                  } ${canUseSmsTwoFactor ? "" : "opacity-60"}`}
+                  disabled={!displayUser || twoFactorStatus === "saving" || !twoFactorEnabled || !canUseSmsTwoFactor}
+                >
+                  <span className="block text-center text-sm font-semibold text-zinc-800">SMS</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {twoFactorMessage ? (
+            <p className={`mt-3 rounded-2xl p-3 text-sm ring-1 ${twoFactorStatus === "error" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-emerald-50 text-emerald-700 ring-emerald-100"}`}>
+              {twoFactorMessage}
+            </p>
+          ) : null}
+
+          {passwordMessage ? (
+            <p className={`mt-3 rounded-2xl p-3 text-sm ring-1 ${passwordStatus === "error" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-emerald-50 text-emerald-700 ring-emerald-100"}`}>
+              {passwordMessage}
+            </p>
+          ) : null}
+
+          {passwordEditing ? (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={resetPasswordForm}
+                className="rounded-full bg-white text-zinc-700"
+                disabled={passwordStatus === "saving"}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleSavePassword()}
+                className="rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60"
+                disabled={!displayUser || passwordStatus === "saving"}
+              >
+                {passwordStatus === "saving" ? "Saving..." : "Save"}
               </Button>
             </div>
           ) : null}

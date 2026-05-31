@@ -2,7 +2,7 @@
 
 
 
-import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, SlidersHorizontal, Tablets, TriangleAlert } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, Paperclip, SlidersHorizontal, Tablets, TriangleAlert } from "lucide-react";
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
@@ -29,6 +29,7 @@ import {
   type WeightLog,
 
   loadAppState,
+  loadFreshAppState,
 
 } from "@/lib/hewster-data";
 
@@ -63,6 +64,8 @@ type HistoryDay = {
     careItems: Array<CareItemTemplate & { skipped: boolean }>;
 
     actualTime: string;
+
+    plannedTime: string;
 
     createdAt?: string;
 
@@ -285,6 +288,17 @@ function compareMaybeCreatedAt(a?: string, b?: string) {
   return a && b ? a.localeCompare(b) : 0;
 }
 
+function timelineClockMinutes(item: HistoryDay["timelineItems"][number]) {
+  const displayMinutes = parseClockMinutes(item.time);
+  return displayMinutes === Number.MAX_SAFE_INTEGER ? item.sortMinutes : displayMinutes;
+}
+
+function timelineTypeRank(item: HistoryDay["timelineItems"][number]) {
+  if (item.activityType === "meal") return 0;
+  if (item.mealGroupId) return 1;
+  return 2;
+}
+
 function customCareDisplayDate(activity: ActivityLog) {
   return new Date(activity.happenedAt);
 }
@@ -310,20 +324,46 @@ function matchingCareTemplate(activity: ActivityLog, careTemplates: CareItemTemp
   }) ?? null;
 }
 
+function isGeneratedCareActivity(activity: ActivityLog) {
+  return (
+    (activity.activityType === "medication" || activity.activityType === "supplement") &&
+    /^(?:medication|supplement)-\d+-(?:schedule|meal)-/.test(activity.id)
+  );
+}
+
+function isVisibleActivity(activity: ActivityLog, careTemplates: CareItemTemplate[]) {
+  return !isGeneratedCareActivity(activity) || Boolean(matchingCareTemplate(activity, careTemplates));
+}
+
 function compareHistoryMeals(a: HistoryDay["meals"][number], b: HistoryDay["meals"][number]) {
   return (
-    parseClockMinutes(a.actualTime) - parseClockMinutes(b.actualTime) ||
+    parseClockMinutes(a.plannedTime || a.actualTime) - parseClockMinutes(b.plannedTime || b.actualTime) ||
     compareMaybeCreatedAt(a.createdAt, b.createdAt) ||
     a.sortOrder - b.sortOrder ||
     a.id - b.id
   );
 }
 
+function MealHistoryTime({ meal }: { meal: HistoryDay["meals"][number] }) {
+  return <p className="shrink-0 text-sm text-zinc-500">{meal.actualTime}</p>;
+}
+
+function MealHistoryPlannedTime({ meal }: { meal: HistoryDay["meals"][number] }) {
+  const showPlannedTime = Boolean(meal.plannedTime);
+
+  if (!showPlannedTime) {
+    return null;
+  }
+
+  return <p className="mt-1 text-xs font-medium text-[#6b3f22]/60">Planned {meal.plannedTime}</p>;
+}
+
 function compareHistoryTimelineItems(a: HistoryDay["timelineItems"][number], b: HistoryDay["timelineItems"][number]) {
   return (
-    a.sortMinutes - b.sortMinutes ||
-    compareMaybeCreatedAt(a.sortCreatedAt, b.sortCreatedAt) ||
+    timelineClockMinutes(a) - timelineClockMinutes(b) ||
+    timelineTypeRank(a) - timelineTypeRank(b) ||
     a.sortOrder - b.sortOrder ||
+    compareMaybeCreatedAt(a.sortCreatedAt, b.sortCreatedAt) ||
     a.sortKey.localeCompare(b.sortKey)
   );
 }
@@ -552,7 +592,7 @@ function PeeSplash() {
 
 
 
-function PottyDetailBadges({ detail, notes }: { detail: string | null; notes: string | null }) {
+function PottyDetailBadges({ detail, notes, inset = true }: { detail: string | null; notes: string | null; inset?: boolean }) {
 
   const { event, bristol, bristolType, bristolDescription } = parsePottyDetail(detail);
 
@@ -568,7 +608,7 @@ function PottyDetailBadges({ detail, notes }: { detail: string | null; notes: st
 
   return (
 
-    <div className="mt-2 space-y-1.5">
+    <div className={`${inset ? "mt-2" : ""} space-y-1.5`}>
 
       <div className="flex flex-wrap items-center gap-2">
 
@@ -643,6 +683,71 @@ function splitActivityNotes(notes: string | null) {
     attachmentLine,
 
   };
+
+}
+
+function renderTimelineActivityDetail(activity: ActivityLog) {
+
+  if (!activity.attachments?.length) return renderActivityDetail(activity);
+
+  const { notesText } = splitActivityNotes(activity.notes);
+
+  return renderActivityDetail({ ...activity, notes: notesText || null });
+
+}
+
+
+
+async function openActivityAttachment(filePath: string) {
+
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return;
+
+  const { data, error } = await supabase.storage
+    .from("pet-attachments")
+    .createSignedUrl(filePath, 60 * 10);
+
+  if (error || !data?.signedUrl) {
+    console.warn("Could not open attachment", error);
+    return;
+  }
+
+  window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+
+}
+
+
+
+function ActivityAttachmentLinks({ activity }: { activity: ActivityLog }) {
+
+  if (!activity.attachments?.length) return null;
+
+  return (
+
+    <div className="mt-2 flex flex-wrap gap-2">
+
+      {activity.attachments.map((attachment) => (
+
+        <button
+          key={attachment.id}
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            void openActivityAttachment(attachment.filePath);
+          }}
+          className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/75 px-2.5 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-200"
+        >
+
+          <Paperclip className="size-3.5 shrink-0" />
+          <span className="min-w-0 truncate">{attachment.fileName}</span>
+
+        </button>
+
+      ))}
+
+    </div>
+
+  );
 
 }
 
@@ -726,7 +831,7 @@ function CareActivityDetail({ activity, careTemplates = [] }: { activity: Activi
 
       {specialNotes.length ? <ExpandableNoteText className="text-zinc-500"><span className="font-medium text-zinc-600">Notes:</span> {specialNotes.join(" · ")}</ExpandableNoteText> : null}
 
-      {attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
+      {activity.attachments?.length ? <ActivityAttachmentLinks activity={activity} /> : attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
 
     </div>
 
@@ -758,7 +863,7 @@ function ActivityDetailAndNotes({ activity, careTemplates = [] }: { activity: Ac
 
       {notesText ? <ExpandableNoteText>Notes: {notesText}</ExpandableNoteText> : null}
 
-      {attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
+      {activity.attachments?.length ? <ActivityAttachmentLinks activity={activity} /> : attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
 
     </div>
 
@@ -1063,13 +1168,13 @@ const recordFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
 
   { id: "vetProcedures", label: "Vet Visits / Procedures" },
 
-  { id: "medicalRecords", label: "Medical Records" },
+  { id: "medicalRecords", label: "Health Records" },
 
 ];
 
 const historyFilterLabels = new Map([...eventFilterOptions, ...recordFilterOptions].map((option) => [option.id, option.label]));
 
-const medicalWellnessDetails = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Medication", "Flea & Tick", "Deworming", "Procedure", "Other Medical"];
+const medicalWellnessDetails = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Vaccine / Injection", "Medication", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", "Other Medical"];
 
 function isMedicalWellnessDetail(detail: string | null) {
   const normalized = detail ?? "";
@@ -1088,13 +1193,17 @@ function hasUploadRecord(activity: ActivityLog) {
 
   const notes = activity.notes ?? "";
 
-  return notes.includes("Attachments:") || notes.includes("Record Tags: Photo");
+  return Boolean(activity.attachments?.length) || notes.includes("Attachments:") || notes.includes("Record Tags: Photo");
 
 }
 
 function hasMedicalRecordTag(activity: ActivityLog) {
 
-  return (activity.notes ?? "").includes("Record Tags: Medical Record");
+  if ((activity.notes ?? "").includes("Record Tags: Medical Record")) return true;
+
+  if (activity.activityType === "sick" && isMedicalWellnessDetail(activity.detail)) return true;
+
+  return activity.activityType === "sick" && hasUploadRecord(activity);
 
 }
 
@@ -1178,6 +1287,12 @@ function timelineItemMatchesHistoryFilter(item: HistoryDay["timelineItems"][numb
 
   if (activeFilter === "other") return item.activityType === "other";
 
+  if (activeFilter === "uploads") return item.activity ? hasUploadRecord(item.activity) : false;
+
+  if (activeFilter === "medicalRecords") return item.activity ? hasMedicalRecordTag(item.activity) : false;
+
+  if (activeFilter === "vetProcedures") return item.activity ? isVetVisitOrProcedure(item.activity) : false;
+
   return false;
 
 }
@@ -1254,11 +1369,11 @@ export default function HistoryPage() {
 
 
 
-    async function hydrate() {
+    async function hydrate(fresh = false) {
 
       try {
 
-        const state = await loadAppState();
+        const state = await (fresh ? loadFreshAppState() : loadAppState());
 
         if (cancelled) return;
 
@@ -1298,11 +1413,18 @@ export default function HistoryPage() {
 
     hydrate();
 
+    const handleNotebookUpdated = () => {
+      void hydrate(true);
+    };
+
+    window.addEventListener("petnotebook-active-notebook-updated", handleNotebookUpdated);
+
 
 
     return () => {
 
       cancelled = true;
+      window.removeEventListener("petnotebook-active-notebook-updated", handleNotebookUpdated);
 
     };
 
@@ -1446,6 +1568,8 @@ export default function HistoryPage() {
 
         actualTime: displayTime,
 
+        plannedTime: mealTemplate.plannedTime,
+
         createdAt: meal.createdAt,
 
         sortOrder: mealSortOrder,
@@ -1525,6 +1649,7 @@ export default function HistoryPage() {
     activityLogs.forEach((activity) => {
 
       if (hiddenMissedCareActivityIds.has(activity.id)) return;
+      if (!isVisibleActivity(activity, careTemplates)) return;
 
       const day = historyDayKeyFromDate(new Date(activity.happenedAt));
 
@@ -1544,7 +1669,7 @@ export default function HistoryPage() {
 
         label: formatActivityLabel(activity.activityType),
 
-        detail: renderActivityDetail(activity),
+        detail: renderTimelineActivityDetail(activity),
 
         activity,
 
@@ -1746,6 +1871,7 @@ export default function HistoryPage() {
             ) : item.detail ? (
               <TimelineDetailText detail={item.detail} status={status} />
             ) : null}
+            {item.activity ? <ActivityAttachmentLinks activity={item.activity} /> : null}
           </div>
         </div>
       </div>
@@ -2196,9 +2322,9 @@ export default function HistoryPage() {
 
           {showFilters ? (
 
-            <div className="space-y-4 border-b border-[var(--hewie-ring,#cbd5e1)]/70 bg-[var(--hewie-active-bg,#f1f5f9)] p-5">
+            <div className="border-b border-[var(--hewie-ring,#cbd5e1)]/70 bg-[var(--hewie-active-bg,#f1f5f9)] p-5">
 
-              <div className="space-y-3">
+              <div className="space-y-4 rounded-2xl bg-white/55 p-3 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
 
                 <div>
 
@@ -2278,61 +2404,61 @@ export default function HistoryPage() {
 
                 </div>
 
-              </div>
 
 
+                <div className="space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/60 pt-3">
 
-              <div className="space-y-3 rounded-2xl bg-white/55 p-3 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Date Range</p>
 
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Date Range</p>
+                  <div className="grid grid-cols-2 gap-2">
 
-                <div className="grid grid-cols-2 gap-2">
+                    <label className="text-xs font-semibold text-zinc-500">
 
-                  <label className="text-xs font-semibold text-zinc-500">
+                      From
 
-                    From
+                      <input
 
-                    <input
+                        type="date"
 
-                      type="date"
+                        value={draftStartDate}
 
-                      value={draftStartDate}
+                        onChange={(event) => setDraftStartDate(event.target.value)}
 
-                      onChange={(event) => setDraftStartDate(event.target.value)}
+                        className="mt-1 w-full rounded-2xl border-0 bg-white px-3 py-2 text-sm font-medium text-zinc-800 ring-1 ring-zinc-200"
 
-                      className="mt-1 w-full rounded-2xl border-0 bg-white px-3 py-2 text-sm font-medium text-zinc-800 ring-1 ring-zinc-200"
+                      />
 
-                    />
+                    </label>
 
-                  </label>
+                    <label className="text-xs font-semibold text-zinc-500">
 
-                  <label className="text-xs font-semibold text-zinc-500">
+                      To
 
-                    To
+                      <input
 
-                    <input
+                        type="date"
 
-                      type="date"
+                        value={draftEndDate}
 
-                      value={draftEndDate}
+                        onChange={(event) => setDraftEndDate(event.target.value)}
 
-                      onChange={(event) => setDraftEndDate(event.target.value)}
+                        className="mt-1 w-full rounded-2xl border-0 bg-white px-3 py-2 text-sm font-medium text-zinc-800 ring-1 ring-zinc-200"
 
-                      className="mt-1 w-full rounded-2xl border-0 bg-white px-3 py-2 text-sm font-medium text-zinc-800 ring-1 ring-zinc-200"
+                      />
 
-                    />
+                    </label>
 
-                  </label>
+                  </div>
 
-                </div>
+                  <div className="flex flex-wrap gap-2">
 
-                <div className="flex flex-wrap gap-2">
+                    <Button type="button" className="rounded-full bg-[var(--hewie-accent,#64748b)] !font-bold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90" onClick={applyFilters}>
 
-                  <Button type="button" className="rounded-full bg-[var(--hewie-accent,#64748b)] !font-bold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90" onClick={applyFilters}>
+                      Filter
 
-                    Filter
+                    </Button>
 
-                  </Button>
+                  </div>
 
                 </div>
 
@@ -2572,11 +2698,15 @@ export default function HistoryPage() {
 
                           </div>
 
-                          <p className="text-sm text-zinc-500">{meal.actualTime}</p>
+                          <MealHistoryTime meal={meal} />
 
                         </div>
 
                         <p className="mt-2 text-sm text-zinc-600">{meal.food}</p>
+
+                        <MealHistoryPlannedTime meal={meal} />
+
+                        {meal.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Meal Plan Notes: {meal.notes}</ExpandableNoteText> : null}
 
                         {meal.fedNotes && !missedMeal && !skippedMeal ? <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {meal.fedNotes}</ExpandableNoteText> : null}
 
@@ -2729,13 +2859,15 @@ export default function HistoryPage() {
 
                           </div>
 
-                          <p className="text-sm text-zinc-500">{meal.actualTime}</p>
+                          <MealHistoryTime meal={meal} />
 
                         </div>
 
                         <p className="mt-2 text-sm text-zinc-600">{meal.food}</p>
 
-                        {meal.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Default Notes: {meal.notes}</ExpandableNoteText> : null}
+                        <MealHistoryPlannedTime meal={meal} />
+
+                        {meal.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Meal Plan Notes: {meal.notes}</ExpandableNoteText> : null}
 
                         {meal.fedNotes && !missedMeal && !skippedMeal ? <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {meal.fedNotes}</ExpandableNoteText> : null}
 

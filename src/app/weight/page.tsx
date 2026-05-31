@@ -2,7 +2,7 @@
 
 import { ChevronDown, ChevronRight, Ellipsis } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,9 @@ import {
   type PetProfile,
   appThemes,
   loadPetProfile,
+  loadUserTheme,
   savePetProfile,
+  type ThemeId,
 } from "@/lib/pet-profile";
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
@@ -55,6 +57,7 @@ function weightInputValue(weight: string) {
 export default function WeightPage() {
   const [profile, setProfile] = useState<PetProfile>(() => loadPetProfile());
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
+  const [themeId, setThemeId] = useState<ThemeId>(() => loadUserTheme());
   const [dateValue, setDateValue] = useState(todayInputValue());
   const [weightValue, setWeightValue] = useState("");
   const [noteValue, setNoteValue] = useState("");
@@ -62,17 +65,28 @@ export default function WeightPage() {
   const [editingDateValue, setEditingDateValue] = useState("");
   const [editingWeightValue, setEditingWeightValue] = useState("");
   const [editingNoteValue, setEditingNoteValue] = useState("");
-  const [expandedYears, setExpandedYears] = useState<string[]>([]);
+  const [expandedYears, setExpandedYears] = useState<string[]>(() => [todayInputValue().slice(0, 4)]);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [hydrated, setHydrated] = useState(false);
+  const hasSetInitialOpenYear = useRef(false);
   const supabaseReady = isSupabaseConfigured();
-  const theme = appThemes[profile.themeId];
+  const theme = appThemes[themeId];
 
   const updateWeightUnit = (weightUnit: PetProfile["weightUnit"]) => {
     const updated = { ...profile, weightUnit };
     setProfile(updated);
     savePetProfile(updated);
   };
+
+  useEffect(() => {
+    const refreshTheme = () => setThemeId(loadUserTheme());
+    window.addEventListener("pet-theme-updated", refreshTheme);
+    window.addEventListener("storage", refreshTheme);
+    return () => {
+      window.removeEventListener("pet-theme-updated", refreshTheme);
+      window.removeEventListener("storage", refreshTheme);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,11 +122,8 @@ export default function WeightPage() {
     [weightLogs]
   );
 
-  const recentLogs = useMemo(() => sortedLogs.slice(0, 3), [sortedLogs]);
-  const olderLogs = useMemo(() => sortedLogs.slice(3), [sortedLogs]);
-
   const logsByYear = useMemo(() => {
-    return olderLogs.reduce<Array<{ year: string; entries: WeightLog[] }>>((groups, entry) => {
+    return sortedLogs.reduce<Array<{ year: string; entries: WeightLog[] }>>((groups, entry) => {
       const year = entry.date.slice(0, 4) || "Unknown";
       const existingGroup = groups.find((group) => group.year === year);
 
@@ -124,7 +135,15 @@ export default function WeightPage() {
 
       return groups;
     }, []);
-  }, [olderLogs]);
+  }, [sortedLogs]);
+
+  useEffect(() => {
+    if (!logsByYear.length || hasSetInitialOpenYear.current) return;
+    hasSetInitialOpenYear.current = true;
+    if (!logsByYear.some((group) => expandedYears.includes(group.year))) {
+      setExpandedYears([logsByYear[0].year]);
+    }
+  }, [expandedYears, logsByYear]);
 
   const toggleYear = (year: string) => {
     setExpandedYears((current) =>
@@ -444,50 +463,34 @@ export default function WeightPage() {
           </div>
 
           <div className="space-y-3 p-5">
-
             {sortedLogs.length ? (
-              <>
-                <div className="space-y-2">
-                  <h3 className="px-1 text-sm font-bold text-[var(--hewie-active-text,#334155)]/85">Recent</h3>
-                  <div className="space-y-3">
-                    {recentLogs.map((entry) => renderWeightEntry(entry))}
-                  </div>
-                </div>
-
-                {logsByYear.length ? (
-                  <div className="space-y-2 pt-2">
-                    <h3 className="px-1 text-sm font-bold text-[var(--hewie-active-text,#334155)]/85">Older</h3>
-                    <div className="space-y-2">
+              <div className="space-y-3">
                 {logsByYear.map((group) => {
-                const isExpanded = expandedYears.includes(group.year);
+                  const isExpanded = expandedYears.includes(group.year);
 
-                return (
-                <div key={group.year} className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleYear(group.year)}
-                    className="flex w-full items-center justify-between rounded-2xl bg-white/60 px-3 py-2 text-left shadow-[0_6px_14px_rgba(15,23,42,0.035)] transition hover:bg-white/75"
-                    aria-expanded={isExpanded}
-                  >
-                    <span className="flex items-center gap-2">
-                      {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-                      <span className="text-sm font-bold text-[var(--hewie-active-text,#334155)]/85">{group.year}</span>
-                    </span>
-                    <span className="sr-only">{isExpanded ? "Collapse" : "Expand"} {group.year}</span>
-                  </button>
+                  return (
+                    <div key={group.year} className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleYear(group.year)}
+                        className="flex w-full items-center justify-between rounded-2xl bg-white/60 px-3 py-2 text-left shadow-[0_6px_14px_rgba(15,23,42,0.035)] transition hover:bg-white/75"
+                        aria-expanded={isExpanded}
+                      >
+                        <span className="flex items-center gap-2">
+                          {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                          <span className="text-sm font-bold text-[var(--hewie-active-text,#334155)]/85">{group.year}</span>
+                        </span>
+                      </button>
 
-                  {isExpanded ? (
-                  <div className="space-y-3">
-                    {group.entries.map((entry) => renderWeightEntry(entry))}
-                  </div>
-                  ) : null}
-                </div>
-                );
-                })}
+                      {isExpanded ? (
+                        <div className="space-y-3">
+                          {group.entries.map((entry) => renderWeightEntry(entry))}
+                        </div>
+                      ) : null}
                     </div>
-                  </div>
-                ) : null}
-              </>
+                  );
+                })}
+              </div>
             ) : (
               <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No Weight Entries Yet.</p>
             )}

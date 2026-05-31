@@ -9,6 +9,10 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loading, user } = useAuth();
+  const nextPath = useMemo(() => {
+    const next = searchParams.get("next");
+    return next?.startsWith("/") ? next : "/hewie";
+  }, [searchParams]);
   const error = useMemo(() => {
     const queryError = searchParams.get("error_description") ?? searchParams.get("error");
     if (queryError) return queryError;
@@ -19,9 +23,9 @@ function AuthCallbackContent() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/hewie");
+      router.replace(nextPath);
     }
-  }, [loading, router, user]);
+  }, [loading, nextPath, router, user]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--hewie-bg,#999b96)] px-4 text-zinc-900">

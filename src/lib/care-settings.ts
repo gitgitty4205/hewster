@@ -68,29 +68,7 @@ async function getSignedInSupabase() {
   return { supabase, userId: access.notebookOwnerId, signedInUserId: user.id, accessRole: access.role };
 }
 
-export const initialSupplementTemplates: CareItemTemplate[] = [
-  {
-    id: 1,
-    kind: "supplement",
-    name: "Daily Supplements",
-    dose: "As directed",
-    scheduleKind: "meal",
-    mealIds: [3],
-    customTiming: "with-food",
-    medicationType: "oral",
-    customScheduleMode: "one",
-    startDateTime: "",
-    customScheduleCreatedAt: "",
-    repeatEveryHours: "",
-    repeatForDays: "",
-    mealPlanDoseCount: "",
-    scheduleSteps: [{ id: 1, everyHours: "", forDays: "" }],
-    ongoing: false,
-    asNeeded: false,
-    notes: "",
-    active: true,
-  },
-];
+export const initialSupplementTemplates: CareItemTemplate[] = [];
 
 export const initialMedicationTemplates: CareItemTemplate[] = [];
 
@@ -106,6 +84,7 @@ function normalizeCareItemTemplate(item: unknown, kind: CareItemKind): CareItemT
   if (!Array.isArray(candidate.mealIds)) return null;
   if (typeof candidate.notes !== "string") return null;
   if (typeof candidate.active !== "boolean") return null;
+  if (kind === "supplement" && isLegacyDefaultSupplementCandidate(candidate)) return null;
 
   const startDateTime = typeof candidate.startDateTime === "string"
     ? candidate.startDateTime
@@ -159,8 +138,23 @@ function normalizeCareItemTemplate(item: unknown, kind: CareItemKind): CareItemT
   };
 }
 
+function isLegacyDefaultSupplementCandidate(candidate: Partial<CareItemTemplate>) {
+  const name = candidate.name?.trim().toLowerCase();
+  const dose = candidate.dose?.trim().toLowerCase();
+  const notes = candidate.notes?.trim();
+
+  return name === "daily supplements" &&
+    dose === "as directed" &&
+    candidate.scheduleKind === "meal" &&
+    notes !== undefined &&
+    (notes === "" || notes === LEGACY_DEFAULT_SUPPLEMENT_NOTE);
+}
+
 function isCareItemTemplateArray(value: unknown, kind: CareItemKind): value is CareItemTemplate[] {
-  return Array.isArray(value) && value.every((item) => normalizeCareItemTemplate(item, kind));
+  return Array.isArray(value) && value.every((item) => {
+    if (kind === "supplement" && typeof item === "object" && item !== null && isLegacyDefaultSupplementCandidate(item as Partial<CareItemTemplate>)) return true;
+    return normalizeCareItemTemplate(item, kind);
+  });
 }
 
 function dateFromDateTimeLocal(value: string) {
@@ -212,6 +206,13 @@ function mealSlotAt(dayKey: string, meal: Pick<MealTemplate, "plannedTime">) {
   if (minutes === Number.MAX_SAFE_INTEGER) return date;
   date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
   return date;
+}
+
+function careItemTemplateCreatedAt(item: CareItemTemplate) {
+  if (!Number.isFinite(item.id) || item.id < 1_600_000_000_000) return null;
+
+  const createdAt = new Date(item.id);
+  return Number.isNaN(createdAt.getTime()) ? null : createdAt;
 }
 
 function mealPlanCourseDays(item: CareItemTemplate) {
@@ -289,7 +290,10 @@ export function mealPlanDoseNumberForMeal(item: CareItemTemplate, meal: MealTemp
 
 export function careItemOccursWithMeal(item: CareItemTemplate, meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
   if (item.kind === "medication" || !item.active || item.asNeeded || item.scheduleKind !== "meal" || !item.mealIds.includes(meal.id)) return false;
-  if (item.kind === "supplement") return true;
+  if (item.kind === "supplement") {
+    const createdAt = careItemTemplateCreatedAt(item);
+    return !createdAt || mealSlotAt(dayKey, meal).getTime() >= createdAt.getTime();
+  }
 
   const doseLimit = mealPlanDoseLimit(item);
   if (!doseLimit) return isCareItemCurrentlyActive(item, mealSlotAt(dayKey, meal));
@@ -301,7 +305,10 @@ export function careItemOccursWithMeal(item: CareItemTemplate, meal: MealTemplat
 
 export function careItemHistoricallyOccurredWithMeal(item: CareItemTemplate, meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
   if (item.kind === "medication") return false;
-  if (item.kind === "supplement" && item.active && item.scheduleKind === "meal" && !item.asNeeded && item.mealIds.includes(meal.id)) return true;
+  if (item.kind === "supplement" && item.active && item.scheduleKind === "meal" && !item.asNeeded && item.mealIds.includes(meal.id)) {
+    const createdAt = careItemTemplateCreatedAt(item);
+    return !createdAt || mealSlotAt(dayKey, meal).getTime() >= createdAt.getTime();
+  }
   if (item.active) return careItemOccursWithMeal(item, meal, meals, dayKey);
   if (item.asNeeded || item.scheduleKind !== "meal" || !item.mealIds.includes(meal.id)) return false;
   if (!dateFromDateTimeLocal(item.startDateTime)) return false;
@@ -361,7 +368,9 @@ function hasCareItemStarted(item: CareItemTemplate, now = new Date()) {
 
 export function isCareItemScheduleComplete(item: CareItemTemplate, now = new Date()) {
   const finalDoseAt = item.scheduleKind === "meal" ? finalMealPlanCareAt(item) : finalCustomCareDoseAt(item);
-  return Boolean(finalDoseAt && finalDoseAt.getTime() < now.getTime());
+  if (!finalDoseAt) return false;
+
+  return dayKeyFromDate(finalDoseAt) < dayKeyFromDate(now);
 }
 
 export function isCareItemCurrentlyActive(item: CareItemTemplate, now = new Date()) {
@@ -428,6 +437,53 @@ function careTemplateFingerprint(item: CareItemTemplate) {
   ].join("|");
 }
 
+function careTemplateIdentityKey(item: CareItemTemplate) {
+  return [
+    item.kind,
+    item.name.trim().toLowerCase(),
+    item.scheduleKind,
+    [...item.mealIds].sort((a, b) => a - b).join(","),
+    item.customTiming,
+    item.medicationType,
+    item.startDateTime,
+    item.ongoing ? "ongoing" : "",
+    item.asNeeded ? "as-needed" : "",
+    item.active ? "active" : "inactive",
+  ].join("|");
+}
+
+function careTemplateCompletenessScore(item: CareItemTemplate) {
+  const dose = item.dose.trim();
+  const notes = item.notes.trim();
+  let score = 0;
+
+  if (dose) score += 10;
+  if (/\d/.test(dose)) score += 8;
+  if (/\b(ml|mg|g|tablet|tab|capsule|cap|pump|drop|scoop)s?\b/i.test(dose)) score += 8;
+  if (/^\d+(?:\.\d+)?\s+[a-z]+/i.test(dose)) score += 3;
+  score += Math.min(dose.length, 40);
+  if (notes) score += Math.min(notes.length, 30);
+  if (item.active) score += 2;
+
+  return score;
+}
+
+function dedupeCareTemplatesByIdentity(kind: CareItemKind, templates: CareItemTemplate[]) {
+  const merged = new Map<string, CareItemTemplate>();
+
+  templates.forEach((item) => {
+    if (item.kind !== kind) return;
+
+    const key = careTemplateIdentityKey(item);
+    const existing = merged.get(key);
+    if (!existing || careTemplateCompletenessScore(item) >= careTemplateCompletenessScore(existing)) {
+      merged.set(key, item);
+    }
+  });
+
+  return [...merged.values()];
+}
+
 function careTemplateHash(value: string) {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -478,7 +534,7 @@ function repairCareTemplateIdCollisions(kind: CareItemKind, templates: CareItemT
 export function mergeCareTemplateSources(kind: CareItemKind, ...sources: CareItemTemplate[][]) {
   const merged = new Map<string, CareItemTemplate>();
 
-  repairCareTemplateIdCollisions(kind, sources.flat()).forEach((item) => {
+  dedupeCareTemplatesByIdentity(kind, repairCareTemplateIdCollisions(kind, sources.flat())).forEach((item) => {
     if (item.kind !== kind) return;
     merged.set(`${item.kind}-${item.id}`, item);
   });
@@ -587,9 +643,8 @@ async function loadCareTemplatesFromSupabaseUncached(kind: CareItemKind) {
   const ownerRow = ownerRows.find((row) => hasValidCareSettingsItems(row, kind));
 
   if (ownerRow) {
-    const templates = mergeCareTemplateSources(kind, backupTemplates, localTemplates, templatesFromCareSettingsRow(ownerRow, kind));
+    const templates = mergeCareTemplateSources(kind, templatesFromCareSettingsRow(ownerRow, kind));
     saveCareTemplates(kind, templates);
-    await saveCareTemplatesToSupabase(kind, templates).catch(() => undefined);
     return cacheCareTemplates(kind, templates);
   }
 
@@ -598,7 +653,7 @@ async function loadCareTemplatesFromSupabaseUncached(kind: CareItemKind) {
   const legacyRow = legacyRows.find((row) => hasValidCareSettingsItems(row, kind));
 
   if (legacyRow) {
-    const templates = mergeCareTemplateSources(kind, backupTemplates, localTemplates, templatesFromCareSettingsRow(legacyRow, kind));
+    const templates = mergeCareTemplateSources(kind, templatesFromCareSettingsRow(legacyRow, kind));
     await saveCareTemplatesToSupabase(kind, templates).catch(() => undefined);
     saveCareTemplates(kind, templates);
     return cacheCareTemplates(kind, templates);

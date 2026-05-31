@@ -21,8 +21,10 @@ import {
 } from "@/lib/alerts";
 import { loadCareTemplates, loadCareTemplatesFromSupabase, mergeCareTemplateSources, type CareItemTemplate } from "@/lib/care-settings";
 import {
+  ACTIVITY_LOGS_STORAGE_KEY,
   type ActivityLog,
   type DailyMealState,
+  deleteActivityLogInSupabase,
   deleteManualAlertInSupabase,
   type ManualAlert,
   type MealLog,
@@ -36,7 +38,9 @@ import {
 } from "@/lib/hewster-data";
 import type { MealTemplate } from "@/lib/meal-templates";
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { loadPetProfile } from "@/lib/pet-profile";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
+import { compareActivitiesReverseChronological } from "@/lib/activity";
 
 function currentAlertMinuteKey() {
   const now = new Date();
@@ -224,7 +228,19 @@ export default function AlertsPage() {
   const [activeReviewLogId, setActiveReviewLogId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [alertMinuteKey, setAlertMinuteKey] = useState("");
+  const [petRemembered, setPetRemembered] = useState(false);
   const supabaseReady = isSupabaseConfigured();
+
+  useEffect(() => {
+    const refreshPetProfile = () => setPetRemembered(loadPetProfile().hasPassedAway);
+    refreshPetProfile();
+    window.addEventListener("pet-profile-updated", refreshPetProfile);
+    window.addEventListener("storage", refreshPetProfile);
+    return () => {
+      window.removeEventListener("pet-profile-updated", refreshPetProfile);
+      window.removeEventListener("storage", refreshPetProfile);
+    };
+  }, []);
 
   useEffect(() => {
     if (supabaseReady && authLoading) return;
@@ -288,15 +304,16 @@ export default function AlertsPage() {
 
   const alerts = useMemo(() => {
     void alertMinuteKey;
+    if (petRemembered) return [];
     return resolveAlerts(templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates);
-  }, [templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates, alertMinuteKey]);
+  }, [templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates, alertMinuteKey, petRemembered]);
   const alertCards = alerts.filter((alert) => alert.kind !== "reminder");
   const unresolvedAlertCountFor = (
     nextDailyMealState: DailyMealState[] = dailyMealState,
     nextActivityLogs: ActivityLog[] = activityLogs,
     nextManualAlerts: ManualAlert[] = manualAlerts
   ) =>
-    resolveAlerts(templates, nextDailyMealState, nextActivityLogs, nextManualAlerts, reminderRules, careTemplates).filter(
+    petRemembered ? 0 : resolveAlerts(templates, nextDailyMealState, nextActivityLogs, nextManualAlerts, reminderRules, careTemplates).filter(
       (alert) => alert.kind !== "reminder"
     ).length;
 
@@ -415,13 +432,18 @@ export default function AlertsPage() {
   ) => {
     const timeValue = reviewMealTimeValue(alertId, timeInputValueFromIso(action.scheduledAt));
     const activity = buildCustomCareActivityLog(action, status, todayIsoFromTimeInput(timeValue));
-    const nextActivityLogs = [
-      activity,
-      ...activityLogs.filter((entry) => entry.id !== action.occurrenceKey && entry.id !== `${action.occurrenceKey}-skipped` && entry.id !== `${action.occurrenceKey}-missed`),
-    ];
+    const supersededActivityIds = [action.occurrenceKey, `${action.occurrenceKey}-skipped`, `${action.occurrenceKey}-missed`];
+    setActivityLogs((current) => {
+      const nextActivityLogs = [
+        activity,
+        ...current.filter((entry) => !supersededActivityIds.includes(entry.id)),
+      ].sort(compareActivitiesReverseChronological);
 
-    setActivityLogs(nextActivityLogs);
-    syncStoredAlertBadgeCount(unresolvedAlertCountFor(undefined, nextActivityLogs));
+      window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextActivityLogs));
+      persistLocalState(templates, dailyMealState, nextActivityLogs, weightLogs, undefined, manualAlerts);
+      syncStoredAlertBadgeCount(unresolvedAlertCountFor(undefined, nextActivityLogs));
+      return nextActivityLogs;
+    });
     setReviewMealTimeValues((current) => {
       const next = { ...current };
       delete next[alertId];
@@ -431,6 +453,11 @@ export default function AlertsPage() {
 
     try {
       await saveActivityLogToSupabase(activity);
+      await Promise.all(
+        supersededActivityIds
+          .filter((activityId) => activityId !== activity.id)
+          .map((activityId) => deleteActivityLogInSupabase(activityId))
+      );
     } catch {
       // Local state is already updated.
     }

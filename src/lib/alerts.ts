@@ -208,7 +208,7 @@ function customCareOccurrencesForDay(items: CareItemTemplate[], targetDayKey: st
     const startAt = dateFromDateTimeLocal(item.startDateTime);
     if (!startAt) return [];
 
-    const scheduleCreatedAt = dateFromDateTimeLocal(item.customScheduleCreatedAt) ?? new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const scheduleCreatedAt = dateFromDateTimeLocal(item.customScheduleCreatedAt) ?? startAt;
     const [year, month, day] = targetDayKey.split("-").map(Number);
     const dayStart = new Date(year, month - 1, day);
     const dayEnd = new Date(year, month - 1, day + 1);
@@ -336,20 +336,25 @@ export function resolveAlerts(
   const currentMinutes = nowMinutes();
   const todayKey = dayKeyFromDate(new Date());
 
-  const pushMealLinkedCareReviewAlerts = (meal: MealTemplate, mealAt: Date, skippedCareItemIds: string[] = []) => {
+  const pushMealLinkedCareReviewAlerts = (meal: MealTemplate, mealAt: Date, skippedCareItemIds: string[] = [], mealLogged = false) => {
     careTemplates
       .filter((item) => item.scheduleKind === "meal" && careItemOccursWithMeal(item, meal, templates, todayKey))
       .forEach((item) => {
         const occurrenceKey = `${item.kind}-${item.id}-meal-${meal.id}-${todayKey}`;
         if (skippedCareItemIds.includes(`${item.kind}-${item.id}`)) return;
+        if (mealLogged) return;
 
         const hasResolvedActivity = activityLogs.some(
           (activity) =>
             activity.id === occurrenceKey ||
             activity.id === `${occurrenceKey}-skipped` ||
-            activity.id === `${occurrenceKey}-missed` ||
-            activityMatchesCustomCareOccurrence(activity, { item, scheduledAt: mealAt }) ||
-            activityMatchesMealLinkedCare(activity, item, mealAt)
+            (
+              !/\bMissed\b/i.test(activity.detail ?? "") &&
+              (
+                activityMatchesCustomCareOccurrence(activity, { item, scheduledAt: mealAt }) ||
+                activityMatchesMealLinkedCare(activity, item, mealAt)
+              )
+            )
         );
         if (hasResolvedActivity) return;
 
@@ -398,13 +403,13 @@ export function resolveAlerts(
     const needsCareReview = Date.now() - mealAt.getTime() > DUE_REVIEW_GRACE_MINUTES * 60 * 1000;
     if (!needsCareReview) return;
 
-    pushMealLinkedCareReviewAlerts(meal, mealAt, state?.skippedCareItemIds ?? []);
+    pushMealLinkedCareReviewAlerts(meal, mealAt, state?.skippedCareItemIds ?? [], true);
   });
 
   customCareOccurrencesForDay(careTemplates, todayKey).forEach((occurrence) => {
     if (Date.now() - occurrence.scheduledAt.getTime() <= DUE_REVIEW_GRACE_MINUTES * 60 * 1000) return;
 
-    const hasResolvedActivity = activityLogs.some((activity) => activity.id === occurrence.key || activity.id === `${occurrence.key}-skipped` || activity.id === `${occurrence.key}-missed` || activityMatchesCustomCareOccurrence(activity, occurrence));
+    const hasResolvedActivity = activityLogs.some((activity) => activity.id === occurrence.key || activity.id === `${occurrence.key}-skipped` || (!/\bMissed\b/i.test(activity.detail ?? "") && activityMatchesCustomCareOccurrence(activity, occurrence)));
     if (hasResolvedActivity) return;
 
     alerts.push({

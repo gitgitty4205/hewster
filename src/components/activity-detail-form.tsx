@@ -2,7 +2,7 @@
 
 
 
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -14,11 +14,16 @@ import { formatActivityLabel } from "@/lib/activity";
 
 import {
   PET_PROFILE_STORAGE_KEY,
+  PET_THEME_UPDATED_EVENT,
   appThemes,
   applyPetTheme,
   defaultPetProfile,
+  loadUserTheme,
   normalizePetProfile,
+  type ThemeId,
 } from "@/lib/pet-profile";
+
+const MAX_ATTACHMENT_FILES = 5;
 
 
 
@@ -38,11 +43,15 @@ type Props = {
 
   embedded?: boolean;
 
+  saveLabel?: string;
+
   onDetailChange: (value: string) => void;
 
   onNotesChange: (value: string) => void;
 
   onExtraNotesChange?: (value: string) => void;
+
+  attachmentFiles?: File[];
 
   attachmentNames?: string[];
 
@@ -213,26 +222,6 @@ const groupedPresets: Partial<Record<ActivityType, Array<{ label: string; option
       label: "Status",
 
       options: ["Given", "Skipped", "Missed"],
-
-    },
-
-  ],
-
-  sick: [
-
-    {
-
-      label: "Symptom Type",
-
-      options: ["Digestive", "Respiratory", "Skin / Ear / Rear", "Urinary", "Mobility / Pain", "Neurological", "Behavior", "Other"],
-
-    },
-
-    {
-
-      label: "Medical / Vet",
-
-      options: ["Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Medication", "Flea & Tick", "Deworming", "Procedure", "Other Medical"],
 
     },
 
@@ -444,39 +433,25 @@ function presetButtonClasses(activityType: ActivityType, preset: string, selecte
 
 const pottyEvents = ["Pee", "Poop", "Pee & Poop", "No Poop"];
 
-const wellnessExamAddOns = ["Vaccine", "Injection", "Medication"];
-
-const sickConsultAddOns = ["Injection", "Medication"];
-
 const procedureDetails = ["Dental Procedure", "Spay / Neuter", "Other"];
 
 const dentalProcedureDetails = ["No Extraction", "Extraction"];
 
 const spayNeuterDetails = ["Spay", "Neuter"];
 
-const sickSymptomOptions: Record<string, string[]> = {
+const sickSymptomOptions = ["Digestive", "Respiratory", "Skin", "Ear", "Eye", "Urinary", "Mobility / Pain", "Neurological", "Behavior", "Other"];
 
-  Digestive: ["Appetite Change", "Vomit", "Other"],
+const sickMedicalOptions = ["Vet Visit", "Medication", "Injection", "Other Medical"];
 
-  Respiratory: ["Sneezing", "Coughing", "Other"],
+type SickLogMode = "symptom" | "medical" | "";
 
-  "Skin / Ear / Rear": ["Itching / Rash", "Ear Issue", "Scooting", "Other"],
-
-  Urinary: ["Urinary Concern", "Frequent Urination / Excessive Drinking", "Other"],
-
-  "Mobility / Pain": ["Stiffness", "Limping", "Pain", "Trouble Standing", "Other"],
-
-  Neurological: ["Shaking / Trembling", "Collapse / Weakness", "Seizure", "Other"],
-
-  Behavior: ["Restless / Pacing", "Low Energy", "Behavior Change", "Other"],
-
-  Other: [],
-
-};
-
-
-
-const recordTagOptions = ["Medical Record", "Invoice", "Vaccine Certificate", "Insurance", "Photo"];
+function sickLogModeFromDetail(detail: string): SickLogMode {
+  if (!detail) return "";
+  if (sickSymptomOptions.includes(detail)) return "symptom";
+  if (sickMedicalOptions.some((option) => detail === option || detail.startsWith(`${option}: `))) return "medical";
+  if (["Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", "Other Medical"].some((option) => detail.includes(option))) return "medical";
+  return "symptom";
+}
 
 
 
@@ -608,6 +583,12 @@ function isPresetSelected(activityType: ActivityType, preset: string, detail: st
 
   }
 
+  if (activityType === "sick" && preset === "Other Medical") {
+
+    return detail === preset || detail.startsWith(`${preset}: `);
+
+  }
+
 
 
   if (activityType !== "potty") return detail === preset;
@@ -631,6 +612,8 @@ function nextDetailValue(activityType: ActivityType, preset: string, detail: str
   void detail;
 
   if (activityType === "sick" && preset === "Other") return "Other";
+
+  if (activityType === "sick" && preset === "Other Medical") return "Other Medical";
 
   if (activityType === "wellness") return preset;
 
@@ -720,60 +703,6 @@ function nextSpayNeuterDetailValue(preset: string) {
 
 
 
-function medicalVisitMain(detail: string) {
-
-  return detail.split(" + ")[0];
-
-}
-
-
-
-function medicalVisitAddOnsFromDetail(detail: string) {
-
-  const [, addOnsText] = detail.split(" + ", 2);
-
-  return addOnsText ? addOnsText.split(", ").filter(Boolean) : [];
-
-}
-
-
-
-function medicalVisitAddOnsForDetail(detail: string) {
-
-  return medicalVisitMain(detail) === "Wellness Exam" ? wellnessExamAddOns : sickConsultAddOns;
-
-}
-
-
-
-function isMedicalVisitWithAddOns(detail: string) {
-
-  return ["Wellness Exam", "Sick Consult"].includes(medicalVisitMain(detail));
-
-}
-
-
-
-function nextMedicalVisitAddOnValue(detail: string, addOn: string) {
-
-  const main = medicalVisitMain(detail);
-
-  const currentAddOns = medicalVisitAddOnsFromDetail(detail);
-
-  const nextAddOns = currentAddOns.includes(addOn)
-
-    ? currentAddOns.filter((item) => item !== addOn)
-
-    : [...currentAddOns, addOn];
-
-
-
-  return nextAddOns.length ? `${main} + ${nextAddOns.join(", ")}` : main;
-
-}
-
-
-
 function isProcedureDetail(detail: string) {
 
   return detail === "Procedure" || detail.startsWith("Procedure: ");
@@ -790,18 +719,6 @@ function nextProcedureDetailValue(preset: string) {
 
 
 
-function sickSymptomTypeFromDetail(detail: string) {
-
-  const exactType = Object.keys(sickSymptomOptions).find((type) => detail === type || detail.startsWith(`${type}: `));
-
-  if (exactType) return exactType;
-
-  return "";
-
-}
-
-
-
 function sickSymptomFromDetail(detail: string) {
 
   return detail.split(": ")[1] ?? "";
@@ -810,17 +727,17 @@ function sickSymptomFromDetail(detail: string) {
 
 
 
-function nextSickSymptomValue(type: string, symptom: string) {
+function isOtherMedicalDetail(detail: string) {
 
-  return `${type}: ${symptom}`;
+  return detail === "Other Medical" || detail.startsWith("Other Medical: ");
 
 }
 
 
 
-function displayDetailValue(activityType: ActivityType, detail: string) {
+function displayDetailValue(detail: string) {
 
-  if (activityType === "sick") return sickSymptomFromDetail(detail) || detail;
+  if (isOtherMedicalDetail(detail)) return detail.replace(/^Other Medical:?\s*/, "");
 
   return detail;
 
@@ -873,19 +790,19 @@ export function ActivityDetailForm({
 
   embedded = false,
 
+  saveLabel = "Save Details",
+
   onDetailChange,
 
   onNotesChange,
 
   onExtraNotesChange,
 
+  attachmentFiles = [],
+
   attachmentNames = [],
 
   onAttachmentsChange,
-
-  recordTags = [],
-
-  onRecordTagsChange,
 
   onHappenedAtChange,
 
@@ -925,15 +842,29 @@ export function ActivityDetailForm({
 
   }, [profileSnapshot]);
 
-  const theme = appThemes[profile.themeId];
+  const [themeId, setThemeId] = useState<ThemeId>(() => loadUserTheme());
+  const theme = appThemes[themeId];
+  const inferredSickLogMode = activityType === "sick" ? sickLogModeFromDetail(detail) : "";
+  const [selectedSickLogMode, setSelectedSickLogMode] = useState<SickLogMode>("");
+  const sickLogMode = activityType === "sick" ? selectedSickLogMode || inferredSickLogMode : "";
 
 
 
   useEffect(() => {
 
-    applyPetTheme(profile.themeId);
+    const refreshTheme = () => setThemeId(loadUserTheme());
+    refreshTheme();
+    window.addEventListener(PET_THEME_UPDATED_EVENT, refreshTheme);
+    window.addEventListener("storage", refreshTheme);
+    return () => {
+      window.removeEventListener(PET_THEME_UPDATED_EVENT, refreshTheme);
+      window.removeEventListener("storage", refreshTheme);
+    };
+  }, []);
 
-  }, [profile.themeId]);
+  useEffect(() => {
+    applyPetTheme(themeId);
+  }, [themeId]);
 
 
 
@@ -941,21 +872,21 @@ export function ActivityDetailForm({
 
   const showExtraNotesField = (activityType === "treat" || activityType === "food") && onExtraNotesChange;
 
-  const showAttachmentField = activityType === "sick" && onAttachmentsChange;
+  const hasSickDetail = activityType !== "sick" || Boolean(detail.trim());
+  const showCoreFields = activityType !== "sick" || hasSickDetail;
+  const showAttachmentField = activityType === "sick" && detail === "Vet Visit" && onAttachmentsChange;
 
   const isPottyLog = ["potty", "pee", "poop"].includes(activityType);
 
-  const showRecordTags = activityType === "sick" && onRecordTagsChange;
-
-  const attachmentLabel = "Upload Health Documents";
+  const attachmentLabel = "Add Attachments";
 
   const attachmentAccept = "image/*,.pdf,application/pdf";
 
-  const attachmentHelp = "Photos, screenshots, PDFs, medical records, invoices, vaccine certificates, or insurance docs.";
+  const attachmentHelp = "Health notes, certificates, lab results, invoices, and photos.";
 
-  const showDetailField = activityType === "other" || (activityType === "sick" && sickSymptomFromDetail(detail) === "Other");
+  const showDetailField = activityType === "other" || (activityType === "sick" && (detail === "Other" || sickSymptomFromDetail(detail) === "Other" || isOtherMedicalDetail(detail)));
 
-  const presetGroups = groupedPresets[activityType];
+  const presetGroups = activityType === "sick" ? undefined : groupedPresets[activityType];
 
   const hasNotesContent = Boolean(notes.trim() || extraNotes.trim());
 
@@ -991,15 +922,35 @@ export function ActivityDetailForm({
 
     (!requiresPresetDetail && !requiresTitleDetail && activityType !== "pee" && !detail && !hasNotesContent);
 
+  const displayedAttachments = attachmentFiles.length
+    ? attachmentFiles.map((file) => file.name)
+    : attachmentNames;
 
+  const addAttachmentFiles = (files: File[]) => {
 
-  const toggleRecordTag = (tag: string) => {
+    if (!onAttachmentsChange) return;
 
-    if (!onRecordTagsChange) return;
+    const nextFiles = [...attachmentFiles];
+    files.slice(0, Math.max(0, MAX_ATTACHMENT_FILES - nextFiles.length)).forEach((file) => {
+      const alreadyAttached = nextFiles.some((attached) =>
+        attached.name === file.name && attached.size === file.size && attached.lastModified === file.lastModified
+      );
+      if (!alreadyAttached) nextFiles.push(file);
+    });
 
-    onRecordTagsChange(recordTags.includes(tag) ? recordTags.filter((item) => item !== tag) : [...recordTags, tag]);
+    onAttachmentsChange(nextFiles);
 
   };
+
+  const removeAttachmentFile = (index: number) => {
+
+    if (!onAttachmentsChange) return;
+
+    onAttachmentsChange(attachmentFiles.filter((_, fileIndex) => fileIndex !== index));
+
+  };
+
+  const attachmentLimitReached = attachmentFiles.length >= MAX_ATTACHMENT_FILES;
 
 
 
@@ -1069,6 +1020,205 @@ export function ActivityDetailForm({
 
       ) : null}
 
+      {activityType === "sick" ? (
+
+        <div className="mb-4 space-y-3 rounded-2xl bg-zinc-50/70 p-3 ring-1 ring-zinc-200">
+
+          <div>
+
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Health Log Type</p>
+
+            <div className="grid grid-cols-2 gap-2">
+
+              {[
+                { label: "Symptoms", value: "symptom" as const },
+                { label: "Vet / Medical", value: "medical" as const },
+              ].map((mode) => (
+
+                <button
+                  key={mode.value}
+                  type="button"
+                  className={`rounded-2xl px-3 py-3 text-sm font-semibold ring-1 transition ${sickLogMode === mode.value ? "bg-sky-50 text-sky-700 ring-2 ring-sky-200" : "bg-white text-zinc-600 ring-zinc-200 hover:bg-zinc-50"}`}
+                  onClick={() => {
+                    if (sickLogMode !== mode.value) onDetailChange("");
+                    setSelectedSickLogMode(mode.value);
+                  }}
+                >
+                  {mode.label}
+                </button>
+
+              ))}
+
+            </div>
+
+          </div>
+
+          {sickLogMode === "symptom" ? (
+
+            <div>
+
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Symptom Type</p>
+
+              <div className="flex flex-wrap gap-2">
+
+                {sickSymptomOptions.map((preset) => (
+
+                  <button
+                    key={preset}
+                    type="button"
+                    className={presetButtonClasses(activityType, preset, isPresetSelected(activityType, preset, detail))}
+                    onClick={() => onDetailChange(nextDetailValue(activityType, preset, detail))}
+                  >
+                    {preset}
+                  </button>
+
+                ))}
+
+              </div>
+
+            </div>
+
+          ) : null}
+
+          {sickLogMode === "medical" ? (
+
+            <div>
+
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Vet / Medical</p>
+
+              <div className="flex flex-wrap gap-2">
+
+                {sickMedicalOptions.map((preset) => (
+
+                  <button
+                    key={preset}
+                    type="button"
+                    className={presetButtonClasses(activityType, preset, isPresetSelected(activityType, preset, detail))}
+                    onClick={() => onDetailChange(nextDetailValue(activityType, preset, detail))}
+                  >
+                    {preset === "Other Medical" ? "Other" : preset}
+                  </button>
+
+                ))}
+
+              </div>
+
+              {isProcedureDetail(detail) ? (
+
+                <div className="mt-3 rounded-2xl bg-sky-50/70 p-3 ring-1 ring-sky-100">
+
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-500">Procedure Details</p>
+
+                  <div className="flex flex-wrap gap-2">
+
+                    {procedureDetails.map((preset) => {
+                      const procedureDetail = nextProcedureDetailValue(preset);
+
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          className={presetButtonClasses(activityType, preset, detail === procedureDetail || detail.startsWith(`${procedureDetail} - `))}
+                          onClick={() => onDetailChange(procedureDetail)}
+                        >
+                          {preset}
+                        </button>
+                      );
+                    })}
+
+                  </div>
+
+                </div>
+
+              ) : null}
+
+              {isDentalProcedureDetail(detail) ? (
+
+                <div className="mt-3 rounded-2xl bg-sky-50/70 p-3 ring-1 ring-sky-100">
+
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-500">Dental Procedure Details</p>
+
+                  <div className="flex flex-wrap gap-2">
+
+                    {dentalProcedureDetails.map((preset) => {
+                      const dentalDetail = nextDentalProcedureDetailValue(preset);
+                      const selected = preset === "Extraction" ? detail.startsWith(dentalDetail) : detail === dentalDetail;
+
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          className={presetButtonClasses(activityType, preset, selected)}
+                          onClick={() => onDetailChange(dentalDetail)}
+                        >
+                          {preset}
+                        </button>
+                      );
+                    })}
+
+                  </div>
+
+                  {detail.startsWith("Dental Procedure: Extraction") ? (
+
+                    <label className="mt-3 block text-sm">
+
+                      <span className="mb-1 block font-medium text-zinc-700">Number Of Extractions</span>
+
+                      <input
+                        type="number"
+                        min="1"
+                        inputMode="numeric"
+                        value={dentalExtractionCount(detail)}
+                        onChange={(event) => onDetailChange(dentalExtractionDetailValue(event.target.value))}
+                        placeholder="e.g. 2"
+                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+                      />
+
+                    </label>
+
+                  ) : null}
+
+                </div>
+
+              ) : null}
+
+              {isSpayNeuterDetail(detail) ? (
+
+                <div className="mt-3 rounded-2xl bg-sky-50/70 p-3 ring-1 ring-sky-100">
+
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-500">Spay / Neuter Details</p>
+
+                  <div className="flex flex-wrap gap-2">
+
+                    {spayNeuterDetails.map((preset) => {
+                      const spayNeuterDetail = nextSpayNeuterDetailValue(preset);
+
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          className={presetButtonClasses(activityType, preset, detail === spayNeuterDetail)}
+                          onClick={() => onDetailChange(spayNeuterDetail)}
+                        >
+                          {preset}
+                        </button>
+                      );
+                    })}
+
+                  </div>
+
+                </div>
+
+              ) : null}
+
+            </div>
+
+          ) : null}
+
+        </div>
+
+      ) : null}
+
       {presetGroups ? (
 
         <div className="mb-4 space-y-3">
@@ -1112,38 +1262,6 @@ export function ActivityDetailForm({
                   ))}
 
                 </div>
-
-                {activityType === "sick" && group.label === "Medical / Vet" && isMedicalVisitWithAddOns(detail) ? (
-
-                  <div className="mt-3 rounded-2xl bg-sky-50/70 p-3 ring-1 ring-sky-100">
-
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-500">Also Done / Given</p>
-
-                    <div className="flex flex-wrap gap-2">
-
-                      {medicalVisitAddOnsForDetail(detail).map((preset) => (
-
-                        <button
-
-                          key={preset}
-
-                          className={presetButtonClasses(activityType, preset, medicalVisitAddOnsFromDetail(detail).includes(preset))}
-
-                          onClick={() => onDetailChange(nextMedicalVisitAddOnValue(detail, preset))}
-
-                        >
-
-                          {preset}
-
-                        </button>
-
-                      ))}
-
-                    </div>
-
-                  </div>
-
-                ) : null}
 
                 {activityType === "sick" && group.label === "Medical / Vet" && isProcedureDetail(detail) ? (
 
@@ -1295,42 +1413,6 @@ export function ActivityDetailForm({
 
                 ) : null}
 
-                {activityType === "sick" && group.label === "Symptom Type" && sickSymptomTypeFromDetail(detail) && (sickSymptomOptions[sickSymptomTypeFromDetail(detail)] ?? []).length ? (
-
-                  <div className="mt-3 rounded-2xl bg-rose-50/70 p-3 ring-1 ring-rose-100">
-
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">
-
-                      {sickSymptomTypeFromDetail(detail)}
-
-                    </p>
-
-                    <div className="flex flex-wrap gap-2">
-
-                      {(sickSymptomOptions[sickSymptomTypeFromDetail(detail)] ?? []).map((preset) => (
-
-                        <button
-
-                          key={preset}
-
-                          className={presetButtonClasses(activityType, preset, sickSymptomFromDetail(detail) === preset)}
-
-                          onClick={() => onDetailChange(nextSickSymptomValue(sickSymptomTypeFromDetail(detail), preset))}
-
-                        >
-
-                          {preset}
-
-                        </button>
-
-                      ))}
-
-                    </div>
-
-                  </div>
-
-                ) : null}
-
               </div>
 
             );
@@ -1367,7 +1449,7 @@ export function ActivityDetailForm({
 
 
 
-      <label className="mb-3 block text-sm">
+      {showCoreFields ? <label className="mb-3 block text-sm">
 
         <span className="mb-1 block font-medium text-zinc-700">Time</span>
 
@@ -1383,11 +1465,11 @@ export function ActivityDetailForm({
 
         />
 
-      </label>
+      </label> : null}
 
 
 
-      {showTreatDetailField ? (
+      {showCoreFields && showTreatDetailField ? (
 
         <label className="mb-3 block text-sm">
 
@@ -1411,7 +1493,7 @@ export function ActivityDetailForm({
 
 
 
-      {showExtraNotesField ? (
+      {showCoreFields && showExtraNotesField ? (
 
         <label className="mb-3 block text-sm">
 
@@ -1439,7 +1521,7 @@ export function ActivityDetailForm({
 
 
 
-      {showDetailField ? (
+      {showCoreFields && showDetailField ? (
 
         <label className="mb-3 block text-sm">
 
@@ -1447,9 +1529,12 @@ export function ActivityDetailForm({
 
           <input
 
-            value={detail === "Other" ? "" : displayDetailValue(activityType, detail)}
+            value={detail === "Other" ? "" : displayDetailValue(detail)}
 
-            onChange={(event) => onDetailChange(event.target.value)}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              onDetailChange(isOtherMedicalDetail(detail) ? nextValue ? `Other Medical: ${nextValue}` : "Other Medical" : nextValue);
+            }}
 
             placeholder={activityType === "other" ? "What would you like to log?" : "Add a title"}
 
@@ -1463,7 +1548,7 @@ export function ActivityDetailForm({
 
 
 
-      {!showExtraNotesField ? <label className="block text-sm">
+      {showCoreFields && !showExtraNotesField ? <label className="block text-sm">
 
         <span className="mb-1 block font-medium text-zinc-700">Notes</span>
 
@@ -1477,7 +1562,7 @@ export function ActivityDetailForm({
 
           rows={activityType === "medication" || activityType === "supplement" ? 1 : activityType === "wellness" || isPottyLog ? 2 : 3}
 
-          placeholder={notesPlaceholders[activityType]}
+          placeholder={activityType === "sick" && detail === "Vet Visit" ? "Clinic, vet name, reason for visit, or a short note. Attach documents below." : notesPlaceholders[activityType]}
 
           className={`w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 ${activityType === "wellness" ? "resize-none overflow-hidden" : ""}`}
 
@@ -1489,79 +1574,53 @@ export function ActivityDetailForm({
 
       {showAttachmentField ? (
 
-        <label className="mt-3 block text-sm">
+        <div className="mt-3 block text-sm">
 
           <span className="mb-1 block font-medium text-zinc-700">{attachmentLabel}</span>
 
-          <input
+          <label className={`flex w-full rounded-2xl border border-dashed border-sky-200 bg-sky-50/50 px-3 py-3 text-sm ${attachmentLimitReached ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}>
+            <span className="rounded-full bg-sky-100 px-3 py-1.5 text-sm font-semibold text-sky-700">
+              Add Files
+            </span>
+            <input
+              type="file"
+              multiple
+              accept={attachmentAccept}
+              disabled={attachmentLimitReached}
+              onChange={(event) => {
+                addAttachmentFiles(Array.from(event.target.files ?? []));
+                event.currentTarget.value = "";
+              }}
+              className="sr-only"
+            />
+          </label>
 
-            type="file"
+          <p className="mt-1 text-xs text-zinc-500">{attachmentHelp} Up to {MAX_ATTACHMENT_FILES} files.</p>
 
-            multiple
+          {attachmentLimitReached ? <p className="mt-1 text-xs font-medium text-amber-700">Attachment limit reached.</p> : null}
 
-            accept={attachmentAccept}
-
-            onChange={(event) => onAttachmentsChange(Array.from(event.target.files ?? []))}
-
-            className="block w-full rounded-2xl border border-dashed border-sky-200 bg-sky-50/50 px-3 py-3 text-sm text-zinc-600 file:mr-3 file:rounded-full file:border-0 file:bg-sky-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-sky-700"
-
-          />
-
-          <p className="mt-1 text-xs text-zinc-500">{attachmentHelp}</p>
-
-          {attachmentNames.length ? (
+          {displayedAttachments.length ? (
 
             <ul className="mt-2 space-y-1 text-xs text-zinc-600">
 
-              {attachmentNames.map((name) => <li key={name}>• {name}</li>)}
+              {displayedAttachments.map((name, index) => (
+                <li key={`${name}-${index}`} className="flex items-center justify-between gap-2 rounded-xl bg-white/70 px-2.5 py-1.5 ring-1 ring-sky-100">
+                  <span className="min-w-0 truncate">{name}</span>
+                  {attachmentFiles.length ? (
+                    <button
+                      type="button"
+                      onClick={() => removeAttachmentFile(index)}
+                      className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </li>
+              ))}
 
             </ul>
 
           ) : null}
-
-        </label>
-
-      ) : null}
-
-
-
-      {showRecordTags ? (
-
-        <div className="mt-3 text-sm">
-
-          <p className="mb-2 font-medium text-zinc-700">This Record Includes</p>
-
-          <div className="flex flex-wrap gap-2">
-
-            {recordTagOptions.map((tag) => (
-
-              <button
-
-                key={tag}
-
-                type="button"
-
-                onClick={() => toggleRecordTag(tag)}
-
-                className={`rounded-full px-3 py-2 text-sm font-medium ring-1 transition ${
-
-                  recordTags.includes(tag)
-
-                    ? "bg-sky-50 text-sky-700 ring-sky-200"
-
-                    : "bg-white text-zinc-600 ring-zinc-200 hover:bg-zinc-50"
-
-                }`}
-
-              >
-
-                {tag}
-
-              </button>
-
-            ))}
-
-          </div>
 
         </div>
 
@@ -1578,7 +1637,7 @@ export function ActivityDetailForm({
           style={{ backgroundColor: theme.activeText }}
         >
 
-          {saving ? "Saving..." : isEditing ? "Save Changes" : "Save Details"}
+          {saving ? "Saving..." : isEditing ? "Save Changes" : saveLabel}
 
         </Button>
 

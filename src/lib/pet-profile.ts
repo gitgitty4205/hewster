@@ -1,5 +1,7 @@
 ﻿export type ThemeId = "slate" | "violet" | "sky" | "rose" | "emerald" | "amber";
 
+import { getStoredSupabaseSession } from "@/lib/supabase";
+
 export type PetProfile = {
   petName: string;
   petFirstName: string;
@@ -9,6 +11,7 @@ export type PetProfile = {
   birthday: string;
   manualAge: string;
   microchipNumber: string;
+  color: string;
   sex: "" | "female" | "male";
   spayNeuterStatus: "" | "spayed" | "neutered" | "intact";
   personality: string;
@@ -25,6 +28,8 @@ export type PetProfile = {
 };
 
 export const PET_PROFILE_STORAGE_KEY = "hewster.petProfile";
+export const USER_THEME_STORAGE_KEY = "hewster.userTheme";
+export const PET_THEME_UPDATED_EVENT = "pet-theme-updated";
 
 export const defaultPetProfile: PetProfile = {
   petName: "Hewster",
@@ -35,6 +40,7 @@ export const defaultPetProfile: PetProfile = {
   birthday: "",
   manualAge: "",
   microchipNumber: "",
+  color: "",
   sex: "",
   spayNeuterStatus: "",
   personality: "",
@@ -142,6 +148,7 @@ export function normalizePetProfile(value: unknown): PetProfile {
     birthday: typeof profile.birthday === "string" ? profile.birthday : defaultPetProfile.birthday,
     manualAge: typeof profile.manualAge === "string" ? profile.manualAge : defaultPetProfile.manualAge,
     microchipNumber: typeof profile.microchipNumber === "string" ? profile.microchipNumber : defaultPetProfile.microchipNumber,
+    color: typeof profile.color === "string" ? profile.color : defaultPetProfile.color,
     sex: profile.sex === "female" || profile.sex === "male" ? profile.sex : defaultPetProfile.sex,
     spayNeuterStatus:
       profile.spayNeuterStatus === "spayed" || profile.spayNeuterStatus === "neutered" || profile.spayNeuterStatus === "intact"
@@ -200,6 +207,34 @@ export function loadPetProfile() {
 export function savePetProfile(profile: PetProfile) {
   window.localStorage.setItem(PET_PROFILE_STORAGE_KEY, JSON.stringify(profile));
   window.dispatchEvent(new Event("pet-profile-updated"));
+}
+
+function userThemeStorageKey(userId?: string | null) {
+  return `${USER_THEME_STORAGE_KEY}:${userId || "guest"}`;
+}
+
+function activeUserThemeId(userId?: string | null) {
+  return userId ?? getStoredSupabaseSession()?.user?.id ?? null;
+}
+
+function normalizeThemeId(value: string | null | undefined): ThemeId | null {
+  return value && value in appThemes ? value as ThemeId : null;
+}
+
+export function loadUserTheme(userId?: string | null) {
+  if (typeof window === "undefined") return defaultPetProfile.themeId;
+
+  const storedTheme = normalizeThemeId(window.localStorage.getItem(userThemeStorageKey(activeUserThemeId(userId))));
+  if (storedTheme) return storedTheme;
+
+  return loadPetProfile().themeId;
+}
+
+export function saveUserTheme(themeId: ThemeId, userId?: string | null) {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(userThemeStorageKey(activeUserThemeId(userId)), themeId);
+  window.dispatchEvent(new Event(PET_THEME_UPDATED_EVENT));
 }
 
 export function applyPetTheme(themeId: ThemeId) {

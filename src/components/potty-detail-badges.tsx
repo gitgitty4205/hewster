@@ -68,10 +68,12 @@ export function PottyDetailBadges({
   detail,
   notes,
   align = "left",
+  inset = true,
 }: {
   detail: string | null;
   notes?: string | null;
   align?: "left" | "right";
+  inset?: boolean;
 }) {
   const { event, bristol, bristolType, bristolDescription } = parsePottyDetail(detail);
   const showPee = event === "Pee" || event === "Pee & Poop";
@@ -80,9 +82,10 @@ export function PottyDetailBadges({
   const showGenericPotty = Boolean(detail) && !showPee && !showPoop && !showNoPoop;
   const alignItems = align === "right" ? "items-end text-right" : "items-start text-left";
   const rowJustify = align === "right" ? "justify-end" : "justify-start";
+  const marginTop = inset ? "mt-2" : "";
 
   return (
-    <div className={`mt-2 flex flex-col gap-1.5 ${alignItems}`}>
+    <div className={`${marginTop} flex flex-col gap-1.5 ${alignItems}`}>
       {showPee ? (
         <div className={`flex w-full ${rowJustify}`}>
           <span className={`${pottyBadgeClasses("Pee")} whitespace-nowrap`}>

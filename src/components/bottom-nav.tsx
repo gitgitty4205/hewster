@@ -7,7 +7,6 @@ import {
   ClipboardList,
   FileHeart,
   History,
-  NotebookTabs,
   Scale,
   Settings2,
   X,
@@ -17,6 +16,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
+import { useAuth } from "@/components/auth-provider";
 import {
   ALERT_BADGE_COUNT_STORAGE_KEY,
   loadReminderAlertRules,
@@ -24,7 +24,7 @@ import {
 } from "@/lib/alerts";
 import { loadCareTemplates } from "@/lib/care-settings";
 import { loadAppState } from "@/lib/hewster-data";
-import { applyPetTheme, loadPetProfile } from "@/lib/pet-profile";
+import { PET_THEME_UPDATED_EVENT, applyPetTheme, loadUserTheme } from "@/lib/pet-profile";
 
 type Props = {
   alertsCount?: number;
@@ -34,9 +34,9 @@ const APP_BASE = "/hewie";
 
 const pages = [
   { label: "Today", href: `${APP_BASE}`, icon: CalendarDays },
-  { label: "Noted", href: `${APP_BASE}/log`, icon: ClipboardList },
+  { label: "Event Details", href: `${APP_BASE}/log`, icon: ClipboardList },
   { label: "History", href: `${APP_BASE}/history`, icon: History },
-  { label: "Medical", href: `${APP_BASE}/medical-records`, icon: FileHeart },
+  { label: "Health", href: `${APP_BASE}/medical-records`, icon: FileHeart },
   { label: "Weight", href: `${APP_BASE}/weight`, icon: Scale },
   { label: "Fitness", href: `${APP_BASE}/activity`, icon: Activity },
   { label: "Alerts", href: `${APP_BASE}/alerts`, icon: BellPlus, badge: true },
@@ -52,6 +52,17 @@ function PawIcon() {
         WebkitMask: "url('/paw-print.svg') center / contain no-repeat",
         mask: "url('/paw-print.svg') center / contain no-repeat",
       }}
+      aria-hidden="true"
+    />
+  );
+}
+
+function BrandNotebookIcon() {
+  return (
+    <img
+      src="/paw-notes-transparent.svg"
+      alt=""
+      className="h-[3.25rem] w-[3.25rem] object-contain drop-shadow-[0_5px_7px_rgba(15,23,42,0.34)] contrast-[1.04] saturate-[1.06]"
       aria-hidden="true"
     />
   );
@@ -82,6 +93,7 @@ function syncStoredAlertsCount(count: number) {
 }
 
 export function BottomNav({ alertsCount }: Props) {
+  const { user } = useAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const storedAlertsCountSnapshot = useSyncExternalStore(subscribeToStoredAlertsCount, loadStoredAlertsCountSnapshot, () => "0");
@@ -89,8 +101,15 @@ export function BottomNav({ alertsCount }: Props) {
   const activeAlertsCount = alertsCount ?? storedAlertsCount;
 
   useEffect(() => {
-    applyPetTheme(loadPetProfile().themeId);
-  }, []);
+    const refreshTheme = () => applyPetTheme(loadUserTheme(user?.id));
+    refreshTheme();
+    window.addEventListener(PET_THEME_UPDATED_EVENT, refreshTheme);
+    window.addEventListener("storage", refreshTheme);
+    return () => {
+      window.removeEventListener(PET_THEME_UPDATED_EVENT, refreshTheme);
+      window.removeEventListener("storage", refreshTheme);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (alertsCount === undefined) return;
@@ -164,7 +183,7 @@ export function BottomNav({ alertsCount }: Props) {
             </div>
 
             <div className="relative flex flex-1 items-center overflow-y-auto px-6 py-10">
-              <div className="grid w-full grid-cols-3 justify-items-center gap-x-6 gap-y-10">
+              <div className="grid w-full grid-cols-3 justify-items-center gap-x-6 gap-y-9">
                 {pages.map((item) => {
                   const Icon = item.icon;
                   const active = pathname === item.href || (item.href === APP_BASE && pathname === "/");
@@ -178,19 +197,19 @@ export function BottomNav({ alertsCount }: Props) {
                       className="group relative text-center"
                     >
                       <span
-                        className={`relative flex size-[4.75rem] flex-col items-center justify-center gap-1 rounded-[1.45rem] shadow-sm transition group-hover:-translate-y-0.5 ${
+                        className={`relative flex size-[4.65rem] flex-col items-center justify-center gap-1.5 rounded-[1.2rem] shadow-sm ring-1 ring-white/18 transition group-hover:-translate-y-0.5 ${
                           active
                             ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]"
                             : "bg-[var(--hewie-bg,#979ca7)] text-[var(--hewie-accent-text,#ffffff)] group-hover:bg-[var(--hewie-accent,#64748b)]"
                         }`}
                       >
-                        {item.iconKind === "paw" ? <PawIcon /> : Icon ? <Icon className="size-5" strokeWidth={2.25} /> : null}
+                        {item.iconKind === "paw" ? <PawIcon /> : Icon ? <Icon className="size-[1.15rem]" strokeWidth={1.9} /> : null}
                         {showBadge ? (
                           <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
                             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
                           </span>
                         ) : null}
-                        <span className="text-[13px] font-bold leading-tight text-[var(--hewie-accent-text,#ffffff)]">{item.label}</span>
+                        <span className="max-w-[4rem] text-[12px] font-semibold leading-tight text-[var(--hewie-accent-text,#ffffff)]/92">{item.label}</span>
                       </span>
                     </Link>
                   );
@@ -204,10 +223,10 @@ export function BottomNav({ alertsCount }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-[max(1rem,calc((100vw-28rem)/2+1rem))] z-[60] flex size-[4.25rem] items-center justify-center rounded-[1.45rem] bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] shadow-[0_16px_34px_rgba(15,23,42,0.28)] ring-2 ring-white/85 transition hover:scale-105"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-[max(1rem,calc((100vw-28rem)/2+1rem))] z-[60] flex size-[4.25rem] items-center justify-center rounded-[1.45rem] bg-[var(--hewie-accent,#64748b)] shadow-[0_16px_34px_rgba(15,23,42,0.28)] transition hover:scale-105"
         aria-label="Open notebook pages"
       >
-        <NotebookTabs className="size-8 drop-shadow-sm" strokeWidth={2.6} />
+        <BrandNotebookIcon />
         {activeAlertsCount > 0 ? (
           <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-white">
             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}

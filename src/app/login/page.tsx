@@ -9,6 +9,7 @@ import { useAuth } from "@/components/auth-provider";
 import { getSupabaseBrowserClient, getSupabaseEnv } from "@/lib/supabase";
 
 type AuthMode = "login" | "register";
+type ResetStatus = "idle" | "sending" | "sent" | "error";
 
 const AUTH_REQUEST_TIMEOUT_MS = 12_000;
 const LOGIN_SERVICE_DOWN_MESSAGE = "The login service did not respond. Please try again in a minute.";
@@ -97,6 +98,8 @@ function LoginPageContent() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [authServiceDown, setAuthServiceDown] = useState(false);
+  const [resetStatus, setResetStatus] = useState<ResetStatus>("idle");
+  const [resetMessage, setResetMessage] = useState("");
 
   const title = mode === "register" ? "Create Your Pet Notebook Account" : "Welcome Back";
   const subtitle = mode === "register" ? "" : "Sign in to get back to your pet notebook.";
@@ -104,6 +107,12 @@ function LoginPageContent() {
   const redirectTo = useMemo(() => {
     if (typeof window === "undefined") return undefined;
     return `${window.location.origin}/auth/callback`;
+  }, []);
+
+  const passwordResetRedirectTo = useMemo(() => {
+    if (typeof window === "undefined") return undefined;
+    const nextPath = encodeURIComponent("/hewie/account-settings?resetPassword=1");
+    return `${window.location.origin}/auth/callback?next=${nextPath}`;
   }, []);
 
   useEffect(() => {
@@ -220,6 +229,50 @@ function LoginPageContent() {
     }
   }
 
+  async function handlePasswordReset() {
+    setError("");
+    setMessage("");
+    setResetMessage("");
+    setAuthServiceDown(false);
+
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setResetStatus("error");
+      setResetMessage("Enter your email first, then tap Forgot password.");
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setResetStatus("error");
+      setResetMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    setResetStatus("sending");
+    try {
+      await assertAuthServiceReachable();
+      const { error: resetError } = await withAuthTimeout(
+        supabase.auth.resetPasswordForEmail(trimmedEmail, {
+          redirectTo: passwordResetRedirectTo,
+        }),
+      );
+
+      if (resetError) {
+        setResetStatus("error");
+        setResetMessage(getAuthErrorMessage(resetError));
+        return;
+      }
+
+      setResetStatus("sent");
+      setResetMessage("Password reset email sent. Open the link in your email to choose a new password.");
+    } catch (resetError) {
+      setResetStatus("error");
+      setResetMessage(getAuthErrorMessage(resetError));
+      setAuthServiceDown(isLoginServiceDownError(resetError));
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#e8ece4] px-4 py-8 text-[#4f2f1b]">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
@@ -327,7 +380,25 @@ function LoginPageContent() {
               </label>
             ) : null}
 
+            {mode === "login" ? (
+              <div className="-mt-1 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void handlePasswordReset()}
+                  disabled={busy || resetStatus === "sending" || !configured}
+                  className="text-sm font-semibold text-[#8a5a35] underline-offset-4 hover:underline disabled:opacity-50"
+                >
+                  {resetStatus === "sending" ? "Sending..." : "Forgot password?"}
+                </button>
+              </div>
+            ) : null}
+
             {error ? <p className="rounded-2xl bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-100">{error}</p> : null}
+            {resetMessage ? (
+              <p className={`rounded-2xl p-3 text-sm ring-1 ${resetStatus === "error" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-emerald-50 text-emerald-700 ring-emerald-100"}`}>
+                {resetMessage}
+              </p>
+            ) : null}
             {authServiceDown ? (
               <div className="rounded-2xl bg-amber-50 p-3 text-sm leading-6 text-amber-900 ring-1 ring-amber-200">
                 <p>Supabase login is not answering right now. You can still open Hewie in local mode while Auth recovers.</p>
@@ -359,6 +430,8 @@ function LoginPageContent() {
                 setMode(mode === "register" ? "login" : "register");
                 setError("");
                 setMessage("");
+                setResetMessage("");
+                setResetStatus("idle");
               }}
               className="font-semibold text-[#8a5a35] underline-offset-4 hover:underline"
             >

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520">
+  <rect width="900" height="520" fill="#f4f7f6"/>
+  <text x="60" y="62" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800" fill="#1f2937">Attachment icon options</text>
+  <text x="60" y="94" font-family="Inter, Arial, sans-serif" font-size="16" fill="#64748b">Shown in the same rounded medical attachment pill style.</text>
+
+  <defs>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <g transform="translate(60 132)">
+    <rect width="780" height="330" rx="28" fill="#dff0f5" stroke="#bae6fd" filter="url(#soft-shadow)"/>
+    <text x="42" y="58" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#111827">Vet Visit</text>
+    <text x="598" y="45" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="end" fill="#64748b">May 30, 2026</text>
+    <text x="598" y="68" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="end" fill="#64748b">3:43 PM</text>
+    <text x="42" y="95" font-family="Inter, Arial, sans-serif" font-size="18" fill="#475569">Notes: Test</text>
+    <text x="42" y="138" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="800" letter-spacing="3" fill="#94a3b8">MEDICAL ATTACHMENTS</text>
+
+    <g transform="translate(42 170)">
+      <rect width="318" height="46" rx="23" fill="#f8fdff" stroke="#bae6fd"/>
+      <g transform="translate(19 13)" fill="none" stroke="#0e7490" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 2h8l5 5v13H6z"/>
+        <path d="M14 2v6h5"/>
+        <path d="M9 13h7"/>
+        <path d="M9 17h5"/>
+      </g>
+      <text x="50" y="29" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800" fill="#0e7490">Option A: document</text>
+    </g>
+
+    <g transform="translate(410 170)">
+      <rect width="295" height="46" rx="23" fill="#f8fdff" stroke="#bae6fd"/>
+      <g transform="translate(20 12)" fill="none" stroke="#0e7490" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 11.5 11.7 18.8a6 6 0 0 1-8.5-8.5l8.4-8.4a4 4 0 0 1 5.7 5.7l-8.4 8.4a2 2 0 1 1-2.8-2.8l7.3-7.3"/>
+      </g>
+      <text x="50" y="29" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800" fill="#0e7490">Option B: paperclip</text>
+    </g>
+
+    <g transform="translate(42 236)">
+      <rect width="318" height="46" rx="23" fill="#f8fdff" stroke="#bae6fd"/>
+      <g transform="translate(20 12)" fill="none" stroke="#0e7490" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 4h9a3 3 0 0 1 3 3v12H8z"/>
+        <path d="M5 7h3v12h9v3H5z"/>
+        <path d="M12 10h5"/>
+        <path d="M12 14h5"/>
+      </g>
+      <text x="50" y="29" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800" fill="#0e7490">Option C: records</text>
+    </g>
+
+    <g transform="translate(410 236)">
+      <rect width="295" height="46" rx="23" fill="#f8fdff" stroke="#bae6fd"/>
+      <g transform="translate(20 12)" fill="none" stroke="#0e7490" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 3h14v18H5z"/>
+        <path d="M8 8h8"/>
+        <path d="M8 12h8"/>
+        <path d="M8 16h5"/>
+        <path d="M15 3v4h4"/>
+      </g>
+      <text x="50" y="29" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800" fill="#0e7490">Option D: report</text>
+    </g>
+  </g>
+</svg>

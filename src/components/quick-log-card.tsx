@@ -90,6 +90,12 @@ const quickActions = [
   },
 ];
 
+const quickTileDepth =
+  "shadow-[0_10px_18px_rgba(39,54,45,0.18),0_2px_4px_rgba(255,255,255,0.75)_inset,0_-3px_7px_rgba(39,54,45,0.08)_inset] ring-1 ring-white/70 hover:shadow-[0_13px_24px_rgba(39,54,45,0.22),0_2px_5px_rgba(255,255,255,0.82)_inset,0_-3px_8px_rgba(39,54,45,0.1)_inset]";
+
+const quickIconDepth =
+  "shadow-[0_6px_10px_rgba(39,54,45,0.16),0_1px_3px_rgba(255,255,255,0.9)_inset,0_-2px_5px_rgba(39,54,45,0.1)_inset] ring-1 ring-white/80 drop-shadow-[0_2px_2px_rgba(39,54,45,0.18)]";
+
 export function QuickLogCard({ activityState, onQuickLog, includeOther = true, visibleTypes, title = "Log Event", iconOnly = false, accentBackground = false, children }: Props) {
   const visibleActions = quickActions.filter((action) => {
     if (visibleTypes) return visibleTypes.includes(action.type);
@@ -123,11 +129,11 @@ export function QuickLogCard({ activityState, onQuickLog, includeOther = true, v
             <Button
               key={action.type}
               variant="outline"
-              className={`${iconOnly ? "h-14 w-14 shrink-0 justify-center px-0 shadow-sm hover:shadow-md active:scale-[0.99]" : "h-16 w-full justify-start gap-3 text-left shadow-sm"} rounded-2xl border-0 transition hover:scale-[1.01] ${action.accent}`}
+              className={`${iconOnly ? "h-14 w-14 shrink-0 justify-center px-0 active:scale-[0.98]" : "h-16 w-full justify-start gap-3 text-left"} ${quickTileDepth} rounded-2xl border-0 transition hover:-translate-y-0.5 hover:scale-[1.01] ${action.accent}`}
               onClick={() => onQuickLog(action.type)}
               aria-label={action.label}
             >
-              <span className={`flex shrink-0 items-center justify-center rounded-full ${iconOnly ? "size-10" : "size-9"} ${action.iconAccent}`}>
+              <span className={`flex shrink-0 items-center justify-center rounded-full ${iconOnly ? "size-10" : "size-9"} ${quickIconDepth} ${action.iconAccent}`}>
                 {Icon ? <Icon className={iconOnly ? "size-5.5" : "size-4.5"} /> : <span className={`inline-block ${iconOnly ? "text-[1.35rem]" : "text-lg"} ${"iconTextClass" in action ? action.iconTextClass : ""} leading-none`}>{action.iconText}</span>}
               </span>
               {iconOnly ? null : <span className="text-base font-semibold">{action.label}</span>}

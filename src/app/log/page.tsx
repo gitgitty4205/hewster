@@ -50,6 +50,7 @@ import {
   saveCompletedMealToSupabase,
 
   saveActivityLogToSupabase,
+  saveActivityAttachmentsToSupabase,
 
   saveDailyMealsToSupabase,
 
@@ -983,7 +984,7 @@ export default function LogPage() {
 
     const attachmentNote = attachmentFiles.length ? `Attachments: ${attachmentFiles.map((file) => file.name).join(", ")}` : "";
 
-    const recordTagNote = recordTags.length ? `Record Tags: ${recordTags.join(", ")}` : "";
+    const recordTagNote = "";
 
     const existingActivity = editingActivityId ? activityLogs.find((entry) => entry.id === editingActivityId) : null;
 
@@ -1024,6 +1025,20 @@ export default function LogPage() {
 
 
     await saveActivity(activity, editingActivityId ? "update" : "create");
+
+    if (attachmentFiles.length) {
+      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, ["Medical Attachment"]);
+
+      if (savedAttachments.length) {
+        setActivityLogs((current) => {
+          const nextLogs = current.map((entry) =>
+            entry.id === activity.id ? { ...entry, attachments: savedAttachments } : entry
+          );
+          window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+          return nextLogs;
+        });
+      }
+    }
 
     resetEditor();
     setLogEventOpen(false);
@@ -1156,7 +1171,7 @@ export default function LogPage() {
 
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
 
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Noted</h1>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Event Details</h1>
 
             </div>
 
@@ -1166,7 +1181,7 @@ export default function LogPage() {
 
           <p className="mt-2 text-sm leading-6 text-zinc-600">
 
-            Track potty breaks, food, treats, wellness, care, activities, and anything else you want to remember.
+            Review and edit today&apos;s events, meals, care, and anything else you want to remember.
 
           </p>
 
@@ -1200,6 +1215,8 @@ export default function LogPage() {
 
                 onExtraNotesChange={setExtraNotesValue}
 
+                attachmentFiles={attachmentFiles}
+
                 attachmentNames={attachmentFiles.map((file) => file.name)}
 
                 onAttachmentsChange={setAttachmentFiles}
@@ -1213,6 +1230,8 @@ export default function LogPage() {
                 onSave={saveDetailedActivity}
 
                 onCancel={collapseLogEvent}
+
+                saveLabel="Save"
 
                 saving={activityState === "saving"}
 
@@ -1285,7 +1304,7 @@ export default function LogPage() {
 
           title="Today&apos;s Events"
 
-          subtitle="Review and edit today&apos;s logged events."
+          subtitle="Review and edit today&apos;s events and meal plan."
 
           onSelectActivity={openEditorForActivity}
 
@@ -1319,6 +1338,8 @@ export default function LogPage() {
 
                     onExtraNotesChange={setExtraNotesValue}
 
+                    attachmentFiles={attachmentFiles}
+
                     attachmentNames={attachmentFiles.map((file) => file.name)}
 
                     onAttachmentsChange={setAttachmentFiles}
@@ -1334,6 +1355,8 @@ export default function LogPage() {
                     onCancel={resetEditor}
 
                     onDelete={editingActivityId ? deleteActivity : undefined}
+
+                    saveLabel="Save"
 
                     saving={activityState === "saving"}
 

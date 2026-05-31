@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Info Icon Style Options</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f4f1ea;
+        color: #27272a;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        min-height: 100vh;
+        padding: 28px 16px;
+      }
+
+      .wrap {
+        margin: 0 auto;
+        max-width: 760px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+        line-height: 1.15;
+      }
+
+      p {
+        margin: 0;
+        color: #71717a;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .grid {
+        display: grid;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .option {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        border: 1px solid #e4e4e7;
+        border-radius: 18px;
+        background: #fff;
+        padding: 15px;
+        box-shadow: 0 8px 22px rgb(24 24 27 / 0.06);
+      }
+
+      .name {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: baseline;
+        color: #3f3f46;
+        font-size: 15px;
+        font-weight: 750;
+      }
+
+      .tag {
+        border-radius: 999px;
+        background: #edf7ef;
+        color: #3f6d46;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #3f3f46;
+      }
+
+      .tip {
+        position: relative;
+        display: inline-flex;
+        width: 22px;
+        height: 22px;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #71717a;
+        cursor: pointer;
+      }
+
+      .soft {
+        background: #f1ede5;
+        color: #7b6548;
+      }
+
+      .soft-ring {
+        border: 1px solid #e2d4c0;
+        background: #fbfaf7;
+        color: #7b6548;
+      }
+
+      .accent {
+        background: #64748b;
+        color: white;
+      }
+
+      .tiny {
+        width: 18px;
+        height: 18px;
+        background: #f1ede5;
+        color: #7b6548;
+      }
+
+      .bubble {
+        position: absolute;
+        top: 28px;
+        left: 50%;
+        z-index: 2;
+        display: none;
+        width: min(270px, 80vw);
+        transform: translateX(-50%);
+        border-radius: 16px;
+        background: #18181b;
+        padding: 10px 12px;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 650;
+        line-height: 1.45;
+        text-align: left;
+        box-shadow: 0 16px 34px rgb(24 24 27 / 0.25);
+      }
+
+      .tip:hover .bubble,
+      .tip:focus .bubble {
+        display: block;
+      }
+
+      svg {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="wrap">
+        <h1>Simple Info Icon Styles</h1>
+        <p>Same info symbol, different presentation.</p>
+
+        <section class="grid" aria-label="Info icon style options">
+          <div class="option">
+            <div class="name">Soft filled circle <span class="tag">my pick</span></div>
+            <div class="label">
+              <span>Give with meal plan</span>
+              <button class="tip soft" type="button" aria-label="Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                <span class="bubble">Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="option">
+            <div class="name">Outlined soft button</div>
+            <div class="label">
+              <span>Give with meal plan</span>
+              <button class="tip soft-ring" type="button" aria-label="Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                <span class="bubble">Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="option">
+            <div class="name">App accent circle</div>
+            <div class="label">
+              <span>Give with meal plan</span>
+              <button class="tip accent" type="button" aria-label="Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                <span class="bubble">Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="option">
+            <div class="name">Tiny soft circle</div>
+            <div class="label">
+              <span>Give with meal plan</span>
+              <button class="tip tiny" type="button" aria-label="Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.">
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                <span class="bubble">Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="option">
+            <div class="name">Plain icon</div>
+            <div class="label">
+              <span>Give with meal plan</span>
+              <button class="tip" type="button" aria-label="Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.">
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                <span class="bubble">Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

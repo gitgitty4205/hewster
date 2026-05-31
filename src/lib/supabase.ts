@@ -135,7 +135,14 @@ export function getSupabaseBrowserClient() {
 
   if (!supabaseClient) {
     installSupabaseDevFetchNoiseFilter();
-    supabaseClient = createClient(url as string, anonKey as string);
+    supabaseClient = createClient(url as string, anonKey as string, {
+      auth: {
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: "pkce",
+        persistSession: true,
+      },
+    });
   }
 
   return supabaseClient;

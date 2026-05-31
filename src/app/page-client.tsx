@@ -33,6 +33,7 @@ import {
   loadFreshAppState,
   persistLocalState,
   saveActivityLogToSupabase,
+  saveActivityAttachmentsToSupabase,
   saveCompletedMealToSupabase,
   saveDailyMealsToSupabase,
   saveMealLogToSupabase,
@@ -51,6 +52,7 @@ import {
 import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail } from "@/lib/activity";
 import { formatManualAlertTimelineDetail, loadReminderAlertRules, resolveAlerts, type ReminderAlertRule } from "@/lib/alerts";
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { loadPetProfile } from "@/lib/pet-profile";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import {
   careItemsForMeal,
@@ -447,7 +449,7 @@ function customCareOccurrencesForDay(items: CareItemTemplate[], targetDayKey: st
 
     const startAt = dateFromDateTimeLocal(item.startDateTime);
     if (!startAt) return [];
-    const scheduleCreatedAt = dateFromDateTimeLocal(item.customScheduleCreatedAt) ?? new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const scheduleCreatedAt = dateFromDateTimeLocal(item.customScheduleCreatedAt) ?? startAt;
 
     if (item.ongoing) {
       const [year, month, day] = targetDayKey.split("-").map(Number);
@@ -718,11 +720,23 @@ export default function HomeApp() {
   const [expandedAlertIds, setExpandedAlertIds] = useState<Set<string>>(() => new Set());
   const [expandedMealCareKey, setExpandedMealCareKey] = useState<string | null>(null);
   const [upcomingOverflowExpanded, setUpcomingOverflowExpanded] = useState(false);
-  const [expandedUpcomingNoteKey, setExpandedUpcomingNoteKey] = useState<string | null>(null);
+  const [upcomingNoteModal, setUpcomingNoteModal] = useState<{ title: string; subtitle: string; text: string } | null>(null);
+  const [petRemembered, setPetRemembered] = useState(false);
   const initialLoadComplete = useRef(false);
   const previousTodayKeyRef = useRef<string | null>(null);
   const missedRolloverRef = useRef<string | null>(null);
   const supabaseReady = isSupabaseConfigured();
+
+  useEffect(() => {
+    const refreshPetProfile = () => setPetRemembered(loadPetProfile().hasPassedAway);
+    refreshPetProfile();
+    window.addEventListener("pet-profile-updated", refreshPetProfile);
+    window.addEventListener("storage", refreshPetProfile);
+    return () => {
+      window.removeEventListener("pet-profile-updated", refreshPetProfile);
+      window.removeEventListener("storage", refreshPetProfile);
+    };
+  }, []);
 
   const applySharedNotebookState = useCallback((state: Awaited<ReturnType<typeof loadAppState>>) => {
     setTemplates(state.templates);
@@ -990,6 +1004,7 @@ export default function HomeApp() {
   }, [templates, todayKey]);
 
   useEffect(() => {
+    if (petRemembered) return;
     const resetForNewDay = () => {
       setHeaderDateTime(formatTodayHeaderDateTime());
       setAlertMinuteKey(currentAlertMinuteKey());
@@ -1047,7 +1062,7 @@ export default function HomeApp() {
       window.removeEventListener("focus", resetForNewDay);
       document.removeEventListener("visibilitychange", resetForNewDay);
     };
-  }, [dailyMealState, supabaseReady, templates, todayKey]);
+  }, [dailyMealState, petRemembered, supabaseReady, templates, todayKey]);
 
   const todayMealState = useMemo(() => {
     const activeTodayKey = todayKey || currentTodayKey();
@@ -1116,6 +1131,46 @@ export default function HomeApp() {
   }, [activityLogs, careTemplates, customCareStatus, todayKey, alertMinuteKey]);
 
   useEffect(() => {
+    if (!hydrated || !careTemplates.length) return;
+
+    const activeTodayKey = todayKey || currentTodayKey();
+    const existingActivityIds = new Set(activityLogs.map((activity) => activity.id));
+    const repairedActivities = customCareOccurrencesForDay(careTemplates, activeTodayKey)
+      .flatMap((occurrence) => {
+        const statusValue = customCareStatus[occurrence.key];
+        const status = typeof statusValue === "string" ? statusValue : statusValue?.status;
+        if (!status) return [];
+
+        const expectedActivityId = status === "given" ? occurrence.key : `${occurrence.key}-${status}`;
+        const hasActivity =
+          existingActivityIds.has(expectedActivityId) ||
+          activityLogs.some((activity) => activityMatchesCustomCareOccurrence(activity, occurrence));
+
+        if (hasActivity) return [];
+
+        const note = typeof statusValue === "string" ? "" : statusValue?.note ?? "";
+        return [customCareActivityLog(occurrence, status, note, occurrence.scheduledAt)];
+      });
+
+    if (!repairedActivities.length) return;
+
+    setActivityLogs((current) => {
+      const currentIds = new Set(current.map((activity) => activity.id));
+      const nextRepairActivities = repairedActivities.filter((activity) => !currentIds.has(activity.id));
+      if (!nextRepairActivities.length) return current;
+
+      const nextLogs = [...nextRepairActivities, ...current].sort(compareActivitiesReverseChronological);
+      window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+      persistLocalState(templates, dailyMealState, nextLogs, undefined, activeTodayKey, manualAlerts, mealLogs);
+      return nextLogs;
+    });
+
+    if (supabaseReady) {
+      void Promise.all(repairedActivities.map((activity) => saveActivityLogToSupabase(activity))).catch(() => setActivityState("error"));
+    }
+  }, [activityLogs, careTemplates, customCareStatus, dailyMealState, hydrated, manualAlerts, mealLogs, supabaseReady, templates, todayKey]);
+
+  useEffect(() => {
     if (!hydrated || !initialLoadComplete.current || !careTemplates.length || !activityLogs.length) return;
 
     const patchedActivities = activityLogs.map((activity) => {
@@ -1137,7 +1192,7 @@ export default function HomeApp() {
   }, [activityLogs, careTemplates, hydrated, supabaseReady]);
 
   useEffect(() => {
-    if (!hydrated || !todayKey) return;
+    if (!hydrated || !todayKey || petRemembered) return;
 
     const activeTodayKey = currentTodayKey();
     const previousTodayKey = previousTodayKeyRef.current ?? todayKey;
@@ -1183,10 +1238,11 @@ export default function HomeApp() {
 
     previousTodayKeyRef.current = activeTodayKey;
     window.localStorage.setItem(TODAY_KEY_STORAGE_KEY, activeTodayKey);
-  }, [activityLogs, careTemplates, customCareStatus, hydrated, supabaseReady, todayKey]);
+  }, [activityLogs, careTemplates, customCareStatus, hydrated, petRemembered, supabaseReady, todayKey]);
 
   const allUpcomingScheduleCards = useMemo(() => {
     void alertMinuteKey;
+    if (petRemembered) return [];
 
     const cards: UpcomingScheduleCard[] = [];
     const activeTodayKey = todayKey || currentTodayKey();
@@ -1241,7 +1297,7 @@ export default function HomeApp() {
     return sortUpcomingScheduleCards(cards
       .filter((card) => card.sortAt.getTime() >= nowMs)
     );
-  }, [alertMinuteKey, customCareOccurrences, dailyMeals, missedMealIds, templates, todayKey]);
+  }, [alertMinuteKey, customCareOccurrences, dailyMeals, missedMealIds, petRemembered, templates, todayKey]);
 
   const upcomingClusterCards = useMemo(() => {
     const firstCard = allUpcomingScheduleCards[0];
@@ -1264,6 +1320,7 @@ export default function HomeApp() {
 
   const overdueActionCards = useMemo(() => {
     void alertMinuteKey;
+    if (petRemembered) return [];
 
     type OverdueActionCard =
       | { type: "meal"; sortAt: Date; sortKey: string; meal: DailyMeal }
@@ -1287,7 +1344,7 @@ export default function HomeApp() {
     });
 
     return [...mealCards, ...careCards].sort((a, b) => a.sortAt.getTime() - b.sortAt.getTime() || a.sortKey.localeCompare(b.sortKey));
-  }, [alertMinuteKey, customCareOccurrences, dailyMeals, mealLogs, todayKey]);
+  }, [alertMinuteKey, customCareOccurrences, dailyMeals, mealLogs, petRemembered, todayKey]);
   const todayActivityLogs = useMemo(() => {
     const today = todayKey || currentTodayKey();
     return activityLogs.filter((activity) => {
@@ -1311,24 +1368,13 @@ export default function HomeApp() {
         const fedNotes = mealState?.fedNotes?.trim();
         const skippedMeal = fedNotes === "Skipped";
         const mealLog = mealLogs.find((entry) => entry.dayKey === activeTodayKey && entry.mealId === meal.id && !isMissedMealLog(entry));
-        const loggedAt = mealLog?.createdAt ? new Date(mealLog.createdAt) : null;
         const displayTime = skippedMeal ? meal.plannedTime || actualTime : actualTime;
         const sortMinutes = parseClockMinutes(displayTime);
-        const sortMs = loggedAt && !Number.isNaN(loggedAt.getTime()) ? loggedAt.getTime() : sortMsForClockTime(activeTodayKey, displayTime);
-        const mealItem = {
-          time: displayTime,
-          label: skippedMeal ? "Skipped Meal" : "Fed",
-          detail: fedNotes && !skippedMeal ? `${meal.name}: ${meal.food} • Notes: ${fedNotes}` : `${meal.name}: ${meal.food}`,
-          activityType: "meal" as const,
-          mealGroupId: `meal-${meal.id}`,
-          sortMinutes,
-          sortMs,
-          sortKey: mealLog?.createdAt ?? `meal-${meal.id}`,
-        };
+        const sortMs = sortMsForClockTime(activeTodayKey, displayTime);
         const skippedCareItemIds = mealState?.skippedCareItemIds ?? [];
         const mealAt = new Date(sortMsForClockTime(activeTodayKey, displayTime));
         const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, dailyMeals, activeTodayKey);
-        const careItems = mealCareItems.filter((item) => {
+        const mealLinkedCareItems = mealCareItems.filter((item) => {
           const itemOccurrenceCount = dailyMeals.filter((dailyMeal) =>
             mealCareItemsWithDoseBadges(careTemplates, dailyMeal, dailyMeals, activeTodayKey).some((candidate) => candidate.kind === item.kind && candidate.id === item.id)
           ).length;
@@ -1339,19 +1385,24 @@ export default function HomeApp() {
           const skippedCare = skippedCareItemIds.includes(`${item.kind}-${item.id}`);
           const detailText = `${item.name}${mealPlanCareDetailText(item)}${!skippedCare && item.notes ? ` • Notes: ${item.notes}` : ""}`;
           return {
-            time: displayTime,
             label: skippedCare ? `Skipped ${careKindLabel(item.kind)}` : careKindLabel(item.kind),
             detail: detailText,
-            activityType: item.kind,
             careItem: item,
-            mealGroupId: `meal-${meal.id}`,
-            sortMinutes,
-            sortMs,
-            sortKey: `${mealLog?.createdAt ?? `meal-${meal.id}`}-${item.kind}-${item.id}${skippedCare ? "-skipped" : ""}`,
           };
         });
+        const mealItem = {
+          time: displayTime,
+          label: skippedMeal ? "Skipped Meal" : "Fed",
+          detail: fedNotes && !skippedMeal ? `${meal.name}: ${meal.food} • Notes: ${fedNotes}` : `${meal.name}: ${meal.food}`,
+          activityType: "meal" as const,
+          mealGroupId: `meal-${meal.id}`,
+          mealLinkedCareItems,
+          sortMinutes,
+          sortMs,
+          sortKey: mealLog?.createdAt ?? `meal-${meal.id}`,
+        };
 
-        return [mealItem, ...careItems];
+        return [mealItem];
       });
 
     const missedMealTimeline = mealLogs
@@ -1431,8 +1482,9 @@ export default function HomeApp() {
 
   const alerts = useMemo(() => {
     void alertMinuteKey;
+    if (petRemembered) return [];
     return resolveAlerts(templates, todayMealState, todayActivityLogs, manualAlerts, reminderRules, careTemplates);
-  }, [templates, todayMealState, todayActivityLogs, manualAlerts, reminderRules, careTemplates, alertMinuteKey]);
+  }, [templates, todayMealState, todayActivityLogs, manualAlerts, reminderRules, careTemplates, alertMinuteKey, petRemembered]);
   const alertCards = alerts.filter((alert) => alert.kind !== "reminder");
   const todayAlertCards = alertCards.filter((alert) => alert.kind !== "review");
   const reminderCards = alerts.filter((alert) => alert.kind === "reminder" && !alert.id.startsWith("meal-"));
@@ -1594,9 +1646,12 @@ export default function HomeApp() {
   };
 
   const saveActivity = async (activity: ActivityLog, mode: "create" | "update") => {
-    const nextLogs = [activity, ...activityLogs.filter((entry) => entry.id !== activity.id)].sort(compareActivitiesReverseChronological);
-    window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
-    setActivityLogs(nextLogs);
+    setActivityLogs((current) => {
+      const nextLogs = [activity, ...current.filter((entry) => entry.id !== activity.id)].sort(compareActivitiesReverseChronological);
+      window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+      persistLocalState(templates, dailyMealState, nextLogs, undefined, todayKey || currentTodayKey(), manualAlerts, mealLogs);
+      return nextLogs;
+    });
     setActivityState("saving");
 
     try {
@@ -1628,6 +1683,7 @@ export default function HomeApp() {
     setActivityLogs((current) => {
       const nextLogs = current.filter((activity) => activity.id !== missedActivityId);
       window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+      persistLocalState(templates, dailyMealState, nextLogs, undefined, todayKey || currentTodayKey(), manualAlerts, mealLogs);
       return nextLogs;
     });
 
@@ -1720,7 +1776,7 @@ export default function HomeApp() {
     if (!detailActivityType) return;
 
     const attachmentNote = attachmentFiles.length ? `Attachments: ${attachmentFiles.map((file) => file.name).join(", ")}` : "";
-    const recordTagNote = recordTags.length ? `Record Tags: ${recordTags.join(", ")}` : "";
+    const recordTagNote = "";
     const resolvedNotes =
       detailActivityType === "treat" || detailActivityType === "food"
         ? [notesValue.trim(), extraNotesValue.trim() ? `Notes: ${extraNotesValue.trim()}` : ""].filter(Boolean).join(" ") || null
@@ -1738,6 +1794,20 @@ export default function HomeApp() {
     };
 
     await saveActivity(activity, editingActivityId ? "update" : "create");
+    if (attachmentFiles.length) {
+      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, ["Medical Attachment"]);
+
+      if (savedAttachments.length) {
+        setActivityLogs((current) => {
+          const nextLogs = current.map((entry) =>
+            entry.id === activity.id ? { ...entry, attachments: savedAttachments } : entry
+          );
+          window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+          persistLocalState(templates, dailyMealState, nextLogs, undefined, todayKey || currentTodayKey(), manualAlerts, mealLogs);
+          return nextLogs;
+        });
+      }
+    }
     resetActivityEditor();
   };
 
@@ -1962,10 +2032,8 @@ export default function HomeApp() {
                     const mealDayKey = dayKeyFromDate(card.sortAt);
                     const cardMealCareItems = mealCareItemsWithDoseBadges(careTemplates, card.meal, templates, mealDayKey);
                     const mealCareKey = `${mealDayKey}-${card.meal.id}`;
-                    const mealNoteKey = `meal-note-${mealCareKey}`;
                     const mealNoteText = card.meal.notes?.trim().slice(0, 100) ?? "";
                     const isMealCareExpanded = expandedMealCareKey === mealCareKey;
-                    const isMealNoteExpanded = expandedUpcomingNoteKey === mealNoteKey;
 
                     const mealPriorityClassName = priorityScheduleTime === card.sortAt.getTime() && upcomingScheduleCards.length > 1
                       ? "hewie-priority-border"
@@ -1984,19 +2052,16 @@ export default function HomeApp() {
                           {mealNoteText ? (
                             <button
                               type="button"
-                              aria-label={isMealNoteExpanded ? "Hide notes" : "Show notes"}
-                              aria-expanded={isMealNoteExpanded}
-                              className="mt-1 inline-flex h-4 shrink-0 items-center gap-1 rounded-full bg-white/55 px-1.5 text-[10px] font-semibold leading-4 text-[var(--hewie-active-text,#334155)] ring-1 ring-white/70 transition hover:bg-white/75"
-                              onClick={() => setExpandedUpcomingNoteKey((current) => current === mealNoteKey ? null : mealNoteKey)}
+                              aria-label="Show notes"
+                              className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-white/55 text-[var(--hewie-active-text,#334155)] ring-1 ring-white/70 transition hover:bg-white/75"
+                              onClick={() => setUpcomingNoteModal({
+                                title: card.meal.name,
+                                subtitle: plannedTimeLabel,
+                                text: mealNoteText,
+                              })}
                             >
-                              <StickyNote className="size-2.5" />
-                              Notes
+                              <StickyNote className="size-3.5" />
                             </button>
-                          ) : null}
-                          {mealNoteText && isMealNoteExpanded ? (
-                            <p className="mt-1 max-h-[3.25rem] overflow-x-hidden overflow-y-auto whitespace-normal break-words rounded-xl bg-white/50 px-2 py-1 text-[10.5px] font-medium leading-3 text-[var(--hewie-active-text,#334155)]/78 ring-1 ring-white/65">
-                              {mealNoteText}
-                            </p>
                           ) : null}
                           {cardMealCareItems.length ? (
                             <CompactMealCareSummary
@@ -2036,11 +2101,7 @@ export default function HomeApp() {
                   const noteButtonClassName = isSupplement
                     ? "bg-[#d8e4f1] text-[#1f3d5c] ring-[#8ca8c3]/70 hover:bg-[#cfdeee]"
                     : "bg-sky-100 text-sky-700 ring-sky-300/80 hover:bg-sky-200/70";
-                  const notePanelClassName = isSupplement
-                    ? "bg-white/52 text-[#1f3d5c]/78 ring-[#8ca8c3]/45"
-                    : "bg-white/58 text-sky-800/78 ring-sky-300/45";
                   const noteText = occurrence.item.notes?.trim() ?? "";
-                  const isNoteExpanded = expandedUpcomingNoteKey === occurrence.key;
 
                   return (
                     <div key={card.sortKey} className={`${priorityClassName} relative flex aspect-square min-w-0 overflow-hidden flex-col justify-between rounded-2xl p-2.5 shadow-sm ring-1 ${tileClassName}`}>
@@ -2053,31 +2114,28 @@ export default function HomeApp() {
                         </span>
                         <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 pr-9">
                           <p className="truncate text-sm font-semibold leading-4 text-current/95">{occurrence.item.name}</p>
-                          {occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
                         </div>
                         <p className="text-[13px] font-semibold leading-4 text-current/70">{occurrenceTimeLabel}</p>
-                        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
-                          <p className="line-clamp-1 text-[12px] leading-4 text-current/68">{customCareGiveText(occurrence.item)}</p>
+                        <p className="mt-0.5 line-clamp-1 text-[12px] leading-4 text-current/68">{customCareGiveText(occurrence.item)}</p>
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+                          {occurrence.isLastDose ? <span className="inline-flex shrink-0 rounded-full bg-amber-100/80 px-1.5 py-0 text-[10px] font-semibold leading-4 text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
                           {timingLabel ? <span className={`inline-flex shrink-0 rounded-full px-1.5 py-0 text-[10px] font-normal leading-4 ${timingBadgeClassName}`}>{timingLabel}</span> : null}
                           {noteText ? (
                             <button
                               type="button"
-                              aria-label={isNoteExpanded ? "Hide notes" : "Show notes"}
-                              aria-expanded={isNoteExpanded}
-                              className={`inline-flex h-4 shrink-0 items-center gap-1 rounded-full px-1.5 text-[10px] font-semibold leading-4 ring-1 transition ${noteButtonClassName}`}
-                              onClick={() => setExpandedUpcomingNoteKey((current) => current === occurrence.key ? null : occurrence.key)}
+                              aria-label="Show notes"
+                              className={`inline-flex size-5 shrink-0 items-center justify-center rounded-full ring-1 transition ${noteButtonClassName}`}
+                              onClick={() => setUpcomingNoteModal({
+                                title: occurrence.item.name,
+                                subtitle: occurrenceTimeLabel,
+                                text: noteText,
+                              })}
                             >
-                              <StickyNote className="size-2.5" />
-                              Notes
+                              <StickyNote className="size-3.5" />
                             </button>
                           ) : null}
                         </div>
                         {occurrence.frequencyText ? <p className="mt-0.5 truncate text-[11px] font-normal leading-4 text-current/45">{occurrence.frequencyText}</p> : null}
-                        {noteText && isNoteExpanded ? (
-                          <p className={`mt-1 max-h-[3.25rem] overflow-x-hidden overflow-y-auto whitespace-normal break-words rounded-xl px-2 py-1 text-[10.5px] font-medium leading-3 ring-1 ${notePanelClassName}`}>
-                            {noteText}
-                          </p>
-                        ) : null}
                       </div>
                       {customCareSkipKey === occurrence.key ? (
                         <div className="mt-1.5 space-y-1">
@@ -2157,6 +2215,41 @@ export default function HomeApp() {
 
           </section>
         ) : null}
+
+        {upcomingNoteModal ? (
+          <div className="fixed inset-0 z-50 flex items-end bg-black/35 p-3 backdrop-blur-[2px] sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="upcoming-note-title">
+            <button
+              type="button"
+              aria-label="Close notes"
+              className="absolute inset-0 cursor-default"
+              onClick={() => setUpcomingNoteModal(null)}
+            />
+            <div className="relative w-full max-w-md rounded-3xl bg-sky-50 p-4 text-sky-700 shadow-2xl ring-1 ring-sky-200">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p id="upcoming-note-title" className="truncate text-base font-semibold">{upcomingNoteModal.title}</p>
+                  <p className="mt-0.5 text-sm text-current/58">{upcomingNoteModal.subtitle}</p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close notes"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/55 text-lg leading-none text-current/58 ring-1 ring-sky-200 transition hover:bg-white/80 hover:text-current/75"
+                  onClick={() => setUpcomingNoteModal(null)}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-current/58">
+                <StickyNote className="size-3.5" />
+                <span>Notes</span>
+              </div>
+              <div className="max-h-[45vh] overflow-y-auto whitespace-pre-wrap break-words rounded-2xl bg-white/55 p-3 text-sm leading-6 text-current/75 ring-1 ring-sky-200/80">
+                {upcomingNoteModal.text}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title={null} iconOnly>
           {detailActivityType ? (
             <ActivityDetailForm
@@ -2166,6 +2259,7 @@ export default function HomeApp() {
               extraNotes={extraNotesValue}
               happenedAt={happenedAtValue}
               embedded
+              saveLabel="Save"
               onDetailChange={setDetailValue}
               onNotesChange={setNotesValue}
               onExtraNotesChange={setExtraNotesValue}

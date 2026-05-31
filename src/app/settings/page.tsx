@@ -4,16 +4,20 @@ import { ChevronRight, Tablets, UserRound } from "lucide-react";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import Link from "next/link";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
+import { useAuth } from "@/components/auth-provider";
 import {
+  PET_THEME_UPDATED_EVENT,
   PET_PROFILE_STORAGE_KEY,
   appThemes,
   applyPetTheme,
   defaultPetProfile,
+  loadUserTheme,
   normalizePetProfile,
+  type ThemeId,
 } from "@/lib/pet-profile";
 
 const settingsItems = [
@@ -93,6 +97,8 @@ function subscribeToPetProfile(onStoreChange: () => void) {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth();
+  const [themeId, setThemeId] = useState<ThemeId>(defaultPetProfile.themeId);
   const profileSnapshot = useSyncExternalStore(
     subscribeToPetProfile,
     getPetProfileSnapshot,
@@ -107,10 +113,21 @@ export default function SettingsPage() {
   }, [profileSnapshot]);
 
   useEffect(() => {
-    applyPetTheme(profile.themeId);
-  }, [profile.themeId]);
+    const refreshTheme = () => setThemeId(loadUserTheme(user?.id));
+    refreshTheme();
+    window.addEventListener(PET_THEME_UPDATED_EVENT, refreshTheme);
+    window.addEventListener("storage", refreshTheme);
+    return () => {
+      window.removeEventListener(PET_THEME_UPDATED_EVENT, refreshTheme);
+      window.removeEventListener("storage", refreshTheme);
+    };
+  }, [user?.id]);
 
-  const theme = appThemes[profile.themeId];
+  useEffect(() => {
+    applyPetTheme(themeId);
+  }, [themeId]);
+
+  const theme = appThemes[themeId];
 
   return (
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">

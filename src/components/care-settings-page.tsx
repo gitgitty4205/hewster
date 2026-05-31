@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { Info, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import type { ComponentType } from "react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useMemo, useState } from "react";
@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
-import { loadAppState } from "@/lib/hewster-data";
+import { deleteCareItemActivityLogsFromSupabase, loadAppState, removeCareItemReferencesLocally } from "@/lib/hewster-data";
 import type { MealTemplate } from "@/lib/meal-templates";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import {
@@ -17,7 +17,6 @@ import {
   initialCareTemplatesForKind,
   loadCareTemplates,
   loadCareTemplatesFromSupabase,
-  resetCareTemplates,
   saveCareTemplates,
   saveCareTemplatesToSupabase,
 } from "@/lib/care-settings";
@@ -207,10 +206,15 @@ export function CareSettingsPage({
 
   const commitItems = (nextItems: CareItemTemplate[]) => {
     const normalizedItems = nextItems.map(normalizeMedicationSchedule);
+    const deletedItems = items.filter(
+      (currentItem) => !normalizedItems.some((nextItem) => nextItem.kind === currentItem.kind && nextItem.id === currentItem.id)
+    );
     setItems(normalizedItems);
     saveCareTemplates(kind, normalizedItems);
+    removeCareItemReferencesLocally(kind, deletedItems);
     setSaveState("saving");
     saveCareTemplatesToSupabase(kind, normalizedItems)
+      .then(() => deleteCareItemActivityLogsFromSupabase(kind, deletedItems))
       .then(() => setSaveState("saved"))
       .catch(() => setSaveState("saved"));
     window.setTimeout(() => setSaveState("idle"), 1600);
@@ -320,7 +324,7 @@ export function CareSettingsPage({
   };
 
   const resetItems = () => {
-    const nextItems = resetCareTemplates(kind);
+    const nextItems = initialCareTemplatesForKind(kind);
     commitItems(nextItems);
     setDraftItems({});
     setEditingId(null);
@@ -478,12 +482,21 @@ export function CareSettingsPage({
 
                     {item.scheduleKind === "meal" ? (
                       <div className="text-sm">
-                        <p className="mb-2 font-medium text-zinc-700">Give with meal plan</p>
-                        {kind === "supplement" ? (
-                          <p className="mb-2 rounded-2xl bg-white px-3 py-2 text-xs leading-5 text-zinc-500 ring-1 ring-zinc-200">
-                            Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.
-                          </p>
-                        ) : null}
+                        <div className="mb-2 flex items-center gap-0 font-medium text-zinc-700">
+                          <span>Give with meal plan</span>
+                          {kind === "supplement" ? (
+                            <button
+                              type="button"
+                              aria-label="Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal."
+                              className="group relative ml-0.5 inline-flex size-5 items-center justify-center rounded-full bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] transition hover:bg-[var(--hewie-ring,#cbd5e1)] hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-ring,#cbd5e1)]"
+                            >
+                              <Info className="h-3.5 w-3.5" strokeWidth={2.4} />
+                              <span className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-64 -translate-x-1/2 rounded-2xl bg-zinc-900 px-3 py-2 text-left text-xs font-medium leading-5 text-white shadow-lg group-hover:block group-focus:block">
+                                Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.
+                              </span>
+                            </button>
+                          ) : null}
+                        </div>
                         <div className="flex flex-wrap gap-2">
                           {meals.map((meal) => {
                             const mealSelected = item.mealIds.includes(meal.id);

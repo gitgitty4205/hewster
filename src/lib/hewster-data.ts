@@ -1,4 +1,5 @@
 import { compareActivitiesReverseChronological } from "@/lib/activity";
+import type { CareItemKind, CareItemTemplate } from "@/lib/care-settings";
 import type { MealStatus, MealTemplate } from "@/lib/meal-templates";
 import { initialTemplates, isMealTemplateArray, sortMealTemplatesByTime, STORAGE_KEY } from "@/lib/meal-templates";
 import { resolveActiveNotebookAccess } from "@/lib/notebook-access";
@@ -36,6 +37,19 @@ export type ActivityLog = {
   happenedAt: string;
   detail: string | null;
   notes: string | null;
+  attachments?: ActivityAttachment[];
+  createdAt?: string;
+};
+
+export type ActivityAttachment = {
+  id: string;
+  activityId: string;
+  profileSlug: string;
+  fileName: string;
+  filePath: string;
+  contentType: string | null;
+  sizeBytes: number | null;
+  documentTypes: string[];
   createdAt?: string;
 };
 
@@ -165,6 +179,38 @@ function removeCachedMealLog(mealLogId: string) {
   cacheAppState({
     ...appStateCache.state,
     mealLogs: appStateCache.state.mealLogs.filter((entry) => entry.id !== mealLogId),
+  });
+}
+
+function cacheActivityLog(activity: ActivityLog) {
+  if (!appStateCache) return;
+
+  cacheAppState({
+    ...appStateCache.state,
+    activityLogs: [
+      activity,
+      ...appStateCache.state.activityLogs.filter((entry) => entry.id !== activity.id),
+    ].sort(compareActivitiesReverseChronological),
+  });
+}
+
+function cacheActivityAttachments(activityId: string, attachments: ActivityAttachment[]) {
+  if (!appStateCache) return;
+
+  cacheAppState({
+    ...appStateCache.state,
+    activityLogs: appStateCache.state.activityLogs.map((activity) =>
+      activity.id === activityId ? { ...activity, attachments } : activity
+    ),
+  });
+}
+
+function removeCachedActivityLog(activityId: string) {
+  if (!appStateCache) return;
+
+  cacheAppState({
+    ...appStateCache.state,
+    activityLogs: appStateCache.state.activityLogs.filter((entry) => entry.id !== activityId),
   });
 }
 
@@ -299,6 +345,19 @@ type ActivityLogRow = {
   happened_at: string;
   detail: string | null;
   notes: string | null;
+  created_at?: string;
+};
+
+type ActivityAttachmentRow = {
+  id: string;
+  owner_id: string;
+  profile_slug: string;
+  activity_log_id: string;
+  file_name: string;
+  file_path: string;
+  content_type: string | null;
+  size_bytes: number | null;
+  document_types: string[] | null;
   created_at?: string;
 };
 
@@ -583,6 +642,86 @@ export function persistLocalState(
   });
 }
 
+function careItemStorageKey(item: Pick<CareItemTemplate, "kind" | "id">) {
+  return `${item.kind}-${item.id}`;
+}
+
+function normalizeCareActivityName(value: string | null) {
+  return (value ?? "")
+    .replace(/\s*(?:[•·-]\s*)?(?:Given|Skipped|Missed)\b/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function activityMatchesCareItem(activity: ActivityLog, item: CareItemTemplate) {
+  if (activity.activityType !== item.kind) return false;
+  if (activity.id.startsWith(`${careItemStorageKey(item)}-`)) return true;
+
+  const detailName = normalizeCareActivityName(activity.detail);
+  const itemName = item.name.trim().toLowerCase();
+  if (!detailName || !itemName) return false;
+
+  return detailName === itemName ||
+    detailName.startsWith(`${itemName} `) ||
+    detailName.startsWith(`${itemName} •`) ||
+    detailName.startsWith(`${itemName} -`);
+}
+
+function pruneDeletedCareItemIdsFromMeals<T extends { skippedCareItemIds?: string[] }>(
+  meals: T[],
+  deletedCareItemIds: Set<string>
+) {
+  return meals.map((meal) => {
+    if (!meal.skippedCareItemIds?.length) return meal;
+
+    const skippedCareItemIds = meal.skippedCareItemIds.filter((id) => !deletedCareItemIds.has(id));
+    return skippedCareItemIds.length === meal.skippedCareItemIds.length ? meal : { ...meal, skippedCareItemIds };
+  });
+}
+
+export function removeCareItemReferencesLocally(kind: CareItemKind, deletedItems: CareItemTemplate[]) {
+  if (typeof window === "undefined" || !deletedItems.length) return;
+
+  const deletedCareItems = deletedItems.filter((item) => item.kind === kind);
+  if (!deletedCareItems.length) return;
+
+  const deletedCareItemIds = new Set(deletedCareItems.map(careItemStorageKey));
+  const state = loadLocalState();
+  const nextActivityLogs = state.activityLogs.filter(
+    (activity) => !deletedCareItems.some((item) => activityMatchesCareItem(activity, item))
+  );
+  const nextDailyMealState = pruneDeletedCareItemIdsFromMeals(state.dailyMealState, deletedCareItemIds);
+  const nextMealLogs = pruneDeletedCareItemIdsFromMeals(state.mealLogs, deletedCareItemIds);
+  const nextDailyMealHistory = pruneDeletedCareItemIdsFromMeals(state.dailyMealHistory ?? [], deletedCareItemIds);
+
+  persistLocalState(
+    state.templates,
+    nextDailyMealState,
+    nextActivityLogs,
+    state.weightLogs,
+    state.todayKey,
+    state.manualAlerts,
+    nextMealLogs
+  );
+  window.localStorage.setItem(DAILY_MEAL_HISTORY_STORAGE_KEY, JSON.stringify(nextDailyMealHistory));
+  if (appStateCache) {
+    cacheAppState({ ...appStateCache.state, dailyMealHistory: nextDailyMealHistory });
+  }
+
+  try {
+    const parsedStatus = JSON.parse(window.localStorage.getItem("hewster.customCareStatus") ?? "{}");
+    if (parsedStatus && typeof parsedStatus === "object") {
+      Object.keys(parsedStatus).forEach((key) => {
+        if ([...deletedCareItemIds].some((id) => key.startsWith(`${id}-`))) delete parsedStatus[key];
+      });
+      window.localStorage.setItem("hewster.customCareStatus", JSON.stringify(parsedStatus));
+    }
+  } catch {
+    // Best-effort cleanup only.
+  }
+}
+
 function mapTemplateRowToTemplate(row: MealTemplateRow): MealTemplate {
   return {
     id: row.meal_id,
@@ -665,6 +804,20 @@ function mapActivityLogRowToActivity(row: ActivityLogRow): ActivityLog {
     happenedAt: row.happened_at,
     detail: row.detail,
     notes: row.notes,
+    createdAt: row.created_at,
+  };
+}
+
+function mapActivityAttachmentRowToAttachment(row: ActivityAttachmentRow): ActivityAttachment {
+  return {
+    id: row.id,
+    activityId: row.activity_log_id,
+    profileSlug: row.profile_slug,
+    fileName: row.file_name,
+    filePath: row.file_path,
+    contentType: row.content_type,
+    sizeBytes: row.size_bytes,
+    documentTypes: row.document_types ?? [],
     createdAt: row.created_at,
   };
 }
@@ -838,13 +991,19 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     return cacheAppState(localState);
   }
 
-  const [activityLogsResult, weightLogsResult, mealLogsResult, manualAlertsResult, auditLogsResult] = await Promise.all([
+  const [activityLogsResult, activityAttachmentsResult, weightLogsResult, mealLogsResult, manualAlertsResult, auditLogsResult] = await Promise.all([
     supabase
       .from("activity_logs")
       .select("id, owner_id, profile_slug, activity_type, happened_at, detail, notes, created_at")
       .eq("owner_id", userId)
       .eq("profile_slug", HEWSTER_PROFILE_SLUG)
       .order("happened_at", { ascending: false }),
+    supabase
+      .from("activity_attachments")
+      .select("id, owner_id, profile_slug, activity_log_id, file_name, file_path, content_type, size_bytes, document_types, created_at")
+      .eq("owner_id", userId)
+      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .order("created_at", { ascending: true }),
     supabase
       .from("weight_logs")
       .select("id, owner_id, profile_slug, log_date, weight, note, created_at")
@@ -875,6 +1034,10 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
 
   if (activityLogsResult.error) {
     console.warn("Activity logs unavailable, falling back locally", activityLogsResult.error);
+  }
+
+  if (activityAttachmentsResult.error) {
+    console.warn("Activity attachments unavailable; using filename notes only", activityAttachmentsResult.error);
   }
 
   if (weightLogsResult.error) {
@@ -929,8 +1092,23 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     ? (activityLogsResult.data as ActivityLogRow[]).map(mapActivityLogRowToActivity)
     : [];
 
+  const attachmentsByActivityId = new Map<string, ActivityAttachment[]>();
+  if (!activityAttachmentsResult.error && activityAttachmentsResult.data?.length) {
+    (activityAttachmentsResult.data as ActivityAttachmentRow[])
+      .map(mapActivityAttachmentRowToAttachment)
+      .forEach((attachment) => {
+        const current = attachmentsByActivityId.get(attachment.activityId) ?? [];
+        attachmentsByActivityId.set(attachment.activityId, [...current, attachment]);
+      });
+  }
+
+  const remoteActivityLogsWithAttachments = remoteActivityLogs.map((activity) => ({
+    ...activity,
+    attachments: attachmentsByActivityId.get(activity.id) ?? [],
+  }));
+
   const activityLogsById = new Map(localState.activityLogs.map((entry) => [entry.id, entry]));
-  remoteActivityLogs.forEach((entry) => activityLogsById.set(entry.id, entry));
+  remoteActivityLogsWithAttachments.forEach((entry) => activityLogsById.set(entry.id, entry));
 
   const activityLogs = [...activityLogsById.values()].sort(compareActivitiesReverseChronological);
 
@@ -1140,11 +1318,15 @@ export async function saveDailyMealsToSupabase(dailyMealState: DailyMealState[])
 }
 
 export async function saveActivityLogToSupabase(activity: ActivityLog) {
+  cacheActivityLog(activity);
+
   const signedInSupabase = await getSignedInSupabase();
   if (!signedInSupabase) return;
 
   const { supabase, userId } = signedInSupabase;
-  const { error } = await supabase.from("activity_logs").insert(mapActivityLogToRow(activity, userId));
+  const { error } = await supabase.from("activity_logs").upsert(mapActivityLogToRow(activity, userId), {
+    onConflict: "id",
+  });
 
   if (error) {
     throw error;
@@ -1152,6 +1334,8 @@ export async function saveActivityLogToSupabase(activity: ActivityLog) {
 }
 
 export async function updateActivityLogInSupabase(activity: ActivityLog) {
+  cacheActivityLog(activity);
+
   const signedInSupabase = await getSignedInSupabase();
   if (!signedInSupabase) return;
 
@@ -1172,7 +1356,83 @@ export async function updateActivityLogInSupabase(activity: ActivityLog) {
   }
 }
 
+export async function saveActivityAttachmentsToSupabase(activity: ActivityLog, files: File[], documentTypes: string[]) {
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase || !files.length) return [];
+
+  const { supabase, userId } = signedInSupabase;
+  const savedAttachments: ActivityAttachment[] = [];
+
+  const clearExisting = await supabase
+    .from("activity_attachments")
+    .delete()
+    .eq("activity_log_id", activity.id)
+    .eq("owner_id", userId)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+
+  if (clearExisting.error) {
+    if (isAttachmentStorageSetupError(clearExisting.error)) {
+      console.warn("Attachment storage is not set up yet; saved filename notes only.", clearExisting.error);
+      return [];
+    }
+
+    throw clearExisting.error;
+  }
+
+  for (const file of files) {
+    const attachmentId = crypto.randomUUID();
+    const filePath = activityAttachmentStoragePath(userId, activity.id, attachmentId, file.name);
+    const uploadResult = await supabase.storage
+      .from("pet-attachments")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+
+    if (uploadResult.error) {
+      if (isAttachmentStorageSetupError(uploadResult.error)) {
+        console.warn("Attachment storage bucket is not set up yet; saved filename notes only.", uploadResult.error);
+        return savedAttachments;
+      }
+
+      throw uploadResult.error;
+    }
+
+    const row: ActivityAttachmentRow = {
+      id: attachmentId,
+      owner_id: userId,
+      profile_slug: HEWSTER_PROFILE_SLUG,
+      activity_log_id: activity.id,
+      file_name: file.name,
+      file_path: filePath,
+      content_type: file.type || null,
+      size_bytes: file.size,
+      document_types: documentTypes,
+    };
+
+    const insertResult = await supabase.from("activity_attachments").insert(row);
+
+    if (insertResult.error) {
+      await supabase.storage.from("pet-attachments").remove([filePath]).catch(() => undefined);
+      if (isAttachmentStorageSetupError(insertResult.error)) {
+        console.warn("Attachment metadata table is not set up yet; saved filename notes only.", insertResult.error);
+        return savedAttachments;
+      }
+
+      throw insertResult.error;
+    }
+
+    savedAttachments.push(mapActivityAttachmentRowToAttachment(row));
+  }
+
+  cacheActivityAttachments(activity.id, savedAttachments);
+  return savedAttachments;
+}
+
 export async function deleteActivityLogInSupabase(activityId: string) {
+  removeCachedActivityLog(activityId);
+
   const signedInSupabase = await getSignedInSupabase();
   if (!signedInSupabase) return;
 
@@ -1186,6 +1446,69 @@ export async function deleteActivityLogInSupabase(activityId: string) {
 
   if (error) {
     throw error;
+  }
+}
+
+function safeStorageFileName(fileName: string) {
+  const cleaned = fileName
+    .trim()
+    .replace(/[^\w.\- ]+/g, "")
+    .replace(/\s+/g, "-")
+    .slice(0, 120);
+
+  return cleaned || "attachment";
+}
+
+function activityAttachmentStoragePath(ownerId: string, activityId: string, attachmentId: string, fileName: string) {
+  return `${ownerId}/${HEWSTER_PROFILE_SLUG}/${activityId}/${attachmentId}-${safeStorageFileName(fileName)}`;
+}
+
+function isAttachmentStorageSetupError(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return (
+    message.includes("activity_attachments") ||
+    message.includes("pet-attachments") ||
+    message.includes("bucket") ||
+    message.includes("relation") ||
+    message.includes("does not exist")
+  );
+}
+
+export async function deleteCareItemActivityLogsFromSupabase(kind: CareItemKind, deletedItems: CareItemTemplate[]) {
+  const deletedCareItems = deletedItems.filter((item) => item.kind === kind);
+  if (!deletedCareItems.length) return;
+
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return;
+
+  const { supabase, userId } = signedInSupabase;
+  const { data, error } = await supabase
+    .from("activity_logs")
+    .select("id, owner_id, profile_slug, activity_type, happened_at, detail, notes, created_at")
+    .eq("owner_id", userId)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("activity_type", kind);
+
+  if (error) throw error;
+
+  const activityIds = ((data ?? []) as ActivityLogRow[])
+    .map(mapActivityLogRowToActivity)
+    .filter((activity) => deletedCareItems.some((item) => activityMatchesCareItem(activity, item)))
+    .map((activity) => activity.id);
+
+  if (!activityIds.length) return;
+
+  activityIds.forEach(removeCachedActivityLog);
+
+  const deleteResult = await supabase
+    .from("activity_logs")
+    .delete()
+    .eq("owner_id", userId)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .in("id", activityIds);
+
+  if (deleteResult.error) {
+    throw deleteResult.error;
   }
 }
 
