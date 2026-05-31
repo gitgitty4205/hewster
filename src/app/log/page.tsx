@@ -1383,30 +1383,13 @@ export default function LogPage() {
             </button>
           </div>
         ) : (
-          <section
-            role="button"
-            tabIndex={0}
+          <button
+            type="button"
             onClick={openLogEvent}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                openLogEvent();
-              }
-            }}
-            className="group relative mb-7 cursor-pointer overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
+            className="group relative mb-7 flex w-full cursor-pointer items-center justify-between overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-left text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
           >
             <h2 className="text-lg font-semibold">Log Event</h2>
-            <div className="pointer-events-none mt-3 h-5 overflow-hidden">
-              <div className="grid grid-cols-2 gap-3 opacity-80">
-                <div className="flex h-14 items-start gap-2.5 rounded-2xl bg-[#fff7dc] px-3 pt-2 text-[#8a6200] shadow-sm">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/60 text-base leading-none">🚽</span>
-                  <span className="sr-only">Potty</span>
-                </div>
-                <div className="flex h-14 items-start gap-2.5 rounded-2xl bg-emerald-50 px-3 pt-2 text-emerald-700 shadow-sm">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-base leading-none">🌳</span>
-                  <span className="sr-only">Activity</span>
-                </div>
-              </div>
-            </div>
+            <ChevronDown className="size-5 opacity-75 transition group-hover:translate-y-0.5 group-hover:opacity-95" strokeWidth={2.5} />
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
               <div className="log-event-pull-tab flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90">
                 <span className="log-event-pull-chevrons" aria-hidden="true">
@@ -1416,7 +1399,7 @@ export default function LogPage() {
                 </span>
               </div>
             </div>
-          </section>
+          </button>
         )}
 
 
