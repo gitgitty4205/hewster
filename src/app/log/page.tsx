@@ -4,7 +4,7 @@
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 
-import { Check, ChevronDown, ChevronUp, Clock3, Ellipsis, Tablets } from "lucide-react";
+import { Check, ChevronDown, Clock3, Ellipsis, Tablets } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -1372,14 +1372,10 @@ export default function LogPage() {
             <button
               type="button"
               onClick={collapseLogEvent}
-              className="log-event-pull-tab absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/90"
+              className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/90"
               aria-label="Collapse Log Event"
             >
-              <span className="log-event-pull-chevrons" aria-hidden="true">
-                <ChevronUp className="size-5" strokeWidth={2.5} />
-                <ChevronUp className="size-5" strokeWidth={2.5} />
-                <ChevronUp className="size-5" strokeWidth={2.5} />
-              </span>
+              <span className="h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
             </button>
           </div>
         ) : (
@@ -1391,12 +1387,8 @@ export default function LogPage() {
             <h2 className="text-lg font-semibold">Log Event</h2>
             <ChevronDown className="size-5 opacity-75 transition group-hover:translate-y-0.5 group-hover:opacity-95" strokeWidth={2.5} />
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
-              <div className="log-event-pull-tab flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90">
-                <span className="log-event-pull-chevrons" aria-hidden="true">
-                  <ChevronDown className="size-5" strokeWidth={2.5} />
-                  <ChevronDown className="size-5" strokeWidth={2.5} />
-                  <ChevronDown className="size-5" strokeWidth={2.5} />
-                </span>
+              <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90">
+                <span className="h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
               </div>
             </div>
           </button>
