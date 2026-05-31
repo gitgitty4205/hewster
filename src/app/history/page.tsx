@@ -39,7 +39,7 @@ import { careItemHistoricallyOccurredWithMeal, loadCareTemplates, loadCareTempla
 import type { MealTemplate } from "@/lib/meal-templates";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { getSupabaseBrowserClient, getSupabaseCurrentSession, isSupabaseConfigured } from "@/lib/supabase";
-import { resolveActiveNotebookAccess } from "@/lib/notebook-access";
+import { canExportNotebook, resolveActiveNotebookAccess, type NotebookAccessRole } from "@/lib/notebook-access";
 import { displayPetAge, loadPetProfile, type PetProfile } from "@/lib/pet-profile";
 import { formatManualAlertTimelineDetail } from "@/lib/alerts";
 
@@ -286,6 +286,18 @@ function displayPetName(profile: PetProfile) {
 
 function compareMaybeCreatedAt(a?: string, b?: string) {
   return a && b ? a.localeCompare(b) : 0;
+}
+
+function formatReportDateTime(value: string | null | undefined) {
+  if (!value) return "Not recorded";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function timelineClockMinutes(item: HistoryDay["timelineItems"][number]) {
@@ -1344,8 +1356,11 @@ export default function HistoryPage() {
 
   const [sendCopyStatus, setSendCopyStatus] = useState("");
   const [isSendingCopy, setIsSendingCopy] = useState(false);
+  const [includeLogDetails, setIncludeLogDetails] = useState(false);
+  const [activeNotebookRole, setActiveNotebookRole] = useState<NotebookAccessRole | null>(null);
   const [profile, setProfile] = useState<PetProfile>(() => loadPetProfile());
   const supabaseReady = isSupabaseConfigured();
+  const canIncludeLogDetails = activeNotebookRole ? canExportNotebook(activeNotebookRole) : false;
 
 
 
@@ -1397,6 +1412,11 @@ export default function HistoryPage() {
 
         setWeightLogs(state.weightLogs ?? []);
 
+        const supabase = getSupabaseBrowserClient();
+        const session = supabase ? await getSupabaseCurrentSession(supabase) : null;
+        const access = supabase && session?.user ? await resolveActiveNotebookAccess(supabase, session.user) : null;
+        setActiveNotebookRole(access?.role ?? null);
+
       } finally {
 
         if (!cancelled) {
@@ -1429,6 +1449,12 @@ export default function HistoryPage() {
     };
 
   }, [authLoading, supabaseReady]);
+
+  useEffect(() => {
+    if (!canIncludeLogDetails && includeLogDetails) {
+      setIncludeLogDetails(false);
+    }
+  }, [canIncludeLogDetails, includeLogDetails]);
 
 
 
@@ -1945,7 +1971,7 @@ export default function HistoryPage() {
     new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date())
   );
 
-  const buildHistoryCopyText = (copyDays: HistoryDay[], copyFilter: HistoryFilter, dateRange: string, reportProfile: PetProfile, ownerName: string, generatedDate: string) => {
+  const buildHistoryCopyText = (copyDays: HistoryDay[], copyFilter: HistoryFilter, dateRange: string, reportProfile: PetProfile, ownerName: string, generatedDate: string, withLogDetails: boolean) => {
 
     const lines = [
       `${displayPetName(reportProfile)} History Report`,
@@ -1966,6 +1992,7 @@ export default function HistoryPage() {
       `Date Range: ${dateRange}`,
       `Matching Days: ${copyDays.length}`,
       `Report Generated: ${generatedDate}`,
+      `Log Details: ${withLogDetails ? "Included" : "Not included"}`,
       "",
       "History",
       "",
@@ -2001,6 +2028,18 @@ export default function HistoryPage() {
         const detail = renderActivityDetail(activity);
         const notes = activity.notes ? ` | Notes: ${activity.notes.replace(/\n/g, " ")}` : "";
         lines.push(`- ${formatActivityTime(activity.happenedAt)} ${displayActivityLabel(activity)}${detail ? ` - ${detail}` : ""}${notes}`);
+
+        if (withLogDetails) {
+          const audit = activity.auditInfo;
+          const auditParts = [
+            `Logged by: ${audit?.loggedBy ?? "Not recorded"}`,
+            `Logged time: ${formatReportDateTime(audit?.loggedAt ?? activity.createdAt ?? activity.happenedAt)}`,
+            audit?.lastEditedAt ? `Last edited by: ${audit.lastEditedBy ?? "Not recorded"}` : null,
+            audit?.lastEditedAt ? `Last edited time: ${formatReportDateTime(audit.lastEditedAt)}` : null,
+          ].filter(Boolean);
+
+          lines.push(`  - Log details: ${auditParts.join(" | ")}`);
+        }
       });
 
       day.weights.forEach((weight) => {
@@ -2046,7 +2085,8 @@ export default function HistoryPage() {
       const notebookOwnerId = activeNotebookAccess?.notebookOwnerId ?? session.user.id;
       const signedInOwnerName = normalizeReportName([metadataFirstName, metadataLastName].filter(Boolean).join(" ") || metadataFullName || session.user.email || "");
       const ownerName = notebookOwnerId === session.user.id ? signedInOwnerName : "";
-      const text = buildHistoryCopyText(filteredHistoryDays, activeFilter, dateRange, profile, ownerName, generatedDate);
+      const includeLogDetailsInReport = includeLogDetails && Boolean(activeNotebookAccess?.role && canExportNotebook(activeNotebookAccess.role));
+      const text = buildHistoryCopyText(filteredHistoryDays, activeFilter, dateRange, profile, ownerName, generatedDate, includeLogDetailsInReport);
 
       const response = await fetch("/api/history-copy/email", {
         method: "POST",
@@ -2501,6 +2541,23 @@ export default function HistoryPage() {
                   ) : null}
 
                 </div>
+
+                {canIncludeLogDetails ? (
+                  <label className="flex items-start gap-2 rounded-2xl bg-white/80 px-3 py-2 text-xs font-semibold text-zinc-600 ring-1 ring-zinc-200/80">
+                    <input
+                      type="checkbox"
+                      checked={includeLogDetails}
+                      onChange={(event) => setIncludeLogDetails(event.target.checked)}
+                      className="mt-0.5 size-4 rounded border-zinc-300 accent-[var(--hewie-accent,#64748b)]"
+                    />
+                    <span>
+                      Include log details
+                      <span className="block pt-0.5 text-[11px] font-medium leading-4 text-zinc-400">
+                        Adds who logged or edited entries to the report.
+                      </span>
+                    </span>
+                  </label>
+                ) : null}
 
                 <div className="flex flex-wrap gap-2">
 
