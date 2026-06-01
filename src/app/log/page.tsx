@@ -1248,11 +1248,9 @@ export default function LogPage() {
 
               </div>
 
-              <PetAvatarMenu className="size-14 rounded-full object-cover object-center ring-1 ring-[#fff8ea]/90 shadow-sm" width={56} height={56} />
+              <PetAvatarMenu className="size-14 rounded-full object-cover object-center shadow-sm" width={56} height={56} />
 
             </div>
-
-            <div className="mt-3 h-px w-full bg-[#fff8ea]/35" />
 
           </header>
 
@@ -1296,11 +1294,9 @@ export default function LogPage() {
 
             </div>
 
-            <PetAvatarMenu className="size-14 rounded-full object-cover object-center ring-1 ring-[#fff8ea]/90 shadow-sm" width={56} height={56} />
+            <PetAvatarMenu className="size-14 rounded-full object-cover object-center shadow-sm" width={56} height={56} />
 
           </div>
-
-          <div className="mt-3 h-px w-full bg-[#fff8ea]/35" />
 
         </header>
 
