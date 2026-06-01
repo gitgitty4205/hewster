@@ -7,6 +7,7 @@ import {
   ClipboardList,
   FileHeart,
   History,
+  PawPrint,
   Scale,
   Settings2,
   X,
@@ -41,28 +42,15 @@ type FloatingMenuPosition = {
 
 const pages = [
   { label: "Today", href: `${APP_BASE}`, icon: CalendarDays },
-  { label: "Event Details", href: `${APP_BASE}/log`, icon: ClipboardList },
+  { label: "Events", href: `${APP_BASE}/log`, icon: ClipboardList },
   { label: "History", href: `${APP_BASE}/history`, icon: History },
   { label: "Health", href: `${APP_BASE}/medical-records`, icon: FileHeart },
   { label: "Weight", href: `${APP_BASE}/weight`, icon: Scale },
   { label: "Fitness", href: `${APP_BASE}/activity`, icon: Activity },
   { label: "Alerts", href: `${APP_BASE}/alerts`, icon: BellPlus, badge: true },
-  { label: "Profile", href: `${APP_BASE}/profile`, iconKind: "paw" },
+  { label: "Profile", href: `${APP_BASE}/profile`, icon: PawPrint },
   { label: "Settings", href: `${APP_BASE}/settings`, icon: Settings2 },
 ];
-
-function PawIcon() {
-  return (
-    <span
-      className="block size-5 bg-current"
-      style={{
-        WebkitMask: "url('/paw-print.svg') center / contain no-repeat",
-        mask: "url('/paw-print.svg') center / contain no-repeat",
-      }}
-      aria-hidden="true"
-    />
-  );
-}
 
 function BrandNotebookIcon() {
   return (
@@ -282,21 +270,21 @@ export function BottomNav({ alertsCount }: Props) {
             <div className="absolute inset-0 bg-[var(--hewie-bg,#979ca7)]/34" aria-hidden="true" />
             <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg,#f1f5f9)]/92 px-6 py-5 text-[var(--hewie-active-text,#334155)] shadow-sm backdrop-blur-[1px]">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--hewie-active-text,#334155)]/70"><PetNotebookTitle /></p>
-                <h2 className="text-2xl font-semibold text-[var(--hewie-active-text,#334155)]">Pages</h2>
+                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--hewie-active-text,#334155)]/60"><PetNotebookTitle /></p>
+                <h2 className="mt-1 text-[1.65rem] font-medium leading-none text-[var(--hewie-active-text,#334155)]">Pages</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex size-10 items-center justify-center rounded-full bg-white/85 text-[var(--hewie-active-text,#334155)] shadow-sm"
+                className="flex size-10 items-center justify-center rounded-full bg-white/80 text-[var(--hewie-active-text,#334155)] shadow-sm"
                 aria-label="Close notebook menu"
               >
-                <X className="size-5" />
+                <X className="size-5" strokeWidth={1.7} />
               </button>
             </div>
 
-            <div className="relative flex flex-1 items-center overflow-y-auto px-6 py-8 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:py-10">
-              <div className="grid w-full grid-cols-3 justify-items-center gap-x-6 gap-y-9">
+            <div className="relative flex flex-1 items-center overflow-y-auto px-7 py-8 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:py-10">
+              <div className="grid w-full grid-cols-3 justify-items-center gap-x-7 gap-y-10">
                 {pages.map((item) => {
                   const Icon = item.icon;
                   const active = pathname === item.href || (item.href === APP_BASE && pathname === "/");
@@ -307,23 +295,24 @@ export function BottomNav({ alertsCount }: Props) {
                       key={item.label}
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className="group relative text-center"
+                      className={`group relative flex min-h-[4.75rem] w-[5.1rem] flex-col items-center justify-center gap-2 text-center transition ${
+                        active
+                          ? "text-[var(--hewie-accent-text,#ffffff)]"
+                          : "text-[var(--hewie-accent-text,#ffffff)]/82 hover:text-[var(--hewie-accent-text,#ffffff)]"
+                      }`}
                     >
                       <span
-                        className={`relative flex size-[4.65rem] flex-col items-center justify-center gap-1.5 rounded-[1.2rem] shadow-sm ring-1 ring-white/18 transition group-hover:-translate-y-0.5 ${
-                          active
-                            ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]"
-                            : "bg-[var(--hewie-bg,#979ca7)] text-[var(--hewie-accent-text,#ffffff)] group-hover:bg-[var(--hewie-accent,#64748b)]"
-                        }`}
+                        className="relative flex size-9 items-center justify-center drop-shadow-[0_2px_5px_rgba(15,23,42,0.32)] transition group-hover:-translate-y-0.5"
                       >
-                        {item.iconKind === "paw" ? <PawIcon /> : Icon ? <Icon className="size-[1.15rem]" strokeWidth={1.9} /> : null}
+                        {Icon ? <Icon className="size-[1.55rem]" strokeWidth={1.45} /> : null}
                         {showBadge ? (
-                          <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
+                          <span className="absolute -right-2 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1 text-[10px] font-semibold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
                             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
                           </span>
                         ) : null}
-                        <span className="max-w-[4rem] text-[12px] font-semibold leading-tight text-[var(--hewie-accent-text,#ffffff)]/92">{item.label}</span>
                       </span>
+                      <span className="max-w-[5rem] text-[12px] font-medium leading-none tracking-normal drop-shadow-[0_1px_4px_rgba(15,23,42,0.5)]">{item.label}</span>
+                      {active ? <span className="mt-0.5 h-0.5 w-5 rounded-full bg-current" aria-hidden="true" /> : <span className="mt-0.5 h-0.5 w-5" aria-hidden="true" />}
                     </Link>
                   );
                 })}
