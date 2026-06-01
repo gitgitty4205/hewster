@@ -1291,6 +1291,7 @@ export default function LogPage() {
             <div className="min-w-0 flex-1 pt-1">
 
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Event Details</h1>
 
             </div>
 

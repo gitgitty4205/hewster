@@ -341,7 +341,6 @@ export function CareSettingsPage({
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
-          <p className="mt-2 text-sm leading-6 text-zinc-600">{description}</p>
         </header>
 
         <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">

@@ -2301,12 +2301,6 @@ export default function HistoryPage() {
 
           </div>
 
-          <p className="mt-1 text-sm leading-5 text-zinc-600">
-
-            Daily History Of Meals, Activities, Notes, And Weight Entries.
-
-          </p>
-
         </header>
 
 

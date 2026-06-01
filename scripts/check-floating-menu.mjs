@@ -34,6 +34,7 @@ async function main() {
   try {
     await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.evaluate(() => {
+      window.localStorage.setItem("hewster.pageIntro.completed", "true");
       window.localStorage.setItem("hewster.alertBadgeCount", "1");
       window.localStorage.setItem("sb-check-auth-token", JSON.stringify({
         access_token: "check-access-token",

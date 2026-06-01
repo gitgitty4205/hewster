@@ -14,6 +14,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
+import { PageIntroGuide } from "@/components/page-intro-guide";
 import { useAuth } from "@/components/auth-provider";
 import {
   ALERT_BADGE_COUNT_STORAGE_KEY,
@@ -322,6 +323,8 @@ export function BottomNav({ alertsCount }: Props) {
 
   return (
     <>
+      <PageIntroGuide />
+
       {open ? (
         <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/25 px-3 py-4 backdrop-blur-sm sm:py-6">
           <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]">

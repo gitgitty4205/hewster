@@ -76,16 +76,6 @@ function formatCurrentTime() {
   }).format(new Date());
 }
 
-function formatTodayHeaderDateTime() {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date());
-}
-
 function currentAlertMinuteKey() {
   const now = new Date();
   return `${currentTodayKey()}-${now.getHours()}:${now.getMinutes()}`;
@@ -706,7 +696,6 @@ export default function HomeApp() {
   const [mealActionState, setMealActionState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [activityState, setActivityState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [hydrated, setHydrated] = useState(false);
-  const [headerDateTime, setHeaderDateTime] = useState("");
   const [alertMinuteKey, setAlertMinuteKey] = useState("");
   const [todayKey, setTodayKey] = useState("");
   const [customCareStatus, setCustomCareStatus] = useState<CustomCareStatus>({});
@@ -858,14 +847,12 @@ export default function HomeApp() {
         setMedicationTemplates(medications);
         setCustomCareStatus(loadCustomCareStatus());
         setReminderRules(loadReminderAlertRules());
-        setHeaderDateTime(formatTodayHeaderDateTime());
         setAlertMinuteKey(currentAlertMinuteKey());
       } catch {
         if (cancelled) return;
         setNotebookDataUnavailable(true);
         setTemplates([]);
         setDailyMealState([]);
-        setHeaderDateTime(formatTodayHeaderDateTime());
         setAlertMinuteKey(currentAlertMinuteKey());
         setTodayKey((current) => current || currentTodayKey());
         setSupplementTemplates(loadCareTemplates("supplement"));
@@ -1050,7 +1037,6 @@ export default function HomeApp() {
   useEffect(() => {
     if (petRemembered) return;
     const resetForNewDay = () => {
-      setHeaderDateTime(formatTodayHeaderDateTime());
       setAlertMinuteKey(currentAlertMinuteKey());
       const nextTodayKey = currentTodayKey();
 
@@ -1883,8 +1869,7 @@ export default function HomeApp() {
             <div className="pr-24">
               <div>
                 <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-                <div className="skeleton-pulse mt-1 h-8 w-56 rounded-xl bg-white/40" />
-                <div className="skeleton-pulse mt-1 h-4 w-52 rounded-xl bg-white/30" />
+                <div className="skeleton-pulse mt-1 h-8 w-28 rounded-xl bg-white/40" />
               </div>
             </div>
             <PetAvatarMenu shape="tile" className="absolute right-0 top-0" />
@@ -1910,14 +1895,11 @@ export default function HomeApp() {
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="mt-1 flex flex-col gap-1">
-                <p className="text-xl font-bold tracking-tight text-zinc-700">{headerDateTime}</p>
+                <h1 className="text-xl font-bold tracking-tight text-zinc-700">Today&apos;s</h1>
               </div>
             </div>
           </div>
           <PetAvatarMenu shape="tile" className="absolute right-0 top-0" />
-          <p className="mt-1 pr-24 text-xs leading-4 text-zinc-600">
-            Shared Meal Tracking And Potty Logs For Hewster.
-          </p>
         </header>
 
         {notebookDataUnavailable ? (

@@ -209,8 +209,7 @@ export default function MedicalRecordsPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Health Records</h1>
-              <p className="mt-1 max-w-[15rem] text-sm leading-5 text-zinc-500">Health notes, vet visits, and attachments, sorted by date.</p>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Health</h1>
             </div>
             <PetAvatarMenu shape="tile" />
           </div>

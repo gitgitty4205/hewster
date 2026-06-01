@@ -140,9 +140,6 @@ export default function SettingsPage() {
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
-          <p className="mt-2 text-sm leading-6 text-[var(--hewie-active-text,#334155)]/70">
-            Manage profile, theme, and saved plans.
-          </p>
         </header>
 
         <section className="mb-4 rounded-3xl bg-white/70 p-5 shadow-sm ring-1 ring-white/60">

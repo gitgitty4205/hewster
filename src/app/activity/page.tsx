@@ -17,9 +17,6 @@ export default function ActivityPage() {
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
-          <p className="mt-1 text-sm leading-5 text-zinc-600">
-            Fitness and tracker summaries for Hewie.
-          </p>
         </header>
 
         <FitBarkActivityCard />

@@ -295,13 +295,10 @@ export default function ProfilePage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/85">Pet Profile</h1>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/85">Profile</h1>
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
-          <p className="mt-2 text-sm leading-6 text-zinc-600">
-            Pet info, care notes, sharing, and your personal app theme color.
-          </p>
         </header>
 
         <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
