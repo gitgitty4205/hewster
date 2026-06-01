@@ -1239,9 +1239,9 @@ export default function LogPage() {
 
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
 
-          <header className="mb-5">
+          <header className="mb-5 border-b border-l-2 border-[#fff8ea]/45 pb-4 pl-3 pr-1">
 
-            <div className="flex items-center gap-3 rounded-2xl bg-white/28 p-3 pr-4 ring-1 ring-white/35">
+            <div className="flex items-center gap-3">
 
               <PetAvatarMenu className="size-[4.5rem] rounded-full object-cover object-center ring-2 ring-[#fff8ea]/95 shadow-md" width={72} height={72} />
 
@@ -1289,9 +1289,9 @@ export default function LogPage() {
 
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
 
-        <header className="mb-5">
+        <header className="mb-5 border-b border-l-2 border-[#fff8ea]/45 pb-4 pl-3 pr-1">
 
-          <div className="flex items-center gap-3 rounded-2xl bg-white/28 p-3 pr-4 ring-1 ring-white/35">
+          <div className="flex items-center gap-3">
 
             <PetAvatarMenu className="size-[4.5rem] rounded-full object-cover object-center ring-2 ring-[#fff8ea]/95 shadow-md" width={72} height={72} />
 
