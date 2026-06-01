@@ -1205,9 +1205,9 @@ const eventFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
 
 const recordFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
 
-  { id: "uploads", label: "Photos / Documents" },
+  { id: "uploads", label: "Photos & Docs" },
 
-  { id: "vetProcedures", label: "Vet Visits / Procedures" },
+  { id: "vetProcedures", label: "Vet Visits" },
 
   { id: "medicalRecords", label: "Health Records" },
 
@@ -2404,13 +2404,13 @@ export default function HistoryPage() {
 
             <div className="border-b border-[var(--hewie-ring,#cbd5e1)]/70 bg-[var(--hewie-active-bg,#f1f5f9)] p-5">
 
-              <div className="space-y-4 rounded-2xl bg-white/55 p-3 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+              <div className="space-y-4 rounded-2xl bg-white/60 p-4 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
 
                 <div>
 
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Events</p>
 
-                  <div className="flex gap-2 overflow-x-auto pb-1">
+                  <div className="flex flex-wrap gap-2">
 
                     {eventFilterOptions.map((option) => (
 
@@ -2422,7 +2422,7 @@ export default function HistoryPage() {
 
                         onClick={() => setDraftFilter(option.id)}
 
-                        className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ring-1 transition ${
+                        className={`min-h-9 rounded-full px-3.5 py-2 text-xs font-bold leading-none ring-1 transition ${
 
                           draftFilter === option.id
 
@@ -2450,7 +2450,7 @@ export default function HistoryPage() {
 
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Records</p>
 
-                  <div className="flex gap-2 overflow-x-auto pb-1">
+                  <div className="grid grid-cols-2 gap-2 min-[390px]:grid-cols-3">
 
                     {recordFilterOptions.map((option) => (
 
@@ -2462,7 +2462,7 @@ export default function HistoryPage() {
 
                         onClick={() => setDraftFilter(option.id)}
 
-                        className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ring-1 transition ${
+                        className={`min-h-9 rounded-full px-3 py-2 text-center text-xs font-bold leading-none ring-1 transition ${
 
                           draftFilter === option.id
 
