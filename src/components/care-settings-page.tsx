@@ -339,7 +339,7 @@ export function CareSettingsPage({
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">{title}</h1>
             </div>
-            <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
+            <PetAvatarMenu shape="tile" />
           </div>
           <p className="mt-2 text-sm leading-6 text-zinc-600">{description}</p>
         </header>

@@ -2257,7 +2257,7 @@ export default function HistoryPage() {
 
               </div>
 
-              <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
+              <PetAvatarMenu shape="tile" />
 
             </div>
 
@@ -2309,7 +2309,7 @@ export default function HistoryPage() {
 
             </div>
 
-            <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
+            <PetAvatarMenu shape="tile" />
 
           </div>
 

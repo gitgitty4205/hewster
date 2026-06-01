@@ -1887,7 +1887,7 @@ export default function HomeApp() {
                 <div className="skeleton-pulse mt-1 h-4 w-52 rounded-xl bg-white/30" />
               </div>
             </div>
-            <PetAvatarMenu className="absolute right-0 top-0 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
+            <PetAvatarMenu shape="tile" className="absolute right-0 top-0" />
           </header>
 
           <div className="space-y-4">
@@ -1914,7 +1914,7 @@ export default function HomeApp() {
               </div>
             </div>
           </div>
-          <PetAvatarMenu className="absolute right-0 top-0 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
+          <PetAvatarMenu shape="tile" className="absolute right-0 top-0" />
           <p className="mt-1 pr-24 text-xs leading-4 text-zinc-600">
             Shared Meal Tracking And Potty Logs For Hewster.
           </p>

@@ -681,7 +681,7 @@ export default function AlertsPage() {
                 <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
                 <div className="skeleton-pulse mt-1 h-10 w-32 rounded-xl bg-white/40" />
               </div>
-              <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
+              <PetAvatarMenu shape="tile" />
             </div>
           </header>
 
@@ -705,7 +705,7 @@ export default function AlertsPage() {
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Alerts</h1>
             </div>
-            <PetAvatarMenu className="mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm" />
+            <PetAvatarMenu shape="tile" />
           </div>
         </header>
 

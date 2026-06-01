@@ -15,6 +15,7 @@ import {
 } from "@/lib/notebook-access";
 import { defaultPetProfile, loadPetProfile, savePetProfile, type PetProfile } from "@/lib/pet-profile";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 
 const PET_ROSTER_STORAGE_KEY = "hewster.petRoster";
 
@@ -249,7 +250,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
           alt={currentPet.name}
           width={width ?? imageSize}
           height={height ?? imageSize}
-          className={className ?? avatarClassNames[shape]}
+          className={cn(className, avatarClassNames[shape])}
         />
       </button>
 
