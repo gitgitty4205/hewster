@@ -1298,8 +1298,8 @@ export default function LogPage() {
             <div className="min-w-0 flex-1 pt-1">
 
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/85">Event Details</h1>
-              <p className="mt-0.5 text-xs font-semibold leading-4 text-[var(--hewie-active-text,#334155)]/60">{formatLogHeaderDateTime(logDayKey)}</p>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Event Details</h1>
+              <p className="mt-0.5 text-xs font-semibold leading-4 text-[#5d4852]">{formatLogHeaderDateTime(logDayKey)}</p>
 
             </div>
 

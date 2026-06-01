@@ -513,7 +513,7 @@ export default function AccountSettingsPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/85">Account Settings</h1>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Account Settings</h1>
             </div>
             <PetAvatarMenu shape="tile" />
           </div>

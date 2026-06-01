@@ -68,7 +68,7 @@ export default function PoopHistoryPage() {
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]"><PetNotebookTitle /></p>
-          <h1 className="mt-1 text-xl font-bold tracking-tight text-zinc-700">Poop History</h1>
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Poop History</h1>
         </header>
 
         <div className="space-y-4">

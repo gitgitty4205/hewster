@@ -257,7 +257,7 @@ export default function MealsPage() {
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]"><PetNotebookTitle /></p>
-          <h1 className="mt-1 text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/85">Meal Plan Settings</h1>
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Meal Plan Settings</h1>
         </header>
 
         <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
