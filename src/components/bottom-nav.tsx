@@ -6,7 +6,6 @@ import {
   Bookmark,
   FileHeart,
   History,
-  Image,
   Settings2,
   X,
 } from "lucide-react";
@@ -211,6 +210,16 @@ export function BottomNav({ alertsCount }: Props) {
   const storedAlertsCount = normalizeStoredAlertsCount(storedAlertsCountSnapshot);
   const activeAlertsCount = alertsCount ?? storedAlertsCount;
   const showingFullColorBackground = pagesBackgroundMode === "full" || previewFullColorBackground;
+
+  useEffect(() => {
+    if (typeof document === "undefined" || !open) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [open]);
 
   useEffect(() => {
     const savedPosition = readFloatingMenuPosition(user?.id);
@@ -434,7 +443,7 @@ export function BottomNav({ alertsCount }: Props) {
       <PageIntroGuide />
 
       {open ? (
-        <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/25 px-3 py-4 backdrop-blur-sm sm:py-6">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden bg-zinc-950/25 p-3 backdrop-blur-sm sm:p-6">
           <div
             data-pages-menu-panel
             className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]"
@@ -463,18 +472,41 @@ export function BottomNav({ alertsCount }: Props) {
                 <h2 className="text-2xl font-semibold text-[var(--hewie-active-text,#334155)]">Pages</h2>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => updatePagesBackgroundMode(pagesBackgroundMode === "full" ? "soft" : "full")}
-                  className={`flex size-10 items-center justify-center rounded-full text-[var(--hewie-active-text,#334155)] shadow-sm transition ${
-                    pagesBackgroundMode === "full" ? "bg-white text-[var(--hewie-active-text,#334155)] ring-2 ring-[var(--hewie-accent,#64748b)]/45" : "bg-white/85"
-                  }`}
-                  aria-pressed={pagesBackgroundMode === "full"}
-                  aria-label={pagesBackgroundMode === "full" ? "Use soft Pages background" : "Use full color Pages background"}
-                  title={pagesBackgroundMode === "full" ? "Use soft Pages background" : "Use full color Pages background"}
-                >
-                  <Image className="size-5" />
-                </button>
+                <div className="flex items-center gap-1 rounded-full bg-white/75 p-1 shadow-sm ring-1 ring-white/80 backdrop-blur-sm" aria-label="Pages background style">
+                  <button
+                    type="button"
+                    onClick={() => updatePagesBackgroundMode("soft")}
+                    className={`relative size-8 overflow-hidden rounded-full transition ${
+                      pagesBackgroundMode === "soft" ? "ring-2 ring-[var(--hewie-accent,#64748b)] ring-offset-2 ring-offset-white" : "opacity-75"
+                    }`}
+                    aria-pressed={pagesBackgroundMode === "soft"}
+                    aria-label="Use soft Pages background"
+                    title="Use soft Pages background"
+                  >
+                    <span
+                      className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-80 grayscale contrast-90 saturate-75"
+                      style={{ backgroundImage: `url("${profilePhotoUrl}")` }}
+                      aria-hidden="true"
+                    />
+                    <span className="pointer-events-none absolute inset-0 bg-[var(--hewie-active-bg,#f1f5f9)]/35" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updatePagesBackgroundMode("full")}
+                    className={`relative size-8 overflow-hidden rounded-full transition ${
+                      pagesBackgroundMode === "full" ? "ring-2 ring-[var(--hewie-accent,#64748b)] ring-offset-2 ring-offset-white" : "opacity-75"
+                    }`}
+                    aria-pressed={pagesBackgroundMode === "full"}
+                    aria-label="Use full color Pages background"
+                    title="Use full color Pages background"
+                  >
+                    <span
+                      className="pointer-events-none absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: `url("${profilePhotoUrl}")` }}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
