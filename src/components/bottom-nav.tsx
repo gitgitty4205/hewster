@@ -106,7 +106,8 @@ function BrandNotebookIcon() {
     <img
       src="/paw-notes-transparent.svg"
       alt=""
-      className="h-[3.25rem] w-[3.25rem] object-contain drop-shadow-[0_5px_7px_rgba(15,23,42,0.34)] contrast-[1.04] saturate-[1.06]"
+      draggable={false}
+      className="pointer-events-none h-[3.25rem] w-[3.25rem] object-contain drop-shadow-[0_5px_7px_rgba(15,23,42,0.34)] contrast-[1.04] saturate-[1.06]"
       aria-hidden="true"
     />
   );
@@ -434,10 +435,16 @@ export function BottomNav({ alertsCount }: Props) {
             if (floatingMenuDragRef.current?.pointerId !== stopEvent.pointerId) return;
             setDraggingFloatingMenu(false);
             floatingMenuDragCleanupRef.current?.();
+            if (floatingMenuDragRef.current && !floatingMenuDragRef.current.moved) {
+              floatingMenuDragRef.current = null;
+            }
           };
           const stopMouseDragging = () => {
             setDraggingFloatingMenu(false);
             floatingMenuDragCleanupRef.current?.();
+            if (floatingMenuDragRef.current && !floatingMenuDragRef.current.moved) {
+              floatingMenuDragRef.current = null;
+            }
           };
           floatingMenuDragCleanupRef.current = () => {
             window.removeEventListener("pointermove", handlePointerMove, true);
@@ -464,7 +471,7 @@ export function BottomNav({ alertsCount }: Props) {
       >
         <BrandNotebookIcon />
         {activeAlertsCount > 0 ? (
-          <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-white">
+          <span className="pointer-events-none absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-white">
             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
           </span>
         ) : null}

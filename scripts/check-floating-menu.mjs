@@ -93,6 +93,28 @@ async function main() {
     ) {
       throw new Error(`Floating menu is present but not reliably visible: ${JSON.stringify(buttonState)}`);
     }
+
+    const beforeDrag = await floatingMenu.boundingBox();
+    if (!beforeDrag) {
+      throw new Error("Floating menu has no bounding box before drag.");
+    }
+
+    await page.mouse.move(beforeDrag.x + beforeDrag.width / 2, beforeDrag.y + beforeDrag.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(beforeDrag.x - 48, beforeDrag.y - 56, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+
+    const afterDrag = await floatingMenu.boundingBox();
+    if (!afterDrag) {
+      throw new Error("Floating menu has no bounding box after drag.");
+    }
+
+    const dragDistance = Math.hypot(afterDrag.x - beforeDrag.x, afterDrag.y - beforeDrag.y);
+    if (dragDistance < 18) {
+      throw new Error(`Floating menu did not drag while alert badge was visible: ${JSON.stringify({ beforeDrag, afterDrag })}`);
+    }
+
     await page.waitForTimeout(2_500);
     await floatingMenu.click();
     await page.locator("text=Pages").first().waitFor({ state: "visible", timeout: 5_000 });
