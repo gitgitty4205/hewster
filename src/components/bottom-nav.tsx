@@ -1,9 +1,19 @@
 "use client";
 
-import { X } from "lucide-react";
+import {
+  Activity,
+  BellPlus,
+  CalendarDays,
+  ClipboardList,
+  FileHeart,
+  History,
+  Scale,
+  Settings2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type CSSProperties, type SVGProps, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { useAuth } from "@/components/auth-provider";
@@ -23,127 +33,36 @@ type Props = {
 const APP_BASE = "/hewie";
 const FLOATING_MENU_POSITION_STORAGE_KEY = "hewster.floatingMenuPosition";
 const FLOATING_MENU_EDGE_GAP = 12;
-const MENU_TYPE_STYLE = {
-  fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-} satisfies CSSProperties;
 
 type FloatingMenuPosition = {
   x: number;
   y: number;
 };
 
-function MinimalIcon({ children, ...props }: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      {...props}
-    >
-      {children}
-    </svg>
-  );
-}
-
-function TodayIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <MinimalIcon {...props}>
-      <path d="M7 4.8h10a2.2 2.2 0 0 1 2.2 2.2v10A2.2 2.2 0 0 1 17 19.2H7A2.2 2.2 0 0 1 4.8 17V7A2.2 2.2 0 0 1 7 4.8Z" />
-      <path d="M8.2 9.2h7.6" />
-      <path d="M9 3.8v2.1M15 3.8v2.1" />
-      <path d="M9.2 13.1h5.6" />
-    </MinimalIcon>
-  );
-}
-
-function EventsIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <MinimalIcon {...props}>
-      <path d="M7 5.2h10a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7.2a2 2 0 0 1 2-2Z" />
-      <path d="M8.4 9.1h7.2M8.4 12h5.3M8.4 14.9h6.3" />
-    </MinimalIcon>
-  );
-}
-
-function HistoryIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <MinimalIcon {...props}>
-      <path d="M5.1 12a6.9 6.9 0 1 0 2-4.9" />
-      <path d="M5.1 6v4h4" />
-      <path d="M12 8.5v4l2.8 1.6" />
-    </MinimalIcon>
-  );
-}
-
-function HealthIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <MinimalIcon {...props}>
-      <path d="M12 19.1s-6.5-3.8-6.5-8.7A3.9 3.9 0 0 1 12 7.5a3.9 3.9 0 0 1 6.5 2.9c0 4.9-6.5 8.7-6.5 8.7Z" />
-      <path d="M12 9.5v4.6M9.7 11.8h4.6" />
-    </MinimalIcon>
-  );
-}
-
-function WeightIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <MinimalIcon {...props}>
-      <path d="M7.2 19.1h9.6a2 2 0 0 0 2-2.3l-1.1-7.4a2.2 2.2 0 0 0-2.2-1.9h-7a2.2 2.2 0 0 0-2.2 1.9l-1.1 7.4a2 2 0 0 0 2 2.3Z" />
-      <path d="M9.4 10.4a2.8 2.8 0 0 1 5.2 0" />
-      <path d="M12 10.5l1-1.5" />
-    </MinimalIcon>
-  );
-}
-
-function FitnessIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <MinimalIcon {...props}>
-      <path d="M4.5 13.2h3l2-5.4 3.4 9 2.2-5.1h4.4" />
-    </MinimalIcon>
-  );
-}
-
-function AlertsIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <MinimalIcon {...props}>
-      <path d="M7.2 16.5h9.6l-1-1.7V11a3.8 3.8 0 0 0-7.6 0v3.8l-1 1.7Z" />
-      <path d="M10.4 18.2a1.8 1.8 0 0 0 3.2 0" />
-      <path d="M12 4.3v1.5" />
-    </MinimalIcon>
-  );
-}
-
-function ProfileIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <MinimalIcon {...props}>
-      <path d="M12 12.4a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2Z" />
-      <path d="M6.7 18.2a5.7 5.7 0 0 1 10.6 0" />
-    </MinimalIcon>
-  );
-}
-
-function SettingsIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <MinimalIcon {...props}>
-      <path d="M5 7.5h14M5 16.5h14" />
-      <path d="M9 5.5v4M15 14.5v4" />
-    </MinimalIcon>
-  );
-}
-
 const pages = [
-  { label: "Today", href: `${APP_BASE}`, icon: TodayIcon },
-  { label: "Events", href: `${APP_BASE}/log`, icon: EventsIcon },
-  { label: "History", href: `${APP_BASE}/history`, icon: HistoryIcon },
-  { label: "Health", href: `${APP_BASE}/medical-records`, icon: HealthIcon },
-  { label: "Weight", href: `${APP_BASE}/weight`, icon: WeightIcon },
-  { label: "Fitness", href: `${APP_BASE}/activity`, icon: FitnessIcon },
-  { label: "Alerts", href: `${APP_BASE}/alerts`, icon: AlertsIcon, badge: true },
-  { label: "Profile", href: `${APP_BASE}/profile`, icon: ProfileIcon },
-  { label: "Settings", href: `${APP_BASE}/settings`, icon: SettingsIcon },
+  { label: "Today", href: `${APP_BASE}`, icon: CalendarDays },
+  { label: "Event Details", href: `${APP_BASE}/log`, icon: ClipboardList },
+  { label: "History", href: `${APP_BASE}/history`, icon: History },
+  { label: "Health", href: `${APP_BASE}/medical-records`, icon: FileHeart },
+  { label: "Weight", href: `${APP_BASE}/weight`, icon: Scale },
+  { label: "Fitness", href: `${APP_BASE}/activity`, icon: Activity },
+  { label: "Alerts", href: `${APP_BASE}/alerts`, icon: BellPlus, badge: true },
+  { label: "Profile", href: `${APP_BASE}/profile`, iconKind: "paw" },
+  { label: "Settings", href: `${APP_BASE}/settings`, icon: Settings2 },
 ];
+
+function PawIcon() {
+  return (
+    <span
+      className="block size-5 bg-current"
+      style={{
+        WebkitMask: "url('/paw-print.svg') center / contain no-repeat",
+        mask: "url('/paw-print.svg') center / contain no-repeat",
+      }}
+      aria-hidden="true"
+    />
+  );
+}
 
 function BrandNotebookIcon() {
   return (
@@ -354,7 +273,7 @@ export function BottomNav({ alertsCount }: Props) {
     <>
       {open ? (
         <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/25 px-3 py-4 backdrop-blur-sm sm:py-6">
-          <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]" style={MENU_TYPE_STYLE}>
+          <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]">
             <div
               className="absolute inset-0 bg-cover bg-center grayscale"
               style={{ backgroundImage: "url('/hewster-profile.jpg')" }}
@@ -363,21 +282,21 @@ export function BottomNav({ alertsCount }: Props) {
             <div className="absolute inset-0 bg-[var(--hewie-bg,#979ca7)]/34" aria-hidden="true" />
             <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg,#f1f5f9)]/92 px-6 py-5 text-[var(--hewie-active-text,#334155)] shadow-sm backdrop-blur-[1px]">
               <div>
-                <p className="text-[11px] font-normal uppercase tracking-[0.14em] text-[var(--hewie-active-text,#334155)]/55"><PetNotebookTitle /></p>
-                <h2 className="mt-1 text-[1.58rem] font-normal leading-none text-[var(--hewie-active-text,#334155)]">Pages</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--hewie-active-text,#334155)]/70"><PetNotebookTitle /></p>
+                <h2 className="text-2xl font-semibold text-[var(--hewie-active-text,#334155)]">Pages</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex size-10 items-center justify-center rounded-full bg-white/80 text-[var(--hewie-active-text,#334155)] shadow-sm"
+                className="flex size-10 items-center justify-center rounded-full bg-white/85 text-[var(--hewie-active-text,#334155)] shadow-sm"
                 aria-label="Close notebook menu"
               >
-                <X className="size-5" strokeWidth={1.7} />
+                <X className="size-5" />
               </button>
             </div>
 
-            <div className="relative flex flex-1 items-center overflow-y-auto px-7 py-8 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:py-10">
-              <div className="grid w-full grid-cols-3 justify-items-center gap-x-7 gap-y-10">
+            <div className="relative flex flex-1 items-center overflow-y-auto px-6 py-8 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:py-10">
+              <div className="grid w-full grid-cols-3 justify-items-center gap-x-6 gap-y-9">
                 {pages.map((item) => {
                   const Icon = item.icon;
                   const active = pathname === item.href || (item.href === APP_BASE && pathname === "/");
@@ -388,24 +307,23 @@ export function BottomNav({ alertsCount }: Props) {
                       key={item.label}
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className={`group relative flex min-h-[4.75rem] w-[5.1rem] flex-col items-center justify-center gap-2 text-center transition ${
-                        active
-                          ? "text-[var(--hewie-accent-text,#ffffff)]"
-                          : "text-[var(--hewie-accent-text,#ffffff)]/76 hover:text-[var(--hewie-accent-text,#ffffff)]"
-                      }`}
+                      className="group relative text-center"
                     >
                       <span
-                        className="relative flex size-9 items-center justify-center drop-shadow-[0_1px_3px_rgba(15,23,42,0.28)] transition group-hover:-translate-y-0.5"
+                        className={`relative flex size-[4.65rem] flex-col items-center justify-center gap-1.5 rounded-[1.2rem] shadow-sm ring-1 ring-white/18 transition group-hover:-translate-y-0.5 ${
+                          active
+                            ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]"
+                            : "bg-[var(--hewie-bg,#979ca7)] text-[var(--hewie-accent-text,#ffffff)] group-hover:bg-[var(--hewie-accent,#64748b)]"
+                        }`}
                       >
-                        {Icon ? <Icon className="size-[1.7rem]" strokeWidth={1.25} /> : null}
+                        {item.iconKind === "paw" ? <PawIcon /> : Icon ? <Icon className="size-[1.15rem]" strokeWidth={1.9} /> : null}
                         {showBadge ? (
-                          <span className="absolute -right-2 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1 text-[10px] font-semibold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
+                          <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
                             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
                           </span>
                         ) : null}
+                        <span className="max-w-[4rem] text-[12px] font-semibold leading-tight text-[var(--hewie-accent-text,#ffffff)]/92">{item.label}</span>
                       </span>
-                      <span className="max-w-[5rem] text-[11.5px] font-normal leading-none tracking-normal drop-shadow-[0_1px_3px_rgba(15,23,42,0.42)]">{item.label}</span>
-                      {active ? <span className="mt-0.5 h-0.5 w-5 rounded-full bg-current" aria-hidden="true" /> : <span className="mt-0.5 h-0.5 w-5" aria-hidden="true" />}
                     </Link>
                   );
                 })}
