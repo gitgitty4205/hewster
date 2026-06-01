@@ -2,8 +2,6 @@
 
 
 
-import { PetAvatarMenu } from "@/components/pet-avatar-menu";
-
 import { Check, ChevronDown, Clock3, Ellipsis, Tablets } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
@@ -1239,21 +1237,13 @@ export default function LogPage() {
 
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
 
-          <header className="mb-5 px-1 pb-3">
+          <header className="mb-5 px-1 pb-2">
 
-            <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
 
-              <div className="min-w-0 flex-1 pt-0.5">
+              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
 
-                <PetNotebookTitle href="/hewie" className="text-xs font-semibold text-[var(--hewie-active-text,#6d28d9)]/70" />
-
-                <div className="skeleton-pulse mt-1.5 h-8 w-36 rounded-lg bg-white/40" />
-
-                <div className="skeleton-pulse mt-3 h-px w-full bg-[#fff8ea]/45" />
-
-              </div>
-
-              <PetAvatarMenu className="size-14 rounded-full object-cover object-center ring-1 ring-[#fff8ea]/90 shadow-sm" width={56} height={56} />
+              <div className="mt-3 h-px w-full bg-[#fff8ea]/35" />
 
             </div>
 
@@ -1289,27 +1279,13 @@ export default function LogPage() {
 
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
 
-        <header className="mb-5 px-1 pb-3">
+        <header className="mb-5 px-1 pb-2">
 
-          <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
 
-            <div className="min-w-0 flex-1 pt-0.5">
+            <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
 
-              <PetNotebookTitle href="/hewie" className="text-xs font-semibold text-[var(--hewie-active-text,#6d28d9)]/70" />
-
-              <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-
-                <h1 className="text-[1.55rem] font-bold leading-tight text-zinc-800">Event Details</h1>
-
-                <span className="text-xs font-medium text-zinc-600">{isTodayLog ? "Today" : formatLogDayLabel(logDayKey)}</span>
-
-              </div>
-
-              <div className="mt-3 h-px w-full bg-[#fff8ea]/45" />
-
-            </div>
-
-            <PetAvatarMenu className="size-14 rounded-full object-cover object-center ring-1 ring-[#fff8ea]/90 shadow-sm" width={56} height={56} />
+            <div className="mt-3 h-px w-full bg-[#fff8ea]/35" />
 
           </div>
 
