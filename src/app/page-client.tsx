@@ -1930,7 +1930,9 @@ export default function HomeApp() {
                 <div className="skeleton-pulse mt-1 h-8 w-28 rounded-xl bg-white/40" />
               </div>
             </div>
-            <PetAvatarMenu shape="tile" className="absolute right-0 top-0" />
+            <div className="absolute right-0 top-0">
+              <PetAvatarMenu shape="tile" />
+            </div>
           </header>
 
           <div className="space-y-4">
@@ -1948,18 +1950,20 @@ export default function HomeApp() {
   return (
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-        <header className="relative mb-1 h-[4.5rem]">
+        <header className="relative mb-2 min-h-[5.4rem]">
           <div className="pr-24">
             <div>
-              <PetNotebookTitle href="/hewie" className="block text-sm font-bold leading-4 text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/hewie" className="block text-sm font-bold leading-[18px] text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="flex flex-col">
-                <h1 className="text-base font-bold leading-[18px] text-[var(--hewie-active-text,#334155)]/90">{greetingLabel}</h1>
-                <p className="text-[1.45rem] font-bold leading-6 text-[var(--hewie-active-text,#334155)]/90">Today, {headerDateTime}</p>
-                <p className="text-[13px] font-normal leading-[14px] text-[var(--hewie-active-text,#334155)]/70">{lastUpdatedLabel}</p>
+                <h1 className="text-base font-bold leading-5 text-[var(--hewie-active-text,#334155)]/90">{greetingLabel}</h1>
+                <p className="text-[1.45rem] font-bold leading-[1.2] text-[var(--hewie-active-text,#334155)]/90">Today, {headerDateTime}</p>
+                <p className="text-[13px] font-normal leading-4 text-[var(--hewie-active-text,#334155)]/70">{lastUpdatedLabel}</p>
               </div>
             </div>
           </div>
-          <PetAvatarMenu shape="tile" className="absolute right-0 top-0" />
+          <div className="absolute right-0 top-0">
+            <PetAvatarMenu shape="tile" />
+          </div>
         </header>
 
         {notebookDataUnavailable ? (
