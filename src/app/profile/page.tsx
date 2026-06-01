@@ -620,38 +620,40 @@ export default function ProfilePage() {
         ) : null}
 
         <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
-          <div className="mb-4 flex items-start gap-3">
-            <label
-              className={`relative flex size-16 shrink-0 overflow-hidden rounded-[1.05rem] bg-white/55 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 ${
-                canEditProfile ? "cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]" : ""
-              }`}
-              aria-label={`Change ${petFirstName}'s profile photo`}
-            >
-              <Image
-                src={profile.photoUrl || "/hewster-profile.jpg"}
-                alt={profile.petFirstName || profile.petName || "Pet profile photo"}
-                fill
-                className="object-cover object-center"
-                sizes="64px"
-              />
-              <input
-                type="file"
-                accept="image/*"
-                disabled={!canEditProfile}
-                onChange={(event) => {
-                  handleProfilePhotoFile(event.target.files?.[0]);
-                  event.currentTarget.value = "";
-                }}
-                className="sr-only"
-              />
-            </label>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold">About {petFirstName}</h2>
-              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">Helpful notes for anyone caring for this pet.</p>
-            </div>
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold">About {petFirstName}</h2>
+            <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">Helpful notes for anyone caring for this pet.</p>
           </div>
 
           <fieldset disabled={profileDetailsLocked} className="space-y-3 disabled:opacity-80">
+            <div className="block text-sm">
+              <span className="mb-2 block font-medium text-[var(--hewie-active-text,#334155)]/85">Profile Photo</span>
+              <label
+                className={`relative flex size-16 overflow-hidden rounded-[1.05rem] bg-white/55 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 ${
+                  canEditProfile ? "cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]" : ""
+                }`}
+                aria-label={`Change ${petFirstName}'s profile photo`}
+              >
+                <Image
+                  src={profile.photoUrl || "/hewster-profile.jpg"}
+                  alt={profile.petFirstName || profile.petName || "Pet profile photo"}
+                  fill
+                  className="object-cover object-center"
+                  sizes="64px"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={!canEditProfile}
+                  onChange={(event) => {
+                    handleProfilePhotoFile(event.target.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                  className="sr-only"
+                />
+              </label>
+            </div>
+
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Personality</span>
               <textarea
