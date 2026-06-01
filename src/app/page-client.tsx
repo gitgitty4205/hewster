@@ -76,15 +76,47 @@ function formatCurrentTime() {
   }).format(new Date());
 }
 
-function formatFullDateTime() {
+function formatHeaderDate() {
   return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
     month: "long",
     day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   }).format(new Date());
+}
+
+function greetingForNow() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  return "Good Evening";
+}
+
+function firstNameFromUser(user: ReturnType<typeof useAuth>["user"]) {
+  const metadata = user?.user_metadata ?? {};
+  const metadataFirstName = typeof metadata.first_name === "string" ? metadata.first_name.trim() : "";
+  if (metadataFirstName) return metadataFirstName;
+
+  const metadataFullName = typeof metadata.full_name === "string"
+    ? metadata.full_name
+    : typeof metadata.name === "string"
+      ? metadata.name
+      : "";
+  const firstName = metadataFullName.trim().split(/\s+/).filter(Boolean)[0] ?? "";
+  if (firstName) return firstName;
+
+  return user?.email?.split("@")[0]?.split(/[._-]/)[0] ?? "";
+}
+
+function formatLastUpdated(timestamp: number | null) {
+  if (!timestamp) return "No updates yet today";
+
+  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000));
+  if (elapsedMinutes < 1) return "Last updated just now";
+  if (elapsedMinutes < 60) return `Last updated ${elapsedMinutes} min ago`;
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `Last updated ${elapsedHours} hr ago`;
+
+  return "Last updated today";
 }
 
 function currentAlertMinuteKey() {
@@ -679,7 +711,7 @@ async function importBridgePayload(payload: HewsterBridgePayload) {
 }
 
 export default function HomeApp() {
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, user } = useAuth();
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>(
     []
@@ -859,14 +891,14 @@ export default function HomeApp() {
         setMedicationTemplates(medications);
         setCustomCareStatus(loadCustomCareStatus());
         setReminderRules(loadReminderAlertRules());
-        setHeaderDateTime(formatFullDateTime());
+        setHeaderDateTime(formatHeaderDate());
         setAlertMinuteKey(currentAlertMinuteKey());
       } catch {
         if (cancelled) return;
         setNotebookDataUnavailable(true);
         setTemplates([]);
         setDailyMealState([]);
-        setHeaderDateTime(formatFullDateTime());
+        setHeaderDateTime(formatHeaderDate());
         setAlertMinuteKey(currentAlertMinuteKey());
         setTodayKey((current) => current || currentTodayKey());
         setSupplementTemplates(loadCareTemplates("supplement"));
@@ -1051,7 +1083,7 @@ export default function HomeApp() {
   useEffect(() => {
     if (petRemembered) return;
     const resetForNewDay = () => {
-      setHeaderDateTime(formatFullDateTime());
+      setHeaderDateTime(formatHeaderDate());
       setAlertMinuteKey(currentAlertMinuteKey());
       const nextTodayKey = currentTodayKey();
 
@@ -1558,6 +1590,17 @@ export default function HomeApp() {
       .sort((a, b) => b.happenedAt.localeCompare(a.happenedAt));
   }, [activityLogs, poopRecordsWindowDays]);
 
+  const userFirstName = firstNameFromUser(user);
+  const greetingLabel = `${greetingForNow()}${userFirstName ? `, ${userFirstName}` : ""}`;
+  const lastUpdatedLabel = useMemo(() => {
+    void alertMinuteKey;
+    const latestTodayUpdate = dynamicTimeline.reduce<number | null>(
+      (latest, item) => item.sortMs > (latest ?? 0) ? item.sortMs : latest,
+      null
+    );
+    return formatLastUpdated(latestTodayUpdate);
+  }, [alertMinuteKey, dynamicTimeline]);
+
   const markMealFed = async (mealId: number) => {
     const timestamp = formatCurrentTime();
     const activeTodayKey = todayKey || currentTodayKey();
@@ -1910,8 +1953,9 @@ export default function HomeApp() {
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="mt-1 flex flex-col gap-1">
-                <h1 className="text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/90">Today</h1>
-                <p className="text-xs font-bold leading-4 text-[var(--hewie-active-text,#334155)]/82">{headerDateTime}</p>
+                <h1 className="text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/90">{greetingLabel}</h1>
+                <p className="text-xs font-bold leading-4 text-[var(--hewie-active-text,#334155)]/82">Today, {headerDateTime}</p>
+                <p className="text-xs font-semibold leading-4 text-[var(--hewie-active-text,#334155)]/68">{lastUpdatedLabel}</p>
               </div>
             </div>
           </div>
