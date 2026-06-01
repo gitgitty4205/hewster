@@ -216,15 +216,18 @@ function CompactMealCareSummary({
 
   const singleSupplement = supplements.length === 1 ? supplements[0] : null;
   const singleSupplementNote = singleSupplement?.notes?.trim() ?? "";
+  const containerClassName = singleSupplement
+    ? "mt-1.5 flex w-full min-w-0 items-start gap-1 overflow-hidden rounded-xl bg-white/34 px-1.5 py-1 text-left text-[10.5px] font-bold leading-[13px] text-[#1f3d5c] ring-1 ring-white/35"
+    : "mt-1.5 flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl bg-white/34 px-1.5 py-0.5 text-left text-[10.5px] font-bold leading-[11px] text-[#1f3d5c] ring-1 ring-white/35";
 
   return (
-    <div className="mt-1.5 flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl bg-white/34 px-1.5 py-0.5 text-left text-[10.5px] font-bold leading-[11px] text-[#1f3d5c] ring-1 ring-white/35">
+    <div className={containerClassName}>
       <span className="inline-flex size-3.5 shrink-0 items-center justify-center rounded-full bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]">
         <Tablets className="size-2.5" />
       </span>
       <span className="min-w-0 flex-1">
         {singleSupplement ? (
-          <span className="block truncate">{mealCareNameDose(singleSupplement)}</span>
+          <span className="line-clamp-2 break-words">{mealCareNameDose(singleSupplement)}</span>
         ) : (
           <span className="block truncate">{supplements.length} supplements</span>
         )}
@@ -233,7 +236,7 @@ function CompactMealCareSummary({
         <button
           type="button"
           aria-label="Show supplement notes"
-          className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-white/45 text-[#1f3d5c]/75 ring-1 ring-[#b8c9dd]/75"
+          className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-[#d8e4f1] text-[#1f3d5c] ring-1 ring-[#8ca8c3]/70"
           onClick={() => onOpenNote(singleSupplement)}
         >
           <StickyNote className="size-2.5" />
@@ -2160,6 +2163,11 @@ export default function HomeApp() {
                       closeButton: "bg-white/55 text-current/58 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white/80 hover:text-current/75",
                       noteBox: "bg-white/55 text-current/75 ring-[var(--hewie-ring,#cbd5e1)]/80",
                     };
+                    const mealCareNoteModalTone = {
+                      panel: "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]",
+                      closeButton: "bg-white/55 text-current/58 ring-[#b8c9dd]/80 transition hover:bg-white/80 hover:text-current/75",
+                      noteBox: "bg-white/55 text-current/75 ring-[#b8c9dd]/80",
+                    };
                     const mealTextInsetClassName = mealNoteText ? "pr-7" : "";
 
                     const mealPriorityClassName = priorityScheduleTime === card.sortAt.getTime() && upcomingScheduleCards.length > 1
@@ -2198,7 +2206,7 @@ export default function HomeApp() {
                                 title: item.name,
                                 subtitle: mealCareNameDose(item),
                                 text: item.notes.trim().slice(0, MEAL_CARE_NOTE_PREVIEW_LENGTH),
-                                tone: mealNoteModalTone,
+                                tone: mealCareNoteModalTone,
                               })}
                             />
                           ) : null}
