@@ -1948,14 +1948,14 @@ export default function HomeApp() {
   return (
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-        <header className="relative mb-3">
+        <header className="relative mb-1 h-[4.5rem]">
           <div className="pr-24">
             <div>
-              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-              <div className="mt-1 flex flex-col gap-1">
-                <h1 className="text-lg font-bold leading-6 text-[var(--hewie-active-text,#334155)]/90">{greetingLabel}</h1>
-                <p className="text-2xl font-bold leading-7 text-[var(--hewie-active-text,#334155)]/90">Today, {headerDateTime}</p>
-                <p className="text-sm font-normal leading-5 text-[var(--hewie-active-text,#334155)]/70">{lastUpdatedLabel}</p>
+              <PetNotebookTitle href="/hewie" className="block text-sm font-bold leading-4 text-[var(--hewie-active-text,#6d28d9)]" />
+              <div className="flex flex-col">
+                <h1 className="text-base font-bold leading-[18px] text-[var(--hewie-active-text,#334155)]/90">{greetingLabel}</h1>
+                <p className="text-[1.45rem] font-bold leading-6 text-[var(--hewie-active-text,#334155)]/90">Today, {headerDateTime}</p>
+                <p className="text-[13px] font-normal leading-[14px] text-[var(--hewie-active-text,#334155)]/70">{lastUpdatedLabel}</p>
               </div>
             </div>
           </div>
