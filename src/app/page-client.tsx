@@ -1923,7 +1923,7 @@ export default function HomeApp() {
     return (
       <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-          <header className="relative mb-3">
+          <header className="relative mb-3 min-h-24">
             <div className="pr-24">
               <div>
                 <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
@@ -1950,7 +1950,7 @@ export default function HomeApp() {
   return (
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-        <header className="relative mb-2 min-h-[5.4rem]">
+        <header className="relative mb-3 min-h-24">
           <div className="pr-24">
             <div>
               <PetNotebookTitle href="/hewie" className="block text-sm font-bold leading-[18px] text-[var(--hewie-active-text,#6d28d9)]" />
