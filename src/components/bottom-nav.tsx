@@ -87,19 +87,18 @@ function PencilIcon() {
 function WeightIcon() {
   return (
     <svg
-      className="size-[1.86rem]"
+      className="size-[2.05rem]"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth="1.6"
+      strokeWidth="1.7"
       aria-hidden="true"
     >
-      <path d="M7.1 20h9.8a2.5 2.5 0 0 0 2.5-2.8l-.9-8.2A3.4 3.4 0 0 0 15.1 6H8.9a3.4 3.4 0 0 0-3.4 3l-.9 8.2A2.5 2.5 0 0 0 7.1 20Z" />
-      <path d="M9 10.2a4.1 4.1 0 0 1 6 0" />
-      <path d="M12 10.2V8.4" />
-      <path d="M9.2 15.6h5.6" />
+      <path d="M7.6 20.1h8.8a3.2 3.2 0 0 0 3.2-3.5l-.7-7.9a4.2 4.2 0 0 0-4.2-3.8H9.3a4.2 4.2 0 0 0-4.2 3.8l-.7 7.9a3.2 3.2 0 0 0 3.2 3.5Z" />
+      <path d="M8.4 9.5c.5-1.2 1.7-1.9 3.6-1.9s3.1.7 3.6 1.9l-.8 2.2c-.2.5-.7.8-1.2.7a9.2 9.2 0 0 0-3.2 0c-.5.1-1-.2-1.2-.7l-.8-2.2Z" />
+      <path d="M12 11.2V8.9" />
     </svg>
   );
 }
