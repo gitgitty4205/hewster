@@ -1305,7 +1305,7 @@ export default function LogPage() {
         {!isTodayLog ? activityFeed : null}
 
         {logEventOpen ? (
-          <div className="relative mb-7 [&>section]:mb-0">
+          <div className="log-event-open-panel relative mb-7 [&>section]:mb-0">
             <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log" accentBackground>
 
             {detailActivityType && !editingActivityId ? (
@@ -1360,7 +1360,7 @@ export default function LogPage() {
             <button
               type="button"
               onClick={collapseLogEvent}
-              className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/90"
+              className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/90 active:translate-y-1 active:scale-95"
               aria-label="Collapse Log"
             >
               <span className="log-event-handle-sheen h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
@@ -1370,11 +1370,11 @@ export default function LogPage() {
           <button
             type="button"
             onClick={openLogEvent}
-            className="group relative mb-7 flex w-full cursor-pointer items-center justify-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-center text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
+            className="group relative mb-7 flex w-full cursor-pointer items-center justify-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-center text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition duration-200 ease-out hover:opacity-95 active:translate-y-0.5 active:scale-[0.985]"
           >
             <h2 className="text-lg font-semibold">Log</h2>
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
-              <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90">
+              <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90 group-active:translate-y-1">
                 <span className="log-event-handle-sheen h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
               </div>
             </div>

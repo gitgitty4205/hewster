@@ -171,6 +171,29 @@
   animation: logEventHandleSheen 1.55s ease-in-out infinite;
 }
 
+@keyframes logEventOpenIn {
+  from {
+    opacity: 0.78;
+    transform: translateY(-8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.log-event-open-panel {
+  animation: logEventOpenIn 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: top center;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .log-event-open-panel {
+    animation: none;
+  }
+}
+
 @keyframes hewiePriorityBorderPulse {
   0%, 100% {
     outline-offset: 0;
