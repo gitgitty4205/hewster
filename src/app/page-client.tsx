@@ -76,6 +76,17 @@ function formatCurrentTime() {
   }).format(new Date());
 }
 
+function formatFullDateTime() {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date());
+}
+
 function currentAlertMinuteKey() {
   const now = new Date();
   return `${currentTodayKey()}-${now.getHours()}:${now.getMinutes()}`;
@@ -696,6 +707,7 @@ export default function HomeApp() {
   const [mealActionState, setMealActionState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [activityState, setActivityState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [hydrated, setHydrated] = useState(false);
+  const [headerDateTime, setHeaderDateTime] = useState("");
   const [alertMinuteKey, setAlertMinuteKey] = useState("");
   const [todayKey, setTodayKey] = useState("");
   const [customCareStatus, setCustomCareStatus] = useState<CustomCareStatus>({});
@@ -847,12 +859,14 @@ export default function HomeApp() {
         setMedicationTemplates(medications);
         setCustomCareStatus(loadCustomCareStatus());
         setReminderRules(loadReminderAlertRules());
+        setHeaderDateTime(formatFullDateTime());
         setAlertMinuteKey(currentAlertMinuteKey());
       } catch {
         if (cancelled) return;
         setNotebookDataUnavailable(true);
         setTemplates([]);
         setDailyMealState([]);
+        setHeaderDateTime(formatFullDateTime());
         setAlertMinuteKey(currentAlertMinuteKey());
         setTodayKey((current) => current || currentTodayKey());
         setSupplementTemplates(loadCareTemplates("supplement"));
@@ -1037,6 +1051,7 @@ export default function HomeApp() {
   useEffect(() => {
     if (petRemembered) return;
     const resetForNewDay = () => {
+      setHeaderDateTime(formatFullDateTime());
       setAlertMinuteKey(currentAlertMinuteKey());
       const nextTodayKey = currentTodayKey();
 
@@ -1895,7 +1910,8 @@ export default function HomeApp() {
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="mt-1 flex flex-col gap-1">
-                <h1 className="text-xl font-bold tracking-tight text-zinc-700">Today&apos;s</h1>
+                <h1 className="text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/85">Today&apos;s</h1>
+                <p className="text-xs font-semibold leading-4 text-[var(--hewie-active-text,#334155)]/60">{headerDateTime}</p>
               </div>
             </div>
           </div>

@@ -42,11 +42,11 @@ const pages = [
   { label: "Today", href: `${APP_BASE}`, icon: Bookmark },
   { label: "Event Details", href: `${APP_BASE}/log`, iconKind: "pencil" },
   { label: "History", href: `${APP_BASE}/history`, icon: History },
-  { label: "Health", href: `${APP_BASE}/medical-records`, icon: FileHeart },
+  { label: "Health Records", href: `${APP_BASE}/medical-records`, icon: FileHeart },
   { label: "Weight", href: `${APP_BASE}/weight`, iconKind: "weight" },
   { label: "Fitness", href: `${APP_BASE}/activity`, icon: Activity },
   { label: "Alerts", href: `${APP_BASE}/alerts`, icon: BellPlus, badge: true },
-  { label: "Profile", href: `${APP_BASE}/profile`, iconKind: "paw" },
+  { label: "Pet Profile", href: `${APP_BASE}/profile`, iconKind: "paw" },
   { label: "Settings", href: `${APP_BASE}/settings`, icon: Settings2 },
 ];
 

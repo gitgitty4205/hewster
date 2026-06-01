@@ -295,7 +295,7 @@ export default function ProfilePage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/85">Profile</h1>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/85">Pet Profile</h1>
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
