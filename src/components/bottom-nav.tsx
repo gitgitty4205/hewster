@@ -6,7 +6,6 @@ import {
   Bookmark,
   FileHeart,
   History,
-  PenLine,
   Settings2,
   X,
 } from "lucide-react";
@@ -43,7 +42,7 @@ type FloatingMenuPosition = {
 
 const pages = [
   { label: "Today", href: `${APP_BASE}`, icon: Bookmark },
-  { label: "Event Details", href: `${APP_BASE}/log`, icon: PenLine },
+  { label: "Event Details", href: `${APP_BASE}/log`, iconKind: "pencil" },
   { label: "History", href: `${APP_BASE}/history`, icon: History },
   { label: "Health", href: `${APP_BASE}/medical-records`, icon: FileHeart },
   { label: "Weight", href: `${APP_BASE}/weight`, iconKind: "weight" },
@@ -56,7 +55,7 @@ const pages = [
 function PawIcon() {
   return (
     <span
-      className="block size-5 bg-current"
+      className="block size-[1.9rem] bg-current"
       style={{
         WebkitMask: "url('/paw-print.svg') center / contain no-repeat",
         mask: "url('/paw-print.svg') center / contain no-repeat",
@@ -66,21 +65,41 @@ function PawIcon() {
   );
 }
 
-function WeightIcon() {
+function PencilIcon() {
   return (
     <svg
-      className="size-[1.72rem]"
+      className="size-[1.82rem]"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth="1.65"
+      strokeWidth="1.7"
       aria-hidden="true"
     >
-      <path d="M7.4 19.2h9.2a2 2 0 0 0 2-2.3l-1-7.1a2.1 2.1 0 0 0-2.1-1.8h-7a2.1 2.1 0 0 0-2.1 1.8l-1 7.1a2 2 0 0 0 2 2.3Z" />
-      <path d="M9.1 11.1a3.2 3.2 0 0 1 5.8 0" />
-      <path d="M12 10.9l1.2-1.7" />
+      <path d="M5.2 18.8 6.4 14 15.8 4.6a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 0 2.8L10 17.6l-4.8 1.2Z" />
+      <path d="m14.3 6.1 3.6 3.6" />
+      <path d="m6.4 14 3.6 3.6" />
+    </svg>
+  );
+}
+
+function WeightIcon() {
+  return (
+    <svg
+      className="size-[1.86rem]"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <path d="M7.1 20h9.8a2.5 2.5 0 0 0 2.5-2.8l-.9-8.2A3.4 3.4 0 0 0 15.1 6H8.9a3.4 3.4 0 0 0-3.4 3l-.9 8.2A2.5 2.5 0 0 0 7.1 20Z" />
+      <path d="M9 10.2a4.1 4.1 0 0 1 6 0" />
+      <path d="M12 10.2V8.4" />
+      <path d="M9.2 15.6h5.6" />
     </svg>
   );
 }
@@ -338,7 +357,7 @@ export function BottomNav({ alertsCount }: Props) {
                             : "bg-[var(--hewie-bg,#979ca7)] text-[var(--hewie-accent-text,#ffffff)] group-hover:bg-[var(--hewie-accent,#64748b)]"
                         }`}
                       >
-                        {item.iconKind === "paw" ? <PawIcon /> : item.iconKind === "weight" ? <WeightIcon /> : Icon ? <Icon className="size-[1.72rem]" strokeWidth={1.65} /> : null}
+                        {item.iconKind === "paw" ? <PawIcon /> : item.iconKind === "weight" ? <WeightIcon /> : item.iconKind === "pencil" ? <PencilIcon /> : Icon ? <Icon className="size-[1.72rem]" strokeWidth={1.65} /> : null}
                         {showBadge ? (
                           <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
                             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
