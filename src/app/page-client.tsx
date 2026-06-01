@@ -97,6 +97,34 @@ function formatLastUpdated(timestamp: number | null) {
   return "Last updated today";
 }
 
+function displayNameFromEmail(email: string) {
+  const localPart = email.split("@")[0] ?? email;
+  return localPart
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ") || email;
+}
+
+function compactNameLabel(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "";
+  if (parts.length === 1) return parts[0];
+
+  const initials = parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
+  return initials || parts[0];
+}
+
+function userDisplayName(user: ReturnType<typeof useAuth>["user"]) {
+  if (!user) return "";
+
+  const metadata = user.user_metadata ?? {};
+  const firstName = typeof metadata.first_name === "string" ? metadata.first_name.trim() : "";
+  const lastName = typeof metadata.last_name === "string" ? metadata.last_name.trim() : "";
+  const fullName = typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
+  return [firstName, lastName].filter(Boolean).join(" ") || fullName || displayNameFromEmail(user.email ?? "");
+}
+
 function currentAlertMinuteKey() {
   const now = new Date();
   return `${currentTodayKey()}-${now.getHours()}:${now.getMinutes()}`;
@@ -689,7 +717,7 @@ async function importBridgePayload(payload: HewsterBridgePayload) {
 }
 
 export default function HomeApp() {
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, user } = useAuth();
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>(
     []
@@ -1568,14 +1596,23 @@ export default function HomeApp() {
       .sort((a, b) => b.happenedAt.localeCompare(a.happenedAt));
   }, [activityLogs, poopRecordsWindowDays]);
 
-  const lastUpdatedLabel = useMemo(() => {
+  const latestTodayUpdate = useMemo(() => {
     void alertMinuteKey;
-    const latestTodayUpdate = dynamicTimeline.reduce<number | null>(
-      (latest, item) => item.sortMs > (latest ?? 0) ? item.sortMs : latest,
+    return dynamicTimeline.reduce<(typeof dynamicTimeline)[number] | null>(
+      (latest, item) => item.sortMs > (latest?.sortMs ?? 0) ? item : latest,
       null
     );
-    return formatLastUpdated(latestTodayUpdate);
   }, [alertMinuteKey, dynamicTimeline]);
+  const lastUpdatedLabel = useMemo(() => formatLastUpdated(latestTodayUpdate?.sortMs ?? null), [latestTodayUpdate]);
+  const lastUpdatedByLabel = useMemo(() => {
+    if (!latestTodayUpdate) return "";
+
+    const activityActor =
+      "activity" in latestTodayUpdate
+        ? latestTodayUpdate.activity.auditInfo?.lastEditedBy || latestTodayUpdate.activity.auditInfo?.loggedBy || ""
+        : "";
+    return compactNameLabel(activityActor || userDisplayName(user));
+  }, [latestTodayUpdate, user]);
 
   const markMealFed = async (mealId: number) => {
     const timestamp = formatCurrentTime();
@@ -1932,7 +1969,10 @@ export default function HomeApp() {
               <PetNotebookTitle href="/hewie" className="block text-sm font-bold leading-[18px] text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="mt-1 flex flex-col">
                 <h1 className="text-[1.26rem] font-bold leading-[1.2] text-[#252a26]">Today, {headerDateTime}</h1>
-                <p className="text-xs font-normal leading-4 text-[#252a26]">{lastUpdatedLabel}</p>
+                <p className="text-xs font-normal leading-4 text-[#252a26]">
+                  {lastUpdatedLabel}
+                  {lastUpdatedByLabel ? <span> • by {lastUpdatedByLabel}</span> : null}
+                </p>
               </div>
             </div>
           </div>
