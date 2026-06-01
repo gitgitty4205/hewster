@@ -24,6 +24,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase";
 import {
   appThemes,
   applyPetTheme,
+  DEFAULT_PET_PHOTO_URL,
   defaultPetProfile,
   displayPetAge,
   loadPetProfile,
@@ -169,7 +170,7 @@ export default function ProfilePage() {
         accessEmail,
         accessRole,
         petNotebookName(profile),
-        profile.photoUrl || "/hewster-profile.jpg",
+        profile.photoUrl || DEFAULT_PET_PHOTO_URL,
       );
       setAccessEmail("");
       await refreshMembers();
@@ -632,7 +633,7 @@ export default function ProfilePage() {
                 aria-label={`Change ${petFirstName}'s profile photo`}
               >
                 <Image
-                  src={profile.photoUrl || "/hewster-profile.jpg"}
+                  src={profile.photoUrl || DEFAULT_PET_PHOTO_URL}
                   alt={profile.petFirstName || profile.petName || "Pet profile photo"}
                   fill
                   className="object-cover object-center"

@@ -30,6 +30,7 @@ export type PetProfile = {
 export const PET_PROFILE_STORAGE_KEY = "hewster.petProfile";
 export const USER_THEME_STORAGE_KEY = "hewster.userTheme";
 export const PET_THEME_UPDATED_EVENT = "pet-theme-updated";
+export const DEFAULT_PET_PHOTO_URL = "/paw-print.svg";
 
 export const defaultPetProfile: PetProfile = {
   petName: "Hewster",

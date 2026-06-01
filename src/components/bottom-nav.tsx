@@ -23,7 +23,7 @@ import {
 } from "@/lib/alerts";
 import { loadCareTemplates } from "@/lib/care-settings";
 import { loadAppState } from "@/lib/hewster-data";
-import { PET_THEME_UPDATED_EVENT, applyPetTheme, loadPetProfile, loadUserTheme } from "@/lib/pet-profile";
+import { DEFAULT_PET_PHOTO_URL, PET_THEME_UPDATED_EVENT, applyPetTheme, loadPetProfile, loadUserTheme } from "@/lib/pet-profile";
 
 type Props = {
   alertsCount?: number;
@@ -33,8 +33,6 @@ const APP_BASE = "/hewie";
 const FLOATING_MENU_POSITION_STORAGE_KEY = "hewster.floatingMenuPosition";
 const PAGES_BACKGROUND_MODE_STORAGE_KEY = "hewster.pagesBackgroundMode";
 const FLOATING_MENU_EDGE_GAP = 12;
-const PAGES_BACKGROUND_HOLD_MS = 650;
-const PAGES_BACKGROUND_TAP_PREVIEW_MS = 1800;
 
 type FloatingMenuPosition = {
   x: number;
@@ -188,15 +186,11 @@ export function BottomNav({ alertsCount }: Props) {
   const { user } = useAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [profilePhotoUrl, setProfilePhotoUrl] = useState("/hewster-profile.jpg");
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState(DEFAULT_PET_PHOTO_URL);
   const [pagesBackgroundMode, setPagesBackgroundMode] = useState<PagesBackgroundMode>("soft");
-  const [previewFullColorBackground, setPreviewFullColorBackground] = useState(false);
   const [floatingMenuPosition, setFloatingMenuPosition] = useState<FloatingMenuPosition | null>(null);
   const [draggingFloatingMenu, setDraggingFloatingMenu] = useState(false);
   const floatingMenuButtonRef = useRef<HTMLButtonElement | null>(null);
-  const pagesBackgroundHoldTimerRef = useRef<number | null>(null);
-  const pagesBackgroundPreviewTimerRef = useRef<number | null>(null);
-  const pagesBackgroundHoldStartRef = useRef<number | null>(null);
   const floatingMenuDragRef = useRef<{
     pointerId: number;
     moved: boolean;
@@ -209,7 +203,7 @@ export function BottomNav({ alertsCount }: Props) {
   const storedAlertsCountSnapshot = useSyncExternalStore(subscribeToStoredAlertsCount, loadStoredAlertsCountSnapshot, () => "0");
   const storedAlertsCount = normalizeStoredAlertsCount(storedAlertsCountSnapshot);
   const activeAlertsCount = alertsCount ?? storedAlertsCount;
-  const showingFullColorBackground = pagesBackgroundMode === "full" || previewFullColorBackground;
+  const showingFullColorBackground = pagesBackgroundMode === "full";
 
   useEffect(() => {
     if (typeof document === "undefined" || !open) return;
@@ -237,12 +231,11 @@ export function BottomNav({ alertsCount }: Props) {
 
     const stored = window.localStorage.getItem(pagesBackgroundModeStorageKey(user?.id));
     setPagesBackgroundMode(stored === "full" ? "full" : "soft");
-    setPreviewFullColorBackground(false);
   }, [user?.id]);
 
   useEffect(() => {
     const refreshProfilePhoto = () => {
-      setProfilePhotoUrl(loadPetProfile().photoUrl || "/hewster-profile.jpg");
+      setProfilePhotoUrl(loadPetProfile().photoUrl || DEFAULT_PET_PHOTO_URL);
     };
 
     refreshProfilePhoto();
@@ -333,18 +326,6 @@ export function BottomNav({ alertsCount }: Props) {
 
   useEffect(() => () => floatingMenuDragCleanupRef.current?.(), []);
 
-  useEffect(
-    () => () => {
-      if (pagesBackgroundHoldTimerRef.current) {
-        window.clearTimeout(pagesBackgroundHoldTimerRef.current);
-      }
-      if (pagesBackgroundPreviewTimerRef.current) {
-        window.clearTimeout(pagesBackgroundPreviewTimerRef.current);
-      }
-    },
-    []
-  );
-
   const moveFloatingMenu = (clientX: number, clientY: number) => {
     const drag = floatingMenuDragRef.current;
     const rect = floatingMenuButtonRef.current?.getBoundingClientRect();
@@ -368,74 +349,8 @@ export function BottomNav({ alertsCount }: Props) {
   };
 
   const updatePagesBackgroundMode = (mode: PagesBackgroundMode) => {
-    clearPagesBackgroundPreviewTimer();
     setPagesBackgroundMode(mode);
-    setPreviewFullColorBackground(false);
     window.localStorage.setItem(pagesBackgroundModeStorageKey(user?.id), mode);
-  };
-
-  const clearPagesBackgroundHold = () => {
-    if (!pagesBackgroundHoldTimerRef.current) return;
-    window.clearTimeout(pagesBackgroundHoldTimerRef.current);
-    pagesBackgroundHoldTimerRef.current = null;
-  };
-
-  const clearPagesBackgroundPreviewTimer = () => {
-    if (!pagesBackgroundPreviewTimerRef.current) return;
-    window.clearTimeout(pagesBackgroundPreviewTimerRef.current);
-    pagesBackgroundPreviewTimerRef.current = null;
-  };
-
-  const startPagesBackgroundInteraction = (target: EventTarget | null, button?: number) => {
-    if (typeof button === "number" && button > 0) return;
-    const targetElement = target as HTMLElement | null;
-    if (targetElement?.closest("a,button")) return;
-
-    clearPagesBackgroundHold();
-    clearPagesBackgroundPreviewTimer();
-    pagesBackgroundHoldStartRef.current = window.performance.now();
-    setPreviewFullColorBackground(true);
-    pagesBackgroundHoldTimerRef.current = window.setTimeout(() => {
-      pagesBackgroundHoldTimerRef.current = null;
-      pagesBackgroundHoldStartRef.current = null;
-      updatePagesBackgroundMode("full");
-    }, PAGES_BACKGROUND_HOLD_MS);
-  };
-
-  const handlePagesBackgroundPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    startPagesBackgroundInteraction(event.target, event.button);
-  };
-
-  const handlePagesBackgroundMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    startPagesBackgroundInteraction(event.target, event.button);
-  };
-
-  const finishPagesBackgroundInteraction = () => {
-    const heldLongEnough =
-      pagesBackgroundHoldStartRef.current !== null &&
-      window.performance.now() - pagesBackgroundHoldStartRef.current >= PAGES_BACKGROUND_HOLD_MS;
-
-    clearPagesBackgroundHold();
-    pagesBackgroundHoldStartRef.current = null;
-
-    if (heldLongEnough) {
-      updatePagesBackgroundMode("full");
-      return;
-    }
-
-    clearPagesBackgroundPreviewTimer();
-    pagesBackgroundPreviewTimerRef.current = window.setTimeout(() => {
-      pagesBackgroundPreviewTimerRef.current = null;
-      setPreviewFullColorBackground(false);
-    }, PAGES_BACKGROUND_TAP_PREVIEW_MS);
-  };
-
-  const handlePagesBackgroundPointerEnd = () => {
-    finishPagesBackgroundInteraction();
-  };
-
-  const handlePagesBackgroundMouseEnd = () => {
-    finishPagesBackgroundInteraction();
   };
 
   return (
@@ -500,14 +415,7 @@ export function BottomNav({ alertsCount }: Props) {
               </div>
             </div>
 
-            <div
-              className="relative flex flex-1 items-center overflow-y-auto px-6 py-8 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:py-10"
-              onPointerDownCapture={handlePagesBackgroundPointerDown}
-              onPointerUpCapture={handlePagesBackgroundPointerEnd}
-              onPointerCancelCapture={handlePagesBackgroundPointerEnd}
-              onMouseDownCapture={handlePagesBackgroundMouseDown}
-              onMouseUpCapture={handlePagesBackgroundMouseEnd}
-            >
+            <div className="relative flex flex-1 items-center overflow-y-auto px-6 py-8 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:py-10">
               <div className="grid w-full grid-cols-3 justify-items-center gap-x-6 gap-y-9">
                 {pages.map((item) => {
                   const Icon = item.icon;

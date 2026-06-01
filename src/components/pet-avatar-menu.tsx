@@ -13,7 +13,7 @@ import {
   type NotebookAccessRole,
   type NotebookMember,
 } from "@/lib/notebook-access";
-import { defaultPetProfile, loadPetProfile, savePetProfile, type PetProfile } from "@/lib/pet-profile";
+import { DEFAULT_PET_PHOTO_URL, defaultPetProfile, loadPetProfile, savePetProfile, type PetProfile } from "@/lib/pet-profile";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +39,7 @@ function currentPetToRosterPet(profile: PetProfile): RosterPet {
     id: "current",
     name: profile.petName || profile.petFirstName || defaultPetProfile.petName,
     species: profile.species || defaultPetProfile.species,
-    photoUrl: profile.photoUrl || "/hewster-profile.jpg",
+    photoUrl: profile.photoUrl || DEFAULT_PET_PHOTO_URL,
     archived: profile.archivedFromPetSwitcher,
   };
 }
@@ -189,7 +189,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
           id: member.id,
           name: isOwnNotebook && ownedPrimaryPet ? ownedPrimaryPet.name : notebookLabel(member, profile, user?.id),
           species: displayedPet.species || defaultPetProfile.species,
-          photoUrl: displayedPet.photoUrl || "/hewster-profile.jpg",
+          photoUrl: displayedPet.photoUrl || DEFAULT_PET_PHOTO_URL,
           role: member.role,
           notebookOwnerId: member.notebookOwnerId,
         };
@@ -220,7 +220,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
         id: `pet-${Date.now()}`,
         name,
         species,
-        photoUrl: newProfile.photoUrl || "/hewster-profile.jpg",
+        photoUrl: newProfile.photoUrl || DEFAULT_PET_PHOTO_URL,
       },
     ];
 
@@ -261,7 +261,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
         aria-label="Open pet switcher"
       >
         <Image
-          src={currentPet.photoUrl || "/hewster-profile.jpg"}
+          src={currentPet.photoUrl || DEFAULT_PET_PHOTO_URL}
           alt={currentPet.name}
           width={width ?? imageSize}
           height={height ?? imageSize}
@@ -274,7 +274,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
           <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[680px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[78vh] sm:min-h-[560px]">
             <div
               className="absolute inset-0 bg-cover bg-center opacity-[0.82] grayscale contrast-90 saturate-80"
-              style={{ backgroundImage: `url('${currentPet.photoUrl || "/hewster-profile.jpg"}')` }}
+              style={{ backgroundImage: `url('${currentPet.photoUrl || DEFAULT_PET_PHOTO_URL}')` }}
               aria-hidden="true"
             />
             <div
