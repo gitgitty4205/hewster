@@ -1376,21 +1376,8 @@ export default function HistoryPage() {
   const [includeLogDetails, setIncludeLogDetails] = useState(false);
   const [activeNotebookRole, setActiveNotebookRole] = useState<NotebookAccessRole | null>(null);
   const [profile, setProfile] = useState<PetProfile>(() => loadPetProfile());
-  const [compactHeaderVisible, setCompactHeaderVisible] = useState(false);
   const supabaseReady = isSupabaseConfigured();
   const canIncludeLogDetails = activeNotebookRole ? canExportNotebook(activeNotebookRole) : false;
-
-
-
-  useEffect(() => {
-    const updateCompactHeader = () => {
-      setCompactHeaderVisible(window.scrollY > 120);
-    };
-
-    updateCompactHeader();
-    window.addEventListener("scroll", updateCompactHeader, { passive: true });
-    return () => window.removeEventListener("scroll", updateCompactHeader);
-  }, []);
 
 
 
@@ -2295,20 +2282,6 @@ export default function HistoryPage() {
   return (
 
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
-
-      {compactHeaderVisible ? (
-        <div className="fixed left-1/2 top-0 z-40 w-full max-w-md -translate-x-1/2 px-4 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
-          <div className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)]/94 px-3 py-2 text-[var(--hewie-active-text,#334155)] shadow-[0_12px_30px_rgba(15,23,42,0.18)] ring-1 ring-[var(--hewie-ring,#cbd5e1)] backdrop-blur-md">
-            <div className="min-w-0">
-              <PetNotebookTitle href="/hewie" className="block truncate text-sm font-bold text-[var(--hewie-active-text,#334155)]" />
-              <p className="mt-0.5 truncate text-xs font-semibold text-[var(--hewie-active-text,#334155)]/68">
-                History{activeFilter !== "all" ? ` - ${historyFilterLabels.get(activeFilter) ?? "Filtered"}` : ""}
-              </p>
-            </div>
-            <PetAvatarMenu shape="tile" size="compact" />
-          </div>
-        </div>
-      ) : null}
 
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
 
