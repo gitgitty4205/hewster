@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Ellipsis, Heart, MailPlus, ShieldCheck } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
@@ -238,6 +239,18 @@ export default function ProfilePage() {
     window.setTimeout(() => setSaveState("idle"), 1400);
   };
 
+  const handleProfilePhotoFile = (file?: File) => {
+    if (!file || !file.type.startsWith("image/")) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        updateProfile({ photoUrl: reader.result });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleDoneEditingProfile = () => {
     const missing = missingRequiredPetInfoFields(profile);
     if (missing.length > 0) {
@@ -268,6 +281,7 @@ export default function ProfilePage() {
   const calculatedAge = displayPetAge(profile);
   const petFirstName = profile.petFirstName.trim() || profile.petName.split(/\s+/)[0] || "Pet";
   const rememberedDateLabel = formatRememberedDate(profile.passedAwayDate);
+  const hasUploadedProfilePhoto = profile.photoUrl.startsWith("data:image/");
   const petInfoInputClass = (field?: RequiredPetInfoField) =>
     `w-full rounded-2xl border bg-white px-3 py-2.5 text-sm outline-none transition focus:ring-4 ${
       field && missingPetInfoFields.has(field)
@@ -353,6 +367,45 @@ export default function ProfilePage() {
           ) : null}
 
           <fieldset disabled={profileDetailsLocked} className="space-y-3 disabled:opacity-80">
+            <div className="block text-sm">
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Profile Photo</span>
+              <div className="flex items-start gap-3">
+                <span className="relative flex size-16 shrink-0 overflow-hidden rounded-[1.05rem] bg-white/55 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+                  <Image
+                    src={profile.photoUrl || "/hewster-profile.jpg"}
+                    alt={profile.petFirstName || profile.petName || "Pet profile photo"}
+                    fill
+                    className="object-cover object-center"
+                    sizes="64px"
+                  />
+                </span>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => handleProfilePhotoFile(event.target.files?.[0])}
+                    className="block w-full text-xs text-[var(--hewie-active-text,#334155)]/70 file:mr-3 file:rounded-full file:border-0 file:bg-white/75 file:px-3 file:py-2 file:text-xs file:font-bold file:text-[var(--hewie-active-text,#334155)] file:shadow-sm file:ring-1 file:ring-[var(--hewie-ring,#cbd5e1)]"
+                  />
+                  <input
+                    type="url"
+                    value={hasUploadedProfilePhoto ? "" : profile.photoUrl}
+                    onChange={(event) => updateProfile({ photoUrl: event.target.value.trim() })}
+                    placeholder={hasUploadedProfilePhoto ? "Uploaded photo selected" : "/hewster-profile.jpg or image URL"}
+                    className={petInfoInputClass()}
+                  />
+                  {profile.photoUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => updateProfile({ photoUrl: "" })}
+                      className="rounded-full bg-white/75 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/70 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]"
+                    >
+                      Use Default Photo
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
                 <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">First Name <RequiredMark show={isEditingProfile} /></span>

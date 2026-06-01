@@ -121,6 +121,21 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
   }, [user?.id]);
 
   useEffect(() => {
+    const refreshProfile = () => {
+      setProfile(loadPetProfile());
+      setPets(readRoster(user?.id));
+    };
+
+    window.addEventListener("pet-profile-updated", refreshProfile);
+    window.addEventListener("storage", refreshProfile);
+
+    return () => {
+      window.removeEventListener("pet-profile-updated", refreshProfile);
+      window.removeEventListener("storage", refreshProfile);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
     const supabase = getSupabaseBrowserClient();
 
     let active = true;
