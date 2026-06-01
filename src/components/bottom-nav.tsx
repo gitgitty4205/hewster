@@ -472,32 +472,23 @@ export function BottomNav({ alertsCount }: Props) {
                 <h2 className="text-2xl font-semibold text-[var(--hewie-active-text,#334155)]">Pages</h2>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 rounded-full bg-white/78 p-1.5 shadow-sm ring-1 ring-white/80 backdrop-blur-sm" aria-label="Pages background style">
-                  <button
-                    type="button"
-                    onClick={() => updatePagesBackgroundMode("soft")}
-                    className={`flex size-7 items-center justify-center rounded-full transition ${
-                      pagesBackgroundMode === "soft" ? "ring-2 ring-[var(--hewie-accent,#64748b)] ring-offset-2 ring-offset-white" : "opacity-70"
+                <button
+                  type="button"
+                  onClick={() => updatePagesBackgroundMode(pagesBackgroundMode === "full" ? "soft" : "full")}
+                  className="flex size-10 items-center justify-center rounded-full bg-white/85 text-[var(--hewie-active-text,#334155)] shadow-sm transition hover:bg-white"
+                  aria-pressed={pagesBackgroundMode === "full"}
+                  aria-label={pagesBackgroundMode === "full" ? "Use soft Pages background" : "Use full color Pages background"}
+                  title={pagesBackgroundMode === "full" ? "Use soft Pages background" : "Use full color Pages background"}
+                >
+                  <span
+                    className={`size-4 rounded-full transition ${
+                      pagesBackgroundMode === "full"
+                        ? "bg-[var(--hewie-accent,#64748b)] shadow-inner ring-1 ring-[var(--hewie-active-text,#334155)]/15"
+                        : "bg-transparent ring-2 ring-[var(--hewie-active-text,#334155)]/55"
                     }`}
-                    aria-pressed={pagesBackgroundMode === "soft"}
-                    aria-label="Use soft Pages background"
-                    title="Use soft Pages background"
-                  >
-                    <span className="size-4 rounded-full bg-[var(--hewie-active-bg,#f1f5f9)] shadow-inner ring-1 ring-[var(--hewie-active-text,#334155)]/20" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updatePagesBackgroundMode("full")}
-                    className={`flex size-7 items-center justify-center rounded-full transition ${
-                      pagesBackgroundMode === "full" ? "ring-2 ring-[var(--hewie-accent,#64748b)] ring-offset-2 ring-offset-white" : "opacity-70"
-                    }`}
-                    aria-pressed={pagesBackgroundMode === "full"}
-                    aria-label="Use full color Pages background"
-                    title="Use full color Pages background"
-                  >
-                    <span className="size-4 rounded-full bg-[var(--hewie-accent,#64748b)] shadow-inner ring-1 ring-[var(--hewie-active-text,#334155)]/15" aria-hidden="true" />
-                  </button>
-                </div>
+                    aria-hidden="true"
+                  />
+                </button>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
