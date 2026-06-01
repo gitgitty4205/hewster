@@ -127,13 +127,6 @@ function formatLogDayLabel(dayKey: string) {
   }).format(new Date(`${dayKey}T00:00:00`));
 }
 
-function formatLogHeaderDateTime(dayKey: string) {
-  return `${formatLogDayLabel(dayKey)}, ${new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date())}`;
-}
-
 function mergeDayWithTime(dayKey: string, timeValue: string) {
 
   const [hours, minutes] = timeValue.split(":").map(Number);
@@ -1299,7 +1292,6 @@ export default function LogPage() {
 
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Event Details</h1>
-              <p className="mt-0.5 text-xs font-semibold leading-4 text-[#5d4852]">{formatLogHeaderDateTime(logDayKey)}</p>
 
             </div>
 
