@@ -197,52 +197,49 @@ function mealPlanCareDetailText(item: CareItemTemplate) {
   return `${dose}${routeText}`;
 }
 
-const MAX_COLLAPSED_MEAL_SUPPLEMENTS = 2;
 const MAX_MEAL_PLAN_SUPPLEMENTS = 4;
+const MEAL_CARE_NOTE_PREVIEW_LENGTH = 100;
 
 function mealCareNameDose(item: CareItemTemplate) {
   return `${item.name}${item.dose ? ` ${item.dose}` : ""}`;
 }
 
 function CompactMealCareSummary({
-  expanded,
   items,
-  onToggle,
+  onOpenNote,
 }: {
-  expanded: boolean;
   items: CareItemTemplate[];
-  onToggle: () => void;
+  onOpenNote: (item: CareItemTemplate) => void;
 }) {
   const supplements = items.filter((item) => item.kind === "supplement").slice(0, MAX_MEAL_PLAN_SUPPLEMENTS);
   if (!supplements.length) return null;
 
-  const shouldCollapseToCount = supplements.length > MAX_COLLAPSED_MEAL_SUPPLEMENTS && !expanded;
-  const visibleSupplements = expanded || !shouldCollapseToCount
-    ? supplements
-    : supplements.slice(0, MAX_COLLAPSED_MEAL_SUPPLEMENTS);
+  const singleSupplement = supplements.length === 1 ? supplements[0] : null;
+  const singleSupplementNote = singleSupplement?.notes?.trim() ?? "";
 
   return (
-    <button
-      type="button"
-      aria-expanded={expanded}
-      className="mt-1.5 flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl bg-white/34 px-1.5 py-0.5 text-left text-[10.5px] font-bold leading-[11px] text-[#1f3d5c] ring-1 ring-white/35"
-      onClick={onToggle}
-    >
+    <div className="mt-1.5 flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl bg-white/34 px-1.5 py-0.5 text-left text-[10.5px] font-bold leading-[11px] text-[#1f3d5c] ring-1 ring-white/35">
       <span className="inline-flex size-3.5 shrink-0 items-center justify-center rounded-full bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]">
         <Tablets className="size-2.5" />
       </span>
-      <span className="min-w-0 flex-1 space-y-px">
-        {shouldCollapseToCount ? (
-          <span className="block truncate">{supplements.length} supplements</span>
+      <span className="min-w-0 flex-1">
+        {singleSupplement ? (
+          <span className="block truncate">{mealCareNameDose(singleSupplement)}</span>
         ) : (
-          visibleSupplements.map((item) => (
-            <span key={item.id} className="block truncate">
-              {mealCareNameDose(item)}
-            </span>
-          ))
+          <span className="block truncate">{supplements.length} supplements</span>
         )}
       </span>
-    </button>
+      {singleSupplement && singleSupplementNote ? (
+        <button
+          type="button"
+          aria-label="Show supplement notes"
+          className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-white/45 text-[#1f3d5c]/75 ring-1 ring-[#b8c9dd]/75"
+          onClick={() => onOpenNote(singleSupplement)}
+        >
+          <StickyNote className="size-2.5" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -753,7 +750,6 @@ export default function HomeApp() {
   const [customCareSkipKey, setCustomCareSkipKey] = useState<string | null>(null);
   const [customCareSkipNotes, setCustomCareSkipNotes] = useState<Record<string, string>>({});
   const [expandedAlertIds, setExpandedAlertIds] = useState<Set<string>>(() => new Set());
-  const [expandedMealCareKey, setExpandedMealCareKey] = useState<string | null>(null);
   const [upcomingOverflowExpanded, setUpcomingOverflowExpanded] = useState(false);
   const [upcomingNoteModal, setUpcomingNoteModal] = useState<{
     title: string;
@@ -2157,15 +2153,14 @@ export default function HomeApp() {
                     const plannedTimeLabel = scheduleTimeLabel(card.sortAt, card.meal.plannedTime, todayKey || currentTodayKey());
                     const mealDayKey = dayKeyFromDate(card.sortAt);
                     const cardMealCareItems = mealCareItemsWithDoseBadges(careTemplates, card.meal, templates, mealDayKey);
-                    const mealCareKey = `${mealDayKey}-${card.meal.id}`;
                     const mealNoteText = card.meal.notes?.trim().slice(0, 100) ?? "";
-                    const isMealCareExpanded = expandedMealCareKey === mealCareKey;
                     const mealNoteButtonClassName = "bg-[var(--hewie-active-text,#334155)]/12 text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]/80 hover:bg-[var(--hewie-active-text,#334155)]/18";
                     const mealNoteModalTone = {
                       panel: "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]",
                       closeButton: "bg-white/55 text-current/58 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white/80 hover:text-current/75",
                       noteBox: "bg-white/55 text-current/75 ring-[var(--hewie-ring,#cbd5e1)]/80",
                     };
+                    const mealTextInsetClassName = mealNoteText ? "pr-7" : "";
 
                     const mealPriorityClassName = priorityScheduleTime === card.sortAt.getTime() && upcomingScheduleCards.length > 1
                       ? "hewie-priority-border"
@@ -2174,13 +2169,13 @@ export default function HomeApp() {
                     return (
                       <div key={card.sortKey} className={`${mealPriorityClassName} relative flex aspect-square min-w-0 overflow-hidden flex-col justify-between rounded-2xl bg-white/32 p-2.5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/55`}>
                         <div className="min-h-0 min-w-0">
-                          <p className="pr-7 text-[10px] font-bold uppercase leading-3 tracking-wide text-current/55">Next Meal</p>
-                          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 pr-7">
+                          <p className={`${mealTextInsetClassName} text-[10px] font-bold uppercase leading-3 tracking-wide text-current/55`}>Next Meal</p>
+                          <div className={`mt-0.5 flex min-w-0 flex-wrap items-center gap-1 ${mealTextInsetClassName}`}>
                             <p className="truncate text-sm font-semibold leading-4 text-current/95">{card.meal.name}</p>
                             {card.meal.status === "late" ? <span className="rounded-full bg-white/75 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-current/75 ring-1 ring-current/15">Late</span> : null}
                           </div>
-                          <p className="pr-7 text-[13px] font-semibold leading-4 text-current/70">{plannedTimeLabel}</p>
-                          <p className="mt-0.5 line-clamp-1 pr-7 text-[12px] leading-4 text-current/72">{card.meal.food}</p>
+                          <p className={`${mealTextInsetClassName} text-[13px] font-semibold leading-4 text-current/70`}>{plannedTimeLabel}</p>
+                          <p className={`mt-0.5 line-clamp-2 text-[12px] leading-4 text-current/72 ${mealTextInsetClassName}`}>{card.meal.food}</p>
                           {mealNoteText ? (
                             <button
                               type="button"
@@ -2198,9 +2193,13 @@ export default function HomeApp() {
                           ) : null}
                           {cardMealCareItems.length ? (
                             <CompactMealCareSummary
-                              expanded={isMealCareExpanded}
                               items={cardMealCareItems}
-                              onToggle={() => setExpandedMealCareKey((current) => current === mealCareKey ? null : mealCareKey)}
+                              onOpenNote={(item) => setUpcomingNoteModal({
+                                title: item.name,
+                                subtitle: mealCareNameDose(item),
+                                text: item.notes.trim().slice(0, MEAL_CARE_NOTE_PREVIEW_LENGTH),
+                                tone: mealNoteModalTone,
+                              })}
                             />
                           ) : null}
                         </div>

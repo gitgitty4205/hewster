@@ -24,6 +24,7 @@ import {
 } from "@/lib/pet-profile";
 
 const MAX_ATTACHMENT_FILES = 5;
+const MAX_EVENT_TITLE_LENGTH = 40;
 
 
 
@@ -1532,11 +1533,12 @@ export function ActivityDetailForm({
             value={detail === "Other" ? "" : displayDetailValue(detail)}
 
             onChange={(event) => {
-              const nextValue = event.target.value;
+              const nextValue = event.target.value.slice(0, MAX_EVENT_TITLE_LENGTH);
               onDetailChange(isOtherMedicalDetail(detail) ? nextValue ? `Other Medical: ${nextValue}` : "Other Medical" : nextValue);
             }}
 
             placeholder={activityType === "other" ? "What would you like to log?" : "Add a title"}
+            maxLength={MAX_EVENT_TITLE_LENGTH}
 
             className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
 

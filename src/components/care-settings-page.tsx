@@ -24,6 +24,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 
 const HEWSTER_BRIDGE_SOURCE = "https://lindy.b-average.com";
 const MAX_SUPPLEMENTS_PER_MEAL_PLAN_TILE = 4;
+const MAX_CARE_ITEM_NAME_LENGTH = 40;
 
 type BridgeCarePayload = {
   supplementSettings?: CareItemTemplate[];
@@ -417,7 +418,8 @@ export function CareSettingsPage({
                       <input
                         value={item.name}
                         disabled={!isEditing}
-                        onChange={(event) => updateItem(item.id, { name: event.target.value })}
+                        onChange={(event) => updateItem(item.id, { name: event.target.value.slice(0, MAX_CARE_ITEM_NAME_LENGTH) })}
+                        maxLength={MAX_CARE_ITEM_NAME_LENGTH}
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
                     </label>
