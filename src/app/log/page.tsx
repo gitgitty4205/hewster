@@ -110,6 +110,25 @@ function isValidDayKey(value: string | null) {
   return !Number.isNaN(date.getTime()) && currentTodayKeyFromDate(date) === value;
 }
 
+function LogPencilIcon() {
+  return (
+    <svg
+      className="size-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <path d="M5.2 18.8 6.4 14 15.8 4.6a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 0 2.8L10 17.6l-4.8 1.2Z" />
+      <path d="m14.3 6.1 3.6 3.6" />
+      <path d="m6.4 14 3.6 3.6" />
+    </svg>
+  );
+}
+
 function currentTodayKeyFromDate(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
@@ -1306,7 +1325,12 @@ export default function LogPage() {
 
         {logEventOpen ? (
           <div className="log-event-open-panel relative mb-7 [&>section]:mb-0">
-            <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title="Log" accentBackground>
+            <QuickLogCard
+              activityState={activityState}
+              onQuickLog={quickLogActivity}
+              title={<span className="inline-flex items-center justify-center gap-2"><LogPencilIcon />Log</span>}
+              accentBackground
+            >
 
             {detailActivityType && !editingActivityId ? (
 
@@ -1372,7 +1396,7 @@ export default function LogPage() {
             onClick={openLogEvent}
             className="group relative mb-7 flex w-full cursor-pointer items-center justify-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-center text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition duration-200 ease-out hover:opacity-95 active:translate-y-0.5 active:scale-[0.985]"
           >
-            <h2 className="text-lg font-semibold">Log</h2>
+            <h2 className="inline-flex items-center justify-center gap-2 text-lg font-semibold"><LogPencilIcon />Log</h2>
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
               <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90 group-active:translate-y-1">
                 <span className="log-event-handle-sheen h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />

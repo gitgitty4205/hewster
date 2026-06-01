@@ -10,7 +10,7 @@ type Props = {
   onQuickLog: (activityType: ActivityType) => void;
   includeOther?: boolean;
   visibleTypes?: ActivityType[];
-  title?: string | null;
+  title?: React.ReactNode;
   iconOnly?: boolean;
   accentBackground?: boolean;
   children?: React.ReactNode;
