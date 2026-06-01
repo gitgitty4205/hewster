@@ -314,11 +314,18 @@ export function BottomNav({ alertsCount }: Props) {
         <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/25 px-3 py-4 backdrop-blur-sm sm:py-6">
           <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]" style={MENU_FONT_STYLE}>
             <div
-              className="absolute inset-0 bg-cover bg-center grayscale"
+              className="absolute inset-0 bg-cover bg-center opacity-75 grayscale contrast-90 saturate-75"
               style={{ backgroundImage: "url('/hewster-profile.jpg')" }}
               aria-hidden="true"
             />
-            <div className="absolute inset-0 bg-[var(--hewie-bg,#979ca7)]/34" aria-hidden="true" />
+            <div
+              className="absolute inset-0 backdrop-blur-[0.6px]"
+              style={{
+                background:
+                  "linear-gradient(180deg, color-mix(in srgb, var(--hewie-active-bg,#f1f5f9) 64%, transparent) 0%, color-mix(in srgb, var(--hewie-bg,#979ca7) 34%, transparent) 44%, color-mix(in srgb, var(--hewie-active-bg,#f1f5f9) 50%, transparent) 100%)",
+              }}
+              aria-hidden="true"
+            />
             <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg,#f1f5f9)]/92 px-6 py-5 text-[var(--hewie-active-text,#334155)] shadow-sm backdrop-blur-[1px]">
               <div>
                 <p className="text-[11px] font-normal uppercase tracking-normal text-[var(--hewie-active-text,#334155)]/62"><PetNotebookTitle /></p>
@@ -352,8 +359,8 @@ export function BottomNav({ alertsCount }: Props) {
                       <span
                         className={`relative flex size-[4.65rem] items-center justify-center rounded-[1.2rem] shadow-sm ring-1 ring-white/18 transition group-hover:-translate-y-0.5 ${
                           active
-                            ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]"
-                            : "bg-[var(--hewie-bg,#979ca7)] text-[var(--hewie-accent-text,#ffffff)] group-hover:bg-[var(--hewie-accent,#64748b)]"
+                            ? "bg-[var(--hewie-accent,#64748b)]/95 text-[var(--hewie-accent-text,#ffffff)] shadow-[0_10px_24px_rgba(15,23,42,0.16)] ring-white/30 backdrop-blur-[1.5px]"
+                            : "bg-[var(--hewie-bg,#979ca7)]/86 text-[var(--hewie-accent-text,#ffffff)] shadow-[0_10px_24px_rgba(15,23,42,0.12)] ring-white/28 backdrop-blur-[1.5px] group-hover:bg-[var(--hewie-accent,#64748b)]/92"
                         }`}
                       >
                         {item.iconKind === "paw" ? <PawIcon /> : item.iconKind === "weight" ? <WeightIcon /> : item.iconKind === "pencil" ? <PencilIcon /> : Icon ? <Icon className="size-[1.72rem]" strokeWidth={1.65} /> : null}
