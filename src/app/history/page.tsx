@@ -1181,7 +1181,7 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
   return <span className={`mt-1 flex size-5 shrink-0 items-center justify-center rounded-full ${getEventFeedDot(activityType)}`} />;
 }
 
-type HistoryFilter = "all" | "allFood" | "potty" | "activity" | "medical" | "wellness" | "care" | "other" | "uploads" | "medicalRecords" | "vetProcedures";
+type HistoryFilter = "all" | "allFood" | "treat" | "potty" | "activity" | "medical" | "wellness" | "care" | "other" | "medicalAttachments" | "poopRecords";
 
 const eventFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
 
@@ -1189,7 +1189,9 @@ const eventFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
 
   { id: "potty", label: "Potty" },
 
-  { id: "allFood", label: "Food (All)" },
+  { id: "allFood", label: "Food" },
+
+  { id: "treat", label: "Treat" },
 
   { id: "activity", label: "Activity" },
 
@@ -1205,11 +1207,9 @@ const eventFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
 
 const recordFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
 
-  { id: "uploads", label: "Photos & Docs" },
+  { id: "medicalAttachments", label: "Medical Attachments" },
 
-  { id: "vetProcedures", label: "Vet Visits" },
-
-  { id: "medicalRecords", label: "Health Records" },
+  { id: "poopRecords", label: "Poop Records" },
 
 ];
 
@@ -1230,32 +1230,20 @@ function isSkippedMealRecord(meal: { fedNotes: string | null }) {
   return meal.fedNotes === "Skipped";
 }
 
-function hasUploadRecord(activity: ActivityLog) {
+function hasMedicalAttachmentRecord(activity: ActivityLog) {
 
   const notes = activity.notes ?? "";
 
-  return Boolean(activity.attachments?.length) || notes.includes("Attachments:") || notes.includes("Record Tags: Photo");
+  return Boolean(activity.attachments?.length) || notes.includes("Attachments:");
 
 }
 
-function hasMedicalRecordTag(activity: ActivityLog) {
-
-  if ((activity.notes ?? "").includes("Record Tags: Medical Record")) return true;
-
-  if (activity.activityType === "sick" && isMedicalWellnessDetail(activity.detail)) return true;
-
-  return activity.activityType === "sick" && hasUploadRecord(activity);
-
-}
-
-function isVetVisitOrProcedure(activity: ActivityLog) {
-
-  if (activity.activityType !== "wellness" && activity.activityType !== "sick") return false;
-
-  const detail = activity.detail ?? "";
-
-  return ["Vet Visit", "Wellness Exam", "Sick Consult", "Procedure"].some((value) => detail.includes(value));
-
+function isActualPoopRecord(activity: ActivityLog) {
+  const detail = activity.detail?.trim() ?? "";
+  if (detail === "Pee") return false;
+  if (detail === "No Poop") return activity.activityType === "poop" || activity.activityType === "potty";
+  if (activity.activityType !== "poop") return false;
+  return detail === "Poop" || detail === "Pee & Poop" || detail.includes("• Type ") || detail.startsWith("Type ");
 }
 
 function hiddenDuplicateMissedCareActivityIds(activities: ActivityLog[]) {
@@ -1290,6 +1278,8 @@ function activityMatchesHistoryFilter(activity: ActivityLog, activeFilter: Histo
 
   if (activeFilter === "activity") return activity.activityType === "activity";
 
+  if (activeFilter === "treat") return activity.activityType === "treat";
+
   if (activeFilter === "medical") return ["sick", "medication"].includes(activity.activityType) || (activity.activityType === "wellness" && isMedicalWellnessDetail(activity.detail));
 
   if (activeFilter === "wellness") return activity.activityType === "supplement" || (activity.activityType === "wellness" && !isMedicalWellnessDetail(activity.detail));
@@ -1298,13 +1288,11 @@ function activityMatchesHistoryFilter(activity: ActivityLog, activeFilter: Histo
 
   if (activeFilter === "other") return activity.activityType === "other";
 
-  if (activeFilter === "allFood") return ["food", "treat"].includes(activity.activityType);
+  if (activeFilter === "allFood") return activity.activityType === "food";
 
-  if (activeFilter === "uploads") return hasUploadRecord(activity);
+  if (activeFilter === "medicalAttachments") return hasMedicalAttachmentRecord(activity);
 
-  if (activeFilter === "medicalRecords") return hasMedicalRecordTag(activity);
-
-  if (activeFilter === "vetProcedures") return isVetVisitOrProcedure(activity);
+  if (activeFilter === "poopRecords") return isActualPoopRecord(activity);
 
   return false;
 
@@ -1314,11 +1302,13 @@ function timelineItemMatchesHistoryFilter(item: HistoryDay["timelineItems"][numb
 
   if (activeFilter === "all") return true;
 
-  if (activeFilter === "allFood") return item.activityType === "meal" || ["food", "treat"].includes(item.activityType);
+  if (activeFilter === "allFood") return item.activityType === "meal" || item.activityType === "food";
 
   if (activeFilter === "potty") return ["pee", "poop", "potty"].includes(item.activityType);
 
   if (activeFilter === "activity") return item.activityType === "activity";
+
+  if (activeFilter === "treat") return item.activityType === "treat";
 
   if (activeFilter === "medical") return ["sick", "medication"].includes(item.activityType) || (item.activityType === "wellness" && isMedicalWellnessDetail(item.detail));
 
@@ -1328,11 +1318,9 @@ function timelineItemMatchesHistoryFilter(item: HistoryDay["timelineItems"][numb
 
   if (activeFilter === "other") return item.activityType === "other";
 
-  if (activeFilter === "uploads") return item.activity ? hasUploadRecord(item.activity) : false;
+  if (activeFilter === "medicalAttachments") return item.activity ? hasMedicalAttachmentRecord(item.activity) : false;
 
-  if (activeFilter === "medicalRecords") return item.activity ? hasMedicalRecordTag(item.activity) : false;
-
-  if (activeFilter === "vetProcedures") return item.activity ? isVetVisitOrProcedure(item.activity) : false;
+  if (activeFilter === "poopRecords") return item.activity ? isActualPoopRecord(item.activity) : false;
 
   return false;
 
@@ -2229,7 +2217,7 @@ export default function HistoryPage() {
 
   const showMeals = selectedHistoryDay && (activeFilter === "all" || activeFilter === "allFood");
 
-  const showActivities = selectedHistoryDay && ["all", "allFood", "potty", "activity", "medical", "wellness", "care", "other", "uploads", "medicalRecords", "vetProcedures"].includes(activeFilter);
+  const showActivities = selectedHistoryDay && ["all", "allFood", "treat", "potty", "activity", "medical", "wellness", "care", "other", "medicalAttachments", "poopRecords"].includes(activeFilter);
 
   const showWeights = selectedHistoryDay && activeFilter === "all";
 
