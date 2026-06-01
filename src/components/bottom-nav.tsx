@@ -3,11 +3,10 @@
 import {
   Activity,
   BellPlus,
-  CalendarDays,
-  ClipboardList,
+  Bookmark,
   FileHeart,
   History,
-  Scale,
+  PenLine,
   Settings2,
   X,
 } from "lucide-react";
@@ -43,11 +42,11 @@ type FloatingMenuPosition = {
 };
 
 const pages = [
-  { label: "Today", href: `${APP_BASE}`, icon: CalendarDays },
-  { label: "Event Details", href: `${APP_BASE}/log`, icon: ClipboardList },
+  { label: "Today", href: `${APP_BASE}`, icon: Bookmark },
+  { label: "Event Details", href: `${APP_BASE}/log`, icon: PenLine },
   { label: "History", href: `${APP_BASE}/history`, icon: History },
   { label: "Health", href: `${APP_BASE}/medical-records`, icon: FileHeart },
-  { label: "Weight", href: `${APP_BASE}/weight`, icon: Scale },
+  { label: "Weight", href: `${APP_BASE}/weight`, iconKind: "weight" },
   { label: "Fitness", href: `${APP_BASE}/activity`, icon: Activity },
   { label: "Alerts", href: `${APP_BASE}/alerts`, icon: BellPlus, badge: true },
   { label: "Profile", href: `${APP_BASE}/profile`, iconKind: "paw" },
@@ -64,6 +63,25 @@ function PawIcon() {
       }}
       aria-hidden="true"
     />
+  );
+}
+
+function WeightIcon() {
+  return (
+    <svg
+      className="size-[1.72rem]"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.65"
+      aria-hidden="true"
+    >
+      <path d="M7.4 19.2h9.2a2 2 0 0 0 2-2.3l-1-7.1a2.1 2.1 0 0 0-2.1-1.8h-7a2.1 2.1 0 0 0-2.1 1.8l-1 7.1a2 2 0 0 0 2 2.3Z" />
+      <path d="M9.1 11.1a3.2 3.2 0 0 1 5.8 0" />
+      <path d="M12 10.9l1.2-1.7" />
+    </svg>
   );
 }
 
@@ -311,21 +329,22 @@ export function BottomNav({ alertsCount }: Props) {
                       href={item.href}
                       onClick={() => setOpen(false)}
                       className="group relative text-center"
+                      aria-label={item.label}
                     >
                       <span
-                        className={`relative flex size-[4.65rem] flex-col items-center justify-center gap-1.5 rounded-[1.2rem] shadow-sm ring-1 ring-white/18 transition group-hover:-translate-y-0.5 ${
+                        className={`relative flex size-[4.65rem] items-center justify-center rounded-[1.2rem] shadow-sm ring-1 ring-white/18 transition group-hover:-translate-y-0.5 ${
                           active
                             ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]"
                             : "bg-[var(--hewie-bg,#979ca7)] text-[var(--hewie-accent-text,#ffffff)] group-hover:bg-[var(--hewie-accent,#64748b)]"
                         }`}
                       >
-                        {item.iconKind === "paw" ? <PawIcon /> : Icon ? <Icon className="size-[1.15rem]" strokeWidth={1.9} /> : null}
+                        {item.iconKind === "paw" ? <PawIcon /> : item.iconKind === "weight" ? <WeightIcon /> : Icon ? <Icon className="size-[1.72rem]" strokeWidth={1.65} /> : null}
                         {showBadge ? (
                           <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
                             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
                           </span>
                         ) : null}
-                        <span className="max-w-[4rem] text-[11.5px] font-normal leading-tight tracking-normal text-[var(--hewie-accent-text,#ffffff)]/94">{item.label}</span>
+                        <span className="sr-only">{item.label}</span>
                       </span>
                     </Link>
                   );
