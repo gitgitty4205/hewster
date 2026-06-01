@@ -83,29 +83,6 @@ function formatHeaderDate() {
   }).format(new Date());
 }
 
-function greetingForNow() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good Morning";
-  if (hour < 17) return "Good Afternoon";
-  return "Good Evening";
-}
-
-function firstNameFromUser(user: ReturnType<typeof useAuth>["user"]) {
-  const metadata = user?.user_metadata ?? {};
-  const metadataFirstName = typeof metadata.first_name === "string" ? metadata.first_name.trim() : "";
-  if (metadataFirstName) return metadataFirstName;
-
-  const metadataFullName = typeof metadata.full_name === "string"
-    ? metadata.full_name
-    : typeof metadata.name === "string"
-      ? metadata.name
-      : "";
-  const firstName = metadataFullName.trim().split(/\s+/).filter(Boolean)[0] ?? "";
-  if (firstName) return firstName;
-
-  return user?.email?.split("@")[0]?.split(/[._-]/)[0] ?? "";
-}
-
 function formatLastUpdated(timestamp: number | null) {
   if (!timestamp) return "No updates yet today";
 
@@ -711,7 +688,7 @@ async function importBridgePayload(payload: HewsterBridgePayload) {
 }
 
 export default function HomeApp() {
-  const { loading: authLoading, user } = useAuth();
+  const { loading: authLoading } = useAuth();
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>(
     []
@@ -1590,8 +1567,6 @@ export default function HomeApp() {
       .sort((a, b) => b.happenedAt.localeCompare(a.happenedAt));
   }, [activityLogs, poopRecordsWindowDays]);
 
-  const userFirstName = firstNameFromUser(user);
-  const greetingLabel = `${greetingForNow()}${userFirstName ? `, ${userFirstName}` : ""}`;
   const lastUpdatedLabel = useMemo(() => {
     void alertMinuteKey;
     const latestTodayUpdate = dynamicTimeline.reduce<number | null>(
@@ -1923,11 +1898,11 @@ export default function HomeApp() {
     return (
       <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-          <header className="relative mb-3 min-h-24">
+          <header className="relative mb-3 min-h-[72px]">
             <div className="pr-24">
               <div>
                 <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-                <div className="skeleton-pulse mt-1 h-8 w-28 rounded-xl bg-white/40" />
+                <div className="skeleton-pulse mt-2 h-10 w-32 rounded-xl bg-white/40" />
               </div>
             </div>
             <div className="absolute right-0 top-0">
@@ -1950,13 +1925,12 @@ export default function HomeApp() {
   return (
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-        <header className="relative mb-3 min-h-24">
+        <header className="relative mb-3 min-h-[72px]">
           <div className="pr-24">
             <div>
               <PetNotebookTitle href="/hewie" className="block text-sm font-bold leading-[18px] text-[var(--hewie-active-text,#6d28d9)]" />
-              <div className="flex flex-col">
-                <h1 className="text-[15px] font-bold leading-5 text-[#4b3440]">{greetingLabel}</h1>
-                <p className="text-[1.34rem] font-bold leading-[1.22] text-[#3b2832]">Today, {headerDateTime}</p>
+              <div className="mt-1 flex flex-col">
+                <h1 className="text-[1.42rem] font-bold leading-[1.2] text-[#3b2832]">Today, {headerDateTime}</h1>
                 <p className="text-[13px] font-normal leading-4 text-[#5d4852]">{lastUpdatedLabel}</p>
               </div>
             </div>
