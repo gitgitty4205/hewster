@@ -1931,8 +1931,8 @@ export default function HomeApp() {
             <div>
               <PetNotebookTitle href="/hewie" className="block text-sm font-bold leading-[18px] text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="mt-1 flex flex-col">
-                <h1 className="text-[1.42rem] font-bold leading-[1.2] text-[#3b2832]">Today, {headerDateTime}</h1>
-                <p className="text-[13px] font-normal leading-4 text-[#5d4852]">{lastUpdatedLabel}</p>
+                <h1 className="text-[1.26rem] font-bold leading-[1.2] text-[var(--hewie-active-text,#334155)]">Today, {headerDateTime}</h1>
+                <p className="text-xs font-normal leading-4 text-[var(--hewie-active-text,#334155)]">{lastUpdatedLabel}</p>
               </div>
             </div>
           </div>
