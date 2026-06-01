@@ -8,7 +8,7 @@ const PAGE_INTRO_STEP_STORAGE_KEY = "hewster.pageIntro.step";
 
 const introPages = [
   {
-    title: "Today's",
+    title: "Today",
     href: "/hewie",
     description: "See today's meals, care reminders, alerts, potty notes, and recent events in one place.",
   },

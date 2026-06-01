@@ -1880,7 +1880,7 @@ export default function HomeApp() {
     return (
       <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-          <header className="relative mb-6">
+          <header className="relative mb-3">
             <div className="pr-24">
               <div>
                 <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
@@ -1905,13 +1905,13 @@ export default function HomeApp() {
   return (
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-        <header className="relative mb-6">
+        <header className="relative mb-3">
           <div className="pr-24">
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="mt-1 flex flex-col gap-1">
-                <h1 className="text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/85">Today&apos;s</h1>
-                <p className="text-xs font-semibold leading-4 text-[var(--hewie-active-text,#334155)]/60">{headerDateTime}</p>
+                <h1 className="text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/90">Today</h1>
+                <p className="text-xs font-bold leading-4 text-[var(--hewie-active-text,#334155)]/82">{headerDateTime}</p>
               </div>
             </div>
           </div>
