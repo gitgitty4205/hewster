@@ -134,10 +134,10 @@ export function normalizePetProfile(value: unknown): PetProfile {
   const profile = value as Partial<PetProfile>;
   const themeId = profile.themeId && appThemes[profile.themeId] ? profile.themeId : defaultPetProfile.themeId;
 
-  const legacyPetName = typeof profile.petName === "string" ? profile.petName : defaultPetProfile.petName;
+  const legacyPetName = typeof profile.petName === "string" ? profile.petName.trim() : defaultPetProfile.petName;
   const [legacyFirstName, ...legacyLastNameParts] = legacyPetName.trim().split(/\s+/).filter(Boolean);
-  const petFirstName = typeof profile.petFirstName === "string" ? profile.petFirstName : legacyFirstName || defaultPetProfile.petFirstName;
-  const petLastName = typeof profile.petLastName === "string" ? profile.petLastName : legacyLastNameParts.join(" ");
+  const petFirstName = typeof profile.petFirstName === "string" ? profile.petFirstName.trim() : legacyFirstName || defaultPetProfile.petFirstName;
+  const petLastName = typeof profile.petLastName === "string" ? profile.petLastName.trim() : legacyLastNameParts.join(" ");
 
   return {
     petName: [petFirstName, petLastName].filter(Boolean).join(" ") || defaultPetProfile.petName,

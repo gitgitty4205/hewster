@@ -24,7 +24,7 @@ function subscribeToPetProfile(onStoreChange: () => void) {
 function notebookTitleFromSnapshot(snapshot: string) {
   try {
     const profile = normalizePetProfile(JSON.parse(snapshot));
-    const petFirstName = profile.petFirstName || profile.petName.split(/\s+/)[0] || defaultPetProfile.petFirstName;
+    const petFirstName = profile.petFirstName.trim() || profile.petName.trim().split(/\s+/)[0] || defaultPetProfile.petFirstName;
     return `${petFirstName}'s Notebook`;
   } catch {
     return `${defaultPetProfile.petName}'s Notebook`;

@@ -114,7 +114,7 @@ function formatLastUpdated(timestamp: number | null) {
   if (elapsedMinutes < 60) return `Last updated ${elapsedMinutes} min ago`;
 
   const elapsedHours = Math.floor(elapsedMinutes / 60);
-  if (elapsedHours < 24) return `Last updated ${elapsedHours} hr ago`;
+  if (elapsedHours < 24) return `Last updated ${elapsedHours} ${elapsedHours === 1 ? "hr" : "hrs"} ago`;
 
   return "Last updated today";
 }
@@ -1953,9 +1953,9 @@ export default function HomeApp() {
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="mt-1 flex flex-col gap-1">
-                <h1 className="text-xl font-bold tracking-tight text-[var(--hewie-active-text,#334155)]/90">{greetingLabel}</h1>
-                <p className="text-xs font-bold leading-4 text-[var(--hewie-active-text,#334155)]/82">Today, {headerDateTime}</p>
-                <p className="text-xs font-semibold leading-4 text-[var(--hewie-active-text,#334155)]/68">{lastUpdatedLabel}</p>
+                <h1 className="text-lg font-bold leading-6 text-[var(--hewie-active-text,#334155)]/90">{greetingLabel}</h1>
+                <p className="text-2xl font-bold leading-7 text-[var(--hewie-active-text,#334155)]/90">Today, {headerDateTime}</p>
+                <p className="text-sm font-normal leading-5 text-[var(--hewie-active-text,#334155)]/70">{lastUpdatedLabel}</p>
               </div>
             </div>
           </div>
