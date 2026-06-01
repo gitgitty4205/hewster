@@ -14,6 +14,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { ExpandableNoteText } from "@/components/expandable-note-text";
+import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 
 import { MealTimeForm } from "@/components/meal-time-form";
 
@@ -1239,13 +1240,19 @@ export default function LogPage() {
 
           <header className="mb-5 px-1 pb-2">
 
-            <div className="min-w-0">
+            <div className="flex items-start justify-between gap-3">
 
-              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <div className="min-w-0 flex-1 pt-1">
 
-              <div className="mt-3 h-px w-full bg-[#fff8ea]/35" />
+                <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+
+              </div>
+
+              <PetAvatarMenu className="size-14 rounded-full object-cover object-center ring-1 ring-[#fff8ea]/90 shadow-sm" width={56} height={56} />
 
             </div>
+
+            <div className="mt-3 h-px w-full bg-[#fff8ea]/35" />
 
           </header>
 
@@ -1281,13 +1288,19 @@ export default function LogPage() {
 
         <header className="mb-5 px-1 pb-2">
 
-          <div className="min-w-0">
+          <div className="flex items-start justify-between gap-3">
 
-            <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+            <div className="min-w-0 flex-1 pt-1">
 
-            <div className="mt-3 h-px w-full bg-[#fff8ea]/35" />
+              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+
+            </div>
+
+            <PetAvatarMenu className="size-14 rounded-full object-cover object-center ring-1 ring-[#fff8ea]/90 shadow-sm" width={56} height={56} />
 
           </div>
+
+          <div className="mt-3 h-px w-full bg-[#fff8ea]/35" />
 
         </header>
 
