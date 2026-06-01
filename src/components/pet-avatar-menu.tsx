@@ -258,11 +258,18 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
         <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/25 px-3 py-4 backdrop-blur-sm sm:py-6">
           <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[680px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[78vh] sm:min-h-[560px]">
             <div
-              className="absolute inset-0 bg-cover bg-center grayscale"
+              className="absolute inset-0 bg-cover bg-center opacity-[0.82] grayscale contrast-90 saturate-80"
               style={{ backgroundImage: `url('${currentPet.photoUrl || "/hewster-profile.jpg"}')` }}
               aria-hidden="true"
             />
-            <div className="absolute inset-0 bg-[var(--hewie-bg,#979ca7)]/34" aria-hidden="true" />
+            <div
+              className="absolute inset-0 backdrop-blur-[0.6px]"
+              style={{
+                background:
+                  "linear-gradient(180deg, color-mix(in srgb, var(--hewie-active-bg,#f1f5f9) 52%, transparent) 0%, color-mix(in srgb, var(--hewie-bg,#979ca7) 24%, transparent) 44%, color-mix(in srgb, var(--hewie-active-bg,#f1f5f9) 40%, transparent) 100%)",
+              }}
+              aria-hidden="true"
+            />
             <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg,#f1f5f9)]/92 px-5 py-4 text-[var(--hewie-active-text,#334155)] shadow-sm backdrop-blur-[1px]">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--hewie-active-text,#334155)]/64">Pet Notebook</p>
@@ -285,10 +292,10 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                     key={pet.id}
                     type="button"
                     onClick={() => switchNotebook(pet.notebookOwnerId)}
-                    className="flex items-center gap-3 rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)]/88 p-3 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition"
+                    className="flex items-center gap-3 rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)]/82 p-3 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[rgba(15,23,42,0.08)] backdrop-blur-[1.5px] transition"
                   >
                     <span className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                      <span className="relative flex size-16 shrink-0 overflow-hidden rounded-full bg-white/20 shadow-sm ring-1 ring-white/35">
+                      <span className="relative flex size-16 shrink-0 overflow-hidden rounded-[1.05rem] bg-white/20 shadow-sm ring-1 ring-[rgba(15,23,42,0.08)]">
                         {pet.photoUrl ? (
                           <Image src={pet.photoUrl} alt={pet.name} fill className="object-cover object-center" sizes="64px" />
                         ) : (
