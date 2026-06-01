@@ -96,7 +96,7 @@ const quickTileDepth =
 const quickIconDepth =
   "shadow-[0_6px_10px_rgba(39,54,45,0.16),0_1px_3px_rgba(255,255,255,0.9)_inset,0_-2px_5px_rgba(39,54,45,0.1)_inset] ring-1 ring-white/80 drop-shadow-[0_2px_2px_rgba(39,54,45,0.18)]";
 
-export function QuickLogCard({ activityState, onQuickLog, includeOther = true, visibleTypes, title = "Log Event", iconOnly = false, accentBackground = false, children }: Props) {
+export function QuickLogCard({ activityState, onQuickLog, includeOther = true, visibleTypes, title = "Log", iconOnly = false, accentBackground = false, children }: Props) {
   const visibleActions = quickActions.filter((action) => {
     if (visibleTypes) return visibleTypes.includes(action.type);
     return includeOther || action.type !== "other";
