@@ -106,7 +106,7 @@ export function QuickLogCard({ activityState, onQuickLog, includeOther = true, v
   return (
     <section className={`mb-4 rounded-3xl p-5 shadow-sm ring-1 ${useAccentBackground ? "bg-[var(--hewie-accent,#64748b)] ring-[var(--hewie-accent,#64748b)]/35" : "bg-white ring-zinc-200"}`}>
       {title || activityState !== "idle" ? (
-        <div className="mb-4 flex items-center justify-between">
+        <div className={`mb-4 flex items-center ${useAccentBackground ? "justify-center text-center" : "justify-between"}`}>
           <div>{title ? <h2 className={`text-lg font-semibold ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]" : ""}`}>{title}</h2> : null}</div>
           <div className={`text-right text-xs ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]/75" : "text-zinc-500"}`}>
             <div className={`flex items-center justify-end gap-1.5 ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]" : "text-emerald-600"}`}>

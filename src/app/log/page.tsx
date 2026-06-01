@@ -1370,7 +1370,7 @@ export default function LogPage() {
           <button
             type="button"
             onClick={openLogEvent}
-            className="group relative mb-7 flex w-full cursor-pointer items-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-left text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
+            className="group relative mb-7 flex w-full cursor-pointer items-center justify-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-center text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
           >
             <h2 className="text-lg font-semibold">Log Event</h2>
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
