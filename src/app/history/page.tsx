@@ -1914,7 +1914,7 @@ export default function HistoryPage() {
             ) : item.detail.includes(" • Notes: ") ? (
               <>
                 <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} />
-                <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
+                <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
               </>
             ) : item.detail ? (
               <TimelineDetailText detail={item.detail} status={status} />
@@ -2788,7 +2788,7 @@ export default function HistoryPage() {
 
                         {meal.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Meal Plan Notes: {meal.notes}</ExpandableNoteText> : null}
 
-                        {meal.fedNotes && !missedMeal && !skippedMeal ? <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {meal.fedNotes}</ExpandableNoteText> : null}
+                        {meal.fedNotes && !missedMeal && !skippedMeal ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {meal.fedNotes}</ExpandableNoteText> : null}
 
                         {meal.careItems.length ? (
 
@@ -2949,7 +2949,7 @@ export default function HistoryPage() {
 
                         {meal.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Meal Plan Notes: {meal.notes}</ExpandableNoteText> : null}
 
-                        {meal.fedNotes && !missedMeal && !skippedMeal ? <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {meal.fedNotes}</ExpandableNoteText> : null}
+                        {meal.fedNotes && !missedMeal && !skippedMeal ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {meal.fedNotes}</ExpandableNoteText> : null}
 
                         {meal.careItems.length ? (
 

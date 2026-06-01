@@ -302,7 +302,7 @@ function MealLinkedCareRows({ items }: { items?: TimelineItem["mealLinkedCareIte
             <div className="min-w-0">
               <p className="text-sm font-semibold text-zinc-900">{item.label}</p>
               <TimelineDetailText detail={summary} status={status} className="mt-1 text-sm text-zinc-500" />
-              {notes ? <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {notes}</ExpandableNoteText> : null}
+              {notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {notes}</ExpandableNoteText> : null}
             </div>
           </div>
         );
@@ -575,7 +575,7 @@ export function ActivityFeed({
                         {item.detail.includes(" • Notes: ") ? (
                           <>
                             <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="text-sm text-zinc-600" />
-                            <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
+                            <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
                           </>
                         ) : (
                           <TimelineDetailText detail={item.detail} status={status} className="text-sm text-zinc-600" />
@@ -675,7 +675,7 @@ export function ActivityFeed({
         ) : item.detail.includes(" • Notes: ") ? (
           <>
             <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="mt-1 text-sm text-zinc-500" />
-            <ExpandableNoteText className="mt-1 text-sm font-bold text-zinc-700">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
+            <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
           </>
         ) : (
           <TimelineDetailText detail={item.detail} status={status} />
