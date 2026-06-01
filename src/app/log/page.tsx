@@ -113,7 +113,7 @@ function isValidDayKey(value: string | null) {
 function LogPencilIcon() {
   return (
     <svg
-      className="size-5"
+      className="size-6"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
