@@ -285,8 +285,8 @@ export function BottomNav({ alertsCount }: Props) {
             <div className="absolute inset-0 bg-[var(--hewie-bg,#979ca7)]/34" aria-hidden="true" />
             <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg,#f1f5f9)]/92 px-6 py-5 text-[var(--hewie-active-text,#334155)] shadow-sm backdrop-blur-[1px]">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--hewie-active-text,#334155)]/62"><PetNotebookTitle /></p>
-                <h2 className="mt-0.5 text-[1.55rem] font-medium leading-none tracking-normal text-[var(--hewie-active-text,#334155)]">Pages</h2>
+                <p className="text-[11px] font-normal uppercase tracking-normal text-[var(--hewie-active-text,#334155)]/62"><PetNotebookTitle /></p>
+                <h2 className="mt-0.5 text-[1.55rem] font-normal leading-none tracking-normal text-[var(--hewie-active-text,#334155)]">Pages</h2>
               </div>
               <button
                 type="button"
@@ -325,7 +325,7 @@ export function BottomNav({ alertsCount }: Props) {
                             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
                           </span>
                         ) : null}
-                        <span className="max-w-[4rem] text-[11.5px] font-medium leading-tight tracking-normal text-[var(--hewie-accent-text,#ffffff)]/94">{item.label}</span>
+                        <span className="max-w-[4rem] text-[11.5px] font-normal leading-tight tracking-normal text-[var(--hewie-accent-text,#ffffff)]/94">{item.label}</span>
                       </span>
                     </Link>
                   );
