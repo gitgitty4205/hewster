@@ -30,6 +30,7 @@ type Props = {
   className?: string;
   width?: number;
   height?: number;
+  shape?: "circle" | "tile";
 };
 
 function currentPetToRosterPet(profile: PetProfile): RosterPet {
@@ -87,7 +88,17 @@ function notebookLabel(member: NotebookMember, profile: PetProfile, currentUserI
   return profile.petName || profile.petFirstName || "Shared Pet";
 }
 
-export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
+const avatarClassNames = {
+  circle: "mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm",
+  tile: "size-[4.5rem] rounded-[1.15rem] object-cover object-center shadow-[0_10px_22px_rgba(15,23,42,0.22),0_1px_3px_rgba(255,255,255,0.35)_inset] ring-1 ring-[var(--hewie-active-text,#334155)]/18",
+};
+
+const avatarButtonClassNames = {
+  circle: "shrink-0 rounded-full text-left transition hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/55",
+  tile: "shrink-0 rounded-[1.15rem] text-left transition hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/55",
+};
+
+export function PetAvatarMenu({ className, width, height, shape = "circle" }: Props) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState<PetProfile>(() => defaultPetProfile);
@@ -169,6 +180,7 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
       });
   }, [currentPet, memberships, notebookRole, ownedPrimaryPet, profile, user?.id]);
   const canAddOwnedPet = Boolean(user);
+  const imageSize = shape === "tile" ? 72 : 80;
 
   const addPet = async () => {
     const name = newPetName.trim();
@@ -229,15 +241,15 @@ export function PetAvatarMenu({ className, width = 80, height = 80 }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="shrink-0 rounded-full text-left transition hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/55"
+        className={avatarButtonClassNames[shape]}
         aria-label="Open pet switcher"
       >
         <Image
           src={currentPet.photoUrl || "/hewster-profile.jpg"}
           alt={currentPet.name}
-          width={width}
-          height={height}
-          className={className}
+          width={width ?? imageSize}
+          height={height ?? imageSize}
+          className={className ?? avatarClassNames[shape]}
         />
       </button>
 

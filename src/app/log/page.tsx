@@ -1248,7 +1248,7 @@ export default function LogPage() {
 
               </div>
 
-              <PetAvatarMenu className="size-[4.5rem] rounded-[1.15rem] object-cover object-center shadow-[0_10px_22px_rgba(15,23,42,0.22),0_1px_3px_rgba(255,255,255,0.35)_inset] ring-1 ring-[var(--hewie-active-text,#334155)]/18" width={72} height={72} />
+              <PetAvatarMenu shape="tile" />
 
             </div>
 
@@ -1294,7 +1294,7 @@ export default function LogPage() {
 
             </div>
 
-            <PetAvatarMenu className="size-[4.5rem] rounded-[1.15rem] object-cover object-center shadow-[0_10px_22px_rgba(15,23,42,0.22),0_1px_3px_rgba(255,255,255,0.35)_inset] ring-1 ring-[var(--hewie-active-text,#334155)]/18" width={72} height={72} />
+            <PetAvatarMenu shape="tile" />
 
           </div>
 
