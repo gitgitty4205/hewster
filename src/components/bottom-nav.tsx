@@ -68,13 +68,13 @@ function PawIcon() {
 function PencilIcon() {
   return (
     <svg
-      className="size-[1.82rem]"
+      className="size-[2.08rem]"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth="1.7"
+      strokeWidth="1.6"
       aria-hidden="true"
     >
       <path d="M5.2 18.8 6.4 14 15.8 4.6a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 0 2.8L10 17.6l-4.8 1.2Z" />
