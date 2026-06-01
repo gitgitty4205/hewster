@@ -1955,9 +1955,9 @@ export default function HomeApp() {
             <div>
               <PetNotebookTitle href="/hewie" className="block text-sm font-bold leading-[18px] text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="flex flex-col">
-                <h1 className="text-base font-bold leading-5 text-[var(--hewie-active-text,#334155)]/90">{greetingLabel}</h1>
-                <p className="text-[1.45rem] font-bold leading-[1.2] text-[var(--hewie-active-text,#334155)]/90">Today, {headerDateTime}</p>
-                <p className="text-[13px] font-normal leading-4 text-[var(--hewie-active-text,#334155)]/70">{lastUpdatedLabel}</p>
+                <h1 className="text-[15px] font-bold leading-5 text-[#4b3440]">{greetingLabel}</h1>
+                <p className="text-[1.34rem] font-bold leading-[1.22] text-[#3b2832]">Today, {headerDateTime}</p>
+                <p className="text-[13px] font-normal leading-4 text-[#5d4852]">{lastUpdatedLabel}</p>
               </div>
             </div>
           </div>
