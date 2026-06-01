@@ -2,7 +2,7 @@
 
 
 
-import { Check, ChevronDown, Clock3, Ellipsis, Tablets } from "lucide-react";
+import { Check, Clock3, Ellipsis, Tablets } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -1248,7 +1248,7 @@ export default function LogPage() {
 
               </div>
 
-              <PetAvatarMenu className="size-14 rounded-full object-cover object-center shadow-sm" width={56} height={56} />
+              <PetAvatarMenu className="size-[4.5rem] rounded-[1.15rem] object-cover object-center shadow-[0_10px_22px_rgba(15,23,42,0.22),0_1px_3px_rgba(255,255,255,0.35)_inset] ring-1 ring-[var(--hewie-active-text,#334155)]/18" width={72} height={72} />
 
             </div>
 
@@ -1294,7 +1294,7 @@ export default function LogPage() {
 
             </div>
 
-            <PetAvatarMenu className="size-14 rounded-full object-cover object-center shadow-sm" width={56} height={56} />
+            <PetAvatarMenu className="size-[4.5rem] rounded-[1.15rem] object-cover object-center shadow-[0_10px_22px_rgba(15,23,42,0.22),0_1px_3px_rgba(255,255,255,0.35)_inset] ring-1 ring-[var(--hewie-active-text,#334155)]/18" width={72} height={72} />
 
           </div>
 
@@ -1369,10 +1369,9 @@ export default function LogPage() {
           <button
             type="button"
             onClick={openLogEvent}
-            className="group relative mb-7 flex w-full cursor-pointer items-center justify-between overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-left text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
+            className="group relative mb-7 flex w-full cursor-pointer items-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-left text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition hover:opacity-95 active:translate-y-px"
           >
             <h2 className="text-lg font-semibold">Log Event</h2>
-            <ChevronDown className="size-5 opacity-75 transition group-hover:translate-y-0.5 group-hover:opacity-95" strokeWidth={2.5} />
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
               <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90">
                 <span className="log-event-handle-sheen h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
