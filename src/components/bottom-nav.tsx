@@ -42,7 +42,7 @@ type FloatingMenuPosition = {
 type PagesBackgroundMode = "soft" | "full";
 
 const pages = [
-  { label: "Today", href: `${APP_BASE}`, icon: Bookmark },
+  { label: "Today", href: `${APP_BASE}`, iconKind: "bookmark" },
   { label: "Event Details", href: `${APP_BASE}/log`, iconKind: "pencil" },
   { label: "History", href: `${APP_BASE}/history`, icon: History },
   { label: "Health Records", href: `${APP_BASE}/medical-records`, icon: FileHeart },
@@ -83,6 +83,10 @@ function PencilIcon() {
       <path d="m6.4 14 3.6 3.6" />
     </svg>
   );
+}
+
+function FilledBookmarkIcon() {
+  return <Bookmark className="size-[1.72rem] fill-current" strokeWidth={1.65} aria-hidden="true" />;
 }
 
 function WeightIcon() {
@@ -437,7 +441,7 @@ export function BottomNav({ alertsCount }: Props) {
                             : "bg-[var(--hewie-bg,#979ca7)]/76 text-[var(--hewie-accent-text,#ffffff)] shadow-[0_10px_24px_rgba(15,23,42,0.11)] ring-[rgba(15,23,42,0.08)] backdrop-blur-[1.5px] group-hover:bg-[var(--hewie-accent,#64748b)]/88"
                         }`}
                       >
-                        {item.iconKind === "paw" ? <PawIcon /> : item.iconKind === "weight" ? <WeightIcon /> : item.iconKind === "pencil" ? <PencilIcon /> : Icon ? <Icon className="size-[1.72rem]" strokeWidth={1.65} /> : null}
+                        {item.iconKind === "paw" ? <PawIcon /> : item.iconKind === "weight" ? <WeightIcon /> : item.iconKind === "pencil" ? <PencilIcon /> : item.iconKind === "bookmark" ? <FilledBookmarkIcon /> : Icon ? <Icon className="size-[1.72rem]" strokeWidth={1.65} /> : null}
                         {showBadge ? (
                           <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
                             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
