@@ -1971,7 +1971,7 @@ export default function HomeApp() {
                 <h1 className="text-[1.26rem] font-bold leading-[1.2] text-[#252a26]">Today, {headerDateTime}</h1>
                 <p className="text-xs font-normal leading-4 text-[#252a26]">
                   {lastUpdatedLabel}
-                  {lastUpdatedByLabel ? <span> • by {lastUpdatedByLabel}</span> : null}
+                  {lastUpdatedByLabel ? <span> - {lastUpdatedByLabel}</span> : null}
                 </p>
               </div>
             </div>
