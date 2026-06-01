@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type CSSProperties, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { useAuth } from "@/components/auth-provider";
@@ -31,9 +31,6 @@ type Props = {
 const APP_BASE = "/hewie";
 const FLOATING_MENU_POSITION_STORAGE_KEY = "hewster.floatingMenuPosition";
 const FLOATING_MENU_EDGE_GAP = 12;
-const MENU_FONT_STYLE = {
-  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-} satisfies CSSProperties;
 
 type FloatingMenuPosition = {
   x: number;
@@ -312,7 +309,7 @@ export function BottomNav({ alertsCount }: Props) {
     <>
       {open ? (
         <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/25 px-3 py-4 backdrop-blur-sm sm:py-6">
-          <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]" style={MENU_FONT_STYLE}>
+          <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]">
             <div
               className="absolute inset-0 bg-cover bg-center opacity-[0.82] grayscale contrast-90 saturate-80"
               style={{ backgroundImage: "url('/hewster-profile.jpg')" }}
@@ -328,8 +325,8 @@ export function BottomNav({ alertsCount }: Props) {
             />
             <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg,#f1f5f9)]/92 px-6 py-5 text-[var(--hewie-active-text,#334155)] shadow-sm backdrop-blur-[1px]">
               <div>
-                <p className="text-[11px] font-normal uppercase tracking-normal text-[var(--hewie-active-text,#334155)]/62"><PetNotebookTitle /></p>
-                <h2 className="mt-0.5 text-[1.55rem] font-normal leading-none tracking-normal text-[var(--hewie-active-text,#334155)]">Pages</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--hewie-active-text,#334155)]/70"><PetNotebookTitle /></p>
+                <h2 className="text-2xl font-semibold text-[var(--hewie-active-text,#334155)]">Pages</h2>
               </div>
               <button
                 type="button"
