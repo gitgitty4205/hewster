@@ -22,7 +22,7 @@ import {
 } from "@/lib/alerts";
 import { loadCareTemplates } from "@/lib/care-settings";
 import { loadAppState } from "@/lib/hewster-data";
-import { PET_THEME_UPDATED_EVENT, applyPetTheme, loadUserTheme } from "@/lib/pet-profile";
+import { PET_THEME_UPDATED_EVENT, applyPetTheme, loadPetProfile, loadUserTheme } from "@/lib/pet-profile";
 
 type Props = {
   alertsCount?: number;
@@ -177,6 +177,7 @@ export function BottomNav({ alertsCount }: Props) {
   const { user } = useAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState("/hewster-profile.jpg");
   const [floatingMenuPosition, setFloatingMenuPosition] = useState<FloatingMenuPosition | null>(null);
   const [draggingFloatingMenu, setDraggingFloatingMenu] = useState(false);
   const floatingMenuButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -203,6 +204,20 @@ export function BottomNav({ alertsCount }: Props) {
     const rect = floatingMenuButtonRef.current?.getBoundingClientRect();
     setFloatingMenuPosition(clampFloatingMenuPosition(savedPosition, rect?.width ?? 68, rect?.height ?? 68));
   }, [user?.id]);
+
+  useEffect(() => {
+    const refreshProfilePhoto = () => {
+      setProfilePhotoUrl(loadPetProfile().photoUrl || "/hewster-profile.jpg");
+    };
+
+    refreshProfilePhoto();
+    window.addEventListener("pet-profile-updated", refreshProfilePhoto);
+    window.addEventListener("storage", refreshProfilePhoto);
+    return () => {
+      window.removeEventListener("pet-profile-updated", refreshProfilePhoto);
+      window.removeEventListener("storage", refreshProfilePhoto);
+    };
+  }, []);
 
   useEffect(() => {
     const refreshTheme = () => applyPetTheme(loadUserTheme(user?.id));
@@ -312,7 +327,7 @@ export function BottomNav({ alertsCount }: Props) {
           <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]">
             <div
               className="absolute inset-0 bg-cover bg-center opacity-[0.82] grayscale contrast-90 saturate-80"
-              style={{ backgroundImage: "url('/hewster-profile.jpg')" }}
+              style={{ backgroundImage: `url("${profilePhotoUrl}")` }}
               aria-hidden="true"
             />
             <div
