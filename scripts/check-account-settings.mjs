@@ -45,6 +45,7 @@ async function main() {
           },
         },
       }));
+      window.localStorage.setItem("hewster.pageIntro.completed", "true");
     });
 
     await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });

@@ -1,7 +1,7 @@
 import { compareActivitiesReverseChronological } from "@/lib/activity";
 import type { CareItemKind, CareItemTemplate } from "@/lib/care-settings";
 import type { MealStatus, MealTemplate } from "@/lib/meal-templates";
-import { initialTemplates, isInitialMealTemplatePlan, isMealTemplateArray, sortMealTemplatesByTime, STORAGE_KEY } from "@/lib/meal-templates";
+import { clampMealFoodText, clampMealNameText, clampMealNoteText, initialTemplates, isInitialMealTemplatePlan, isMealTemplateArray, sortMealTemplatesByTime, STORAGE_KEY } from "@/lib/meal-templates";
 import {
   canDeleteNotebookEntries,
   canEditNotebookEntries,
@@ -86,6 +86,7 @@ export type MealLog = {
   defaultNotes: string;
   fedNotes: string | null;
   skippedCareItemIds?: string[];
+  loggedCareItems?: Array<CareItemTemplate & { skipped?: boolean; isLastDose?: boolean }>;
   actualTime: string;
   createdAt?: string;
 };
@@ -138,6 +139,23 @@ export const TODAY_KEY_STORAGE_KEY = "hewster.todayKey";
 const RETIRED_WEIGHT_LOG_IDS = new Set(["weight-1778383254313", "weight-1778383263011"]);
 const APP_STATE_CACHE_TTL_MS = 30_000;
 const ACTIVITY_AUDIT_DETAILS_LIMIT = 99;
+const MEAL_LOG_CARE_SNAPSHOT_MARKER = "<!--petnotebook-care-snapshot:";
+const ACTIVITY_TYPES = new Set<ActivityType>([
+  "potty",
+  "pee",
+  "poop",
+  "activity",
+  "outdoor",
+  "care",
+  "wellness",
+  "hike",
+  "treat",
+  "food",
+  "supplement",
+  "medication",
+  "sick",
+  "other",
+]);
 let appStateCache: { state: HewsterAppState; cachedAt: number } | null = null;
 let appStateLoadPromise: Promise<HewsterAppState> | null = null;
 
@@ -617,7 +635,12 @@ export function loadLocalState(): HewsterAppState {
     const mealLogs = storedMealLogs ? JSON.parse(storedMealLogs) : null;
     const manualAlerts = storedManualAlerts ? JSON.parse(storedManualAlerts) : null;
     const todayKey = storedTodayKey ?? currentTodayKey();
-    const resolvedTemplates = sortMealTemplatesByTime(isMealTemplateArray(templates) ? templates : seed.templates);
+    const resolvedTemplates = sortMealTemplatesByTime((isMealTemplateArray(templates) ? templates : seed.templates).map((template) => ({
+      ...template,
+      name: clampMealNameText(template.name),
+      food: clampMealFoodText(template.food),
+      notes: clampMealNoteText(template.notes),
+    })));
     const localDailyMealHistory = mergeDailyMealHistory(
       normalizeDailyMealHistory(dailyMealHistory, todayKey),
       normalizeDailyMealHistory(dailyMeals, todayKey),
@@ -660,6 +683,12 @@ export function persistLocalState(
   mealLogs?: MealLog[]
 ) {
   const existingState = loadLocalState();
+  const resolvedTemplates = templates.map((template) => ({
+    ...template,
+    name: clampMealNameText(template.name),
+    food: clampMealFoodText(template.food),
+    notes: clampMealNoteText(template.notes),
+  }));
   const resolvedDailyMealState = dailyMealState ?? existingState.dailyMealState;
   const resolvedActivityLogs = activityLogs ?? existingState.activityLogs;
   const resolvedWeightLogs = weightLogs ?? existingState.weightLogs;
@@ -671,7 +700,7 @@ export function persistLocalState(
     todayKey
   );
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(resolvedTemplates));
   persistDailyMealStateLocally(resolvedDailyMealState, todayKey);
   window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(resolvedActivityLogs));
   window.localStorage.setItem(WEIGHT_LOGS_STORAGE_KEY, JSON.stringify(resolvedWeightLogs));
@@ -680,8 +709,8 @@ export function persistLocalState(
   window.localStorage.setItem(TODAY_KEY_STORAGE_KEY, todayKey);
 
   cacheAppState({
-    templates,
-    historicalMealTemplates: existingState.historicalMealTemplates ?? templates,
+    templates: resolvedTemplates,
+    historicalMealTemplates: existingState.historicalMealTemplates ?? resolvedTemplates,
     mealTemplateAuditSnapshots: existingState.mealTemplateAuditSnapshots ?? [],
     dailyMealState: resolvedDailyMealState,
     activityLogs: resolvedActivityLogs,
@@ -698,38 +727,28 @@ function careItemStorageKey(item: Pick<CareItemTemplate, "kind" | "id">) {
   return `${item.kind}-${item.id}`;
 }
 
-function normalizeCareActivityName(value: string | null) {
-  return (value ?? "")
-    .replace(/\s*(?:[•·-]\s*)?(?:Given|Skipped|Missed)\b/i, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
+function encodeMealLogDefaultNotes(defaultNotes: string, loggedCareItems?: MealLog["loggedCareItems"]) {
+  if (!loggedCareItems?.length) return defaultNotes;
+  return `${defaultNotes}\n${MEAL_LOG_CARE_SNAPSHOT_MARKER}${encodeURIComponent(JSON.stringify(loggedCareItems))}-->`;
 }
 
-function activityMatchesCareItem(activity: ActivityLog, item: CareItemTemplate) {
-  if (activity.activityType !== item.kind) return false;
-  if (activity.id.startsWith(`${careItemStorageKey(item)}-`)) return true;
+function decodeMealLogDefaultNotes(defaultNotes: string) {
+  const markerIndex = defaultNotes.indexOf(MEAL_LOG_CARE_SNAPSHOT_MARKER);
+  if (markerIndex === -1) return { defaultNotes, loggedCareItems: undefined as MealLog["loggedCareItems"] | undefined };
 
-  const detailName = normalizeCareActivityName(activity.detail);
-  const itemName = item.name.trim().toLowerCase();
-  if (!detailName || !itemName) return false;
+  const encoded = defaultNotes
+    .slice(markerIndex + MEAL_LOG_CARE_SNAPSHOT_MARKER.length)
+    .split("-->")[0];
 
-  return detailName === itemName ||
-    detailName.startsWith(`${itemName} `) ||
-    detailName.startsWith(`${itemName} •`) ||
-    detailName.startsWith(`${itemName} -`);
-}
-
-function pruneDeletedCareItemIdsFromMeals<T extends { skippedCareItemIds?: string[] }>(
-  meals: T[],
-  deletedCareItemIds: Set<string>
-) {
-  return meals.map((meal) => {
-    if (!meal.skippedCareItemIds?.length) return meal;
-
-    const skippedCareItemIds = meal.skippedCareItemIds.filter((id) => !deletedCareItemIds.has(id));
-    return skippedCareItemIds.length === meal.skippedCareItemIds.length ? meal : { ...meal, skippedCareItemIds };
-  });
+  try {
+    const parsed = JSON.parse(decodeURIComponent(encoded));
+    return {
+      defaultNotes: defaultNotes.slice(0, markerIndex).trimEnd(),
+      loggedCareItems: Array.isArray(parsed) ? parsed as MealLog["loggedCareItems"] : undefined,
+    };
+  } catch {
+    return { defaultNotes: defaultNotes.slice(0, markerIndex).trimEnd(), loggedCareItems: undefined as MealLog["loggedCareItems"] | undefined };
+  }
 }
 
 export function removeCareItemReferencesLocally(kind: CareItemKind, deletedItems: CareItemTemplate[]) {
@@ -739,27 +758,6 @@ export function removeCareItemReferencesLocally(kind: CareItemKind, deletedItems
   if (!deletedCareItems.length) return;
 
   const deletedCareItemIds = new Set(deletedCareItems.map(careItemStorageKey));
-  const state = loadLocalState();
-  const nextActivityLogs = state.activityLogs.filter(
-    (activity) => !deletedCareItems.some((item) => activityMatchesCareItem(activity, item))
-  );
-  const nextDailyMealState = pruneDeletedCareItemIdsFromMeals(state.dailyMealState, deletedCareItemIds);
-  const nextMealLogs = pruneDeletedCareItemIdsFromMeals(state.mealLogs, deletedCareItemIds);
-  const nextDailyMealHistory = pruneDeletedCareItemIdsFromMeals(state.dailyMealHistory ?? [], deletedCareItemIds);
-
-  persistLocalState(
-    state.templates,
-    nextDailyMealState,
-    nextActivityLogs,
-    state.weightLogs,
-    state.todayKey,
-    state.manualAlerts,
-    nextMealLogs
-  );
-  window.localStorage.setItem(DAILY_MEAL_HISTORY_STORAGE_KEY, JSON.stringify(nextDailyMealHistory));
-  if (appStateCache) {
-    cacheAppState({ ...appStateCache.state, dailyMealHistory: nextDailyMealHistory });
-  }
 
   try {
     const parsedStatus = JSON.parse(window.localStorage.getItem("hewster.customCareStatus") ?? "{}");
@@ -777,10 +775,10 @@ export function removeCareItemReferencesLocally(kind: CareItemKind, deletedItems
 function mapTemplateRowToTemplate(row: MealTemplateRow): MealTemplate {
   return {
     id: row.meal_id,
-    name: row.name,
+    name: clampMealNameText(row.name),
     plannedTime: row.planned_time,
-    food: row.food,
-    notes: row.notes,
+    food: clampMealFoodText(row.food),
+    notes: clampMealNoteText(row.notes),
   };
 }
 
@@ -798,10 +796,10 @@ function isHistoricalMealTemplateRow(row: Record<string, unknown> | null): row i
 function mapHistoricalTemplateRowToTemplate(row: HistoricalMealTemplateRow): MealTemplate {
   return {
     id: row.meal_id,
-    name: row.name,
+    name: clampMealNameText(row.name),
     plannedTime: row.planned_time,
-    food: row.food,
-    notes: row.notes,
+    food: clampMealFoodText(row.food),
+    notes: clampMealNoteText(row.notes),
   };
 }
 
@@ -941,6 +939,35 @@ function activityAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMem
   return byActivityId;
 }
 
+function isGeneratedCareActivityId(id: string) {
+  return /^(?:medication|supplement)-\d+-(?:schedule|meal)-/.test(id);
+}
+
+function isActivityLogAuditRow(row: Record<string, unknown> | null): row is ActivityLogRow {
+  return (
+    !!row &&
+    typeof row.id === "string" &&
+    typeof row.owner_id === "string" &&
+    typeof row.profile_slug === "string" &&
+    typeof row.activity_type === "string" &&
+    ACTIVITY_TYPES.has(row.activity_type as ActivityType) &&
+    typeof row.happened_at === "string" &&
+    (typeof row.detail === "string" || row.detail === null) &&
+    (typeof row.notes === "string" || row.notes === null)
+  );
+}
+
+function deletedGeneratedCareActivitiesFromAudit(auditRows: AppAuditLogRow[]) {
+  return auditRows
+    .filter((row) => row.table_name === "activity_logs" && row.action === "DELETE")
+    .flatMap((row) => {
+      if (!isActivityLogAuditRow(row.old_row)) return [];
+      if (row.old_row.activity_type !== "supplement" && row.old_row.activity_type !== "medication") return [];
+      if (!isGeneratedCareActivityId(row.old_row.id)) return [];
+      return [mapActivityLogRowToActivity(row.old_row)];
+    });
+}
+
 export async function loadActivityAuditInfoForReport(activityIds: string[]) {
   const signedInSupabase = await getSignedInSupabase();
   const uniqueActivityIds = [...new Set(activityIds)].filter(Boolean);
@@ -967,10 +994,10 @@ function mapTemplateToRow(template: MealTemplate, index: number, ownerId: string
     owner_id: ownerId,
     profile_slug: HEWSTER_PROFILE_SLUG,
     meal_id: template.id,
-    name: template.name,
+    name: clampMealNameText(template.name),
     planned_time: template.plannedTime,
-    food: template.food,
-    notes: template.notes,
+    food: clampMealFoodText(template.food),
+    notes: clampMealNoteText(template.notes),
     reminder_offset: "",
     sort_order: index,
   };
@@ -1053,6 +1080,7 @@ function mapWeightLogToRow(weight: WeightLog, ownerId: string): WeightLogRow {
 }
 
 function mapMealLogRowToMealLog(row: MealLogRow): MealLog {
+  const decodedDefaultNotes = decodeMealLogDefaultNotes(row.default_notes);
   return {
     id: row.id,
     profileSlug: row.profile_slug,
@@ -1060,9 +1088,10 @@ function mapMealLogRowToMealLog(row: MealLogRow): MealLog {
     mealId: row.meal_id,
     mealName: row.meal_name,
     food: row.food,
-    defaultNotes: row.default_notes,
+    defaultNotes: decodedDefaultNotes.defaultNotes,
     fedNotes: row.fed_notes,
     skippedCareItemIds: [],
+    loggedCareItems: decodedDefaultNotes.loggedCareItems,
     actualTime: row.actual_time,
     createdAt: row.created_at,
   };
@@ -1077,7 +1106,7 @@ function mapMealLogToRow(mealLog: MealLog, ownerId: string): MealLogRow {
     meal_id: mealLog.mealId,
     meal_name: mealLog.mealName,
     food: mealLog.food,
-    default_notes: mealLog.defaultNotes,
+    default_notes: encodeMealLogDefaultNotes(mealLog.defaultNotes, mealLog.loggedCareItems),
     fed_notes: mealLog.fedNotes,
     actual_time: mealLog.actualTime,
   };
@@ -1317,6 +1346,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
   const remoteActivityLogs = !activityLogsResult.error && activityLogsResult.data?.length
     ? (activityLogsResult.data as ActivityLogRow[]).map(mapActivityLogRowToActivity)
     : [];
+  const restoredDeletedCareLogs = deletedGeneratedCareActivitiesFromAudit(activityAuditRows);
 
   const attachmentsByActivityId = new Map<string, ActivityAttachment[]>();
   if (!activityAttachmentsResult.error && activityAttachmentsResult.data?.length) {
@@ -1335,6 +1365,9 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
   }));
 
   const activityLogsById = new Map(localState.activityLogs.map((entry) => [entry.id, entry]));
+  restoredDeletedCareLogs.forEach((entry) => {
+    if (!activityLogsById.has(entry.id)) activityLogsById.set(entry.id, entry);
+  });
   remoteActivityLogsWithAttachments.forEach((entry) => activityLogsById.set(entry.id, entry));
 
   const activityLogs = [...activityLogsById.values()].sort(compareActivitiesReverseChronological);
@@ -1393,6 +1426,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
       return {
         ...entry,
         skippedCareItemIds: entry.skippedCareItemIds?.length ? entry.skippedCareItemIds : localMatch?.skippedCareItemIds ?? [],
+        loggedCareItems: entry.loggedCareItems?.length ? entry.loggedCareItems : localMatch?.loggedCareItems,
       };
     })
     .filter((entry, index, all) => {
@@ -1709,41 +1743,8 @@ function isAttachmentStorageSetupError(error: { message?: string } | null) {
 }
 
 export async function deleteCareItemActivityLogsFromSupabase(kind: CareItemKind, deletedItems: CareItemTemplate[]) {
-  const deletedCareItems = deletedItems.filter((item) => item.kind === kind);
-  if (!deletedCareItems.length) return;
-
-  const signedInSupabase = await getSignedInSupabase();
-  if (!signedInSupabase) return;
-
-  const { supabase, userId } = signedInSupabase;
-  const { data, error } = await supabase
-    .from("activity_logs")
-    .select("id, owner_id, profile_slug, activity_type, happened_at, detail, notes, created_at")
-    .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
-    .eq("activity_type", kind);
-
-  if (error) throw error;
-
-  const activityIds = ((data ?? []) as ActivityLogRow[])
-    .map(mapActivityLogRowToActivity)
-    .filter((activity) => deletedCareItems.some((item) => activityMatchesCareItem(activity, item)))
-    .map((activity) => activity.id);
-
-  if (!activityIds.length) return;
-
-  activityIds.forEach(removeCachedActivityLog);
-
-  const deleteResult = await supabase
-    .from("activity_logs")
-    .delete()
-    .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
-    .in("id", activityIds);
-
-  if (deleteResult.error) {
-    throw deleteResult.error;
-  }
+  void kind;
+  void deletedItems;
 }
 
 export async function saveWeightLogToSupabase(weight: WeightLog) {

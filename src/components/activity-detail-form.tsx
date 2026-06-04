@@ -2,7 +2,8 @@
 
 
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
+import { Camera, Images } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -11,20 +12,18 @@ import type { ActivityType } from "@/lib/hewster-data";
 import type { CareItemTemplate } from "@/lib/care-settings";
 
 import { formatActivityLabel } from "@/lib/activity";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 import {
-  PET_PROFILE_STORAGE_KEY,
   PET_THEME_UPDATED_EVENT,
   appThemes,
   applyPetTheme,
-  defaultPetProfile,
   loadUserTheme,
-  normalizePetProfile,
   type ThemeId,
 } from "@/lib/pet-profile";
 
 const MAX_ATTACHMENT_FILES = 5;
-const MAX_EVENT_TITLE_LENGTH = 40;
+const MAX_EVENT_TITLE_LENGTH = TEXT_LIMITS.shortName;
 
 
 
@@ -231,36 +230,6 @@ const groupedPresets: Partial<Record<ActivityType, Array<{ label: string; option
   other: [],
 
 };
-
-
-
-const defaultPetProfileSnapshot = JSON.stringify(defaultPetProfile);
-
-function getPetProfileSnapshot() {
-
-  if (typeof window === "undefined") return defaultPetProfileSnapshot;
-
-  return window.localStorage.getItem(PET_PROFILE_STORAGE_KEY) ?? defaultPetProfileSnapshot;
-
-}
-
-function subscribeToPetProfile(onStoreChange: () => void) {
-
-  if (typeof window === "undefined") return () => {};
-
-  window.addEventListener("storage", onStoreChange);
-
-  window.addEventListener("focus", onStoreChange);
-
-  return () => {
-
-    window.removeEventListener("storage", onStoreChange);
-
-    window.removeEventListener("focus", onStoreChange);
-
-  };
-
-}
 
 
 
@@ -819,30 +788,6 @@ export function ActivityDetailForm({
 
 }: Props) {
 
-  const profileSnapshot = useSyncExternalStore(
-
-    subscribeToPetProfile,
-
-    getPetProfileSnapshot,
-
-    () => defaultPetProfileSnapshot,
-
-  );
-
-  const profile = useMemo(() => {
-
-    try {
-
-      return normalizePetProfile(JSON.parse(profileSnapshot));
-
-    } catch {
-
-      return defaultPetProfile;
-
-    }
-
-  }, [profileSnapshot]);
-
   const [themeId, setThemeId] = useState<ThemeId>(() => loadUserTheme());
   const theme = appThemes[themeId];
   const inferredSickLogMode = activityType === "sick" ? sickLogModeFromDetail(detail) : "";
@@ -875,15 +820,16 @@ export function ActivityDetailForm({
 
   const hasSickDetail = activityType !== "sick" || Boolean(detail.trim());
   const showCoreFields = activityType !== "sick" || hasSickDetail;
-  const showAttachmentField = activityType === "sick" && detail === "Vet Visit" && onAttachmentsChange;
+  const poopPhotoDetail = activityType === "poop" || (activityType === "potty" && /\bpoop\b/i.test(detail) && !/\bno poop\b/i.test(detail));
+  const showAttachmentField = Boolean(onAttachmentsChange && ((activityType === "sick" && detail === "Vet Visit") || poopPhotoDetail));
 
   const isPottyLog = ["potty", "pee", "poop"].includes(activityType);
 
-  const attachmentLabel = "Add Attachments";
+  const attachmentLabel = poopPhotoDetail ? "Attach Image" : "Add Attachments";
 
-  const attachmentAccept = "image/*,.pdf,application/pdf";
+  const attachmentAccept = poopPhotoDetail ? "image/*" : "image/*,.pdf,application/pdf";
 
-  const attachmentHelp = "Health notes, certificates, lab results, invoices, and photos.";
+  const attachmentHelp = poopPhotoDetail ? "Optional photos for color, texture, or anything unusual." : "Health notes, certificates, lab results, invoices, and photos.";
 
   const showDetailField = activityType === "other" || (activityType === "sick" && (detail === "Other" || sickSymptomFromDetail(detail) === "Other" || isOtherMedicalDetail(detail)));
 
@@ -932,7 +878,10 @@ export function ActivityDetailForm({
     if (!onAttachmentsChange) return;
 
     const nextFiles = [...attachmentFiles];
-    files.slice(0, Math.max(0, MAX_ATTACHMENT_FILES - nextFiles.length)).forEach((file) => {
+    files
+      .filter((file) => !poopPhotoDetail || file.type.startsWith("image/"))
+      .slice(0, Math.max(0, MAX_ATTACHMENT_FILES - nextFiles.length))
+      .forEach((file) => {
       const alreadyAttached = nextFiles.some((attached) =>
         attached.name === file.name && attached.size === file.size && attached.lastModified === file.lastModified
       );
@@ -942,6 +891,11 @@ export function ActivityDetailForm({
     onAttachmentsChange(nextFiles);
 
   };
+
+  useEffect(() => {
+    if (showAttachmentField || !attachmentFiles.length || !onAttachmentsChange) return;
+    onAttachmentsChange([]);
+  }, [attachmentFiles.length, onAttachmentsChange, showAttachmentField]);
 
   const removeAttachmentFile = (index: number) => {
 
@@ -962,12 +916,8 @@ export function ActivityDetailForm({
       <div className="mb-4">
 
         <h2 className="text-lg font-semibold">
-
-          {isEditing ? "Edit" : "Log"} {formatActivityLabel(activityType)}
-
+          {isEditing ? "Edit" : "Log"} {activityType === "other" ? "Other Event" : formatActivityLabel(activityType)}
         </h2>
-
-        <p className="text-sm text-zinc-500">Mostly Tap-Based, With Optional Notes When Helpful.</p>
 
       </div>
 
@@ -1480,7 +1430,8 @@ export function ActivityDetailForm({
 
             value={notes}
 
-            onChange={(event) => onNotesChange(event.target.value)}
+            onChange={(event) => onNotesChange(clampText(event.target.value, TEXT_LIMITS.mediumText))}
+            maxLength={TEXT_LIMITS.mediumText}
 
             placeholder={activityType === "food" ? "Kibble, Wet Food, Toppers, Amount, Appetite, Etc." : "Beef Liver, Lucky Mat, Dental Chew, Amount, Etc."}
 
@@ -1504,9 +1455,9 @@ export function ActivityDetailForm({
 
             value={extraNotes}
 
-            onChange={(event) => onExtraNotesChange(event.target.value.slice(0, 100))}
+            onChange={(event) => onExtraNotesChange(clampText(event.target.value, TEXT_LIMITS.note))}
 
-            maxLength={100}
+            maxLength={TEXT_LIMITS.note}
 
             rows={2}
 
@@ -1533,7 +1484,7 @@ export function ActivityDetailForm({
             value={detail === "Other" ? "" : displayDetailValue(detail)}
 
             onChange={(event) => {
-              const nextValue = event.target.value.slice(0, MAX_EVENT_TITLE_LENGTH);
+              const nextValue = clampText(event.target.value, MAX_EVENT_TITLE_LENGTH);
               onDetailChange(isOtherMedicalDetail(detail) ? nextValue ? `Other Medical: ${nextValue}` : "Other Medical" : nextValue);
             }}
 
@@ -1558,9 +1509,9 @@ export function ActivityDetailForm({
 
           value={showTreatDetailField ? "" : notes}
 
-          onChange={(event) => onNotesChange(event.target.value.slice(0, 100))}
+          onChange={(event) => onNotesChange(clampText(event.target.value, TEXT_LIMITS.note))}
 
-          maxLength={100}
+          maxLength={TEXT_LIMITS.note}
 
           rows={activityType === "medication" || activityType === "supplement" ? 1 : activityType === "wellness" || isPottyLog ? 2 : 3}
 
@@ -1580,24 +1531,57 @@ export function ActivityDetailForm({
 
           <span className="mb-1 block font-medium text-zinc-700">{attachmentLabel}</span>
 
-          <label className={`flex w-full rounded-2xl border border-dashed border-sky-200 bg-sky-50/50 px-3 py-3 text-sm ${attachmentLimitReached ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}>
-            <span className="rounded-full bg-sky-100 px-3 py-1.5 text-sm font-semibold text-sky-700">
-              Add Files
-            </span>
-            <input
-              type="file"
-              multiple
-              accept={attachmentAccept}
-              disabled={attachmentLimitReached}
-              onChange={(event) => {
-                addAttachmentFiles(Array.from(event.target.files ?? []));
-                event.currentTarget.value = "";
-              }}
-              className="sr-only"
-            />
-          </label>
+          {poopPhotoDetail ? (
+            <div className={`grid grid-cols-2 gap-2 rounded-2xl border border-dashed border-[#f0d27a]/70 bg-[#fff7dc]/70 px-3 py-3 ${attachmentLimitReached ? "opacity-55" : ""}`}>
+              <label aria-label="Take Picture" title="Take Picture" className={`flex min-h-11 items-center justify-center rounded-full bg-white/60 px-3 py-2 text-[#8a6200] ${attachmentLimitReached ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                <Camera className="size-5" aria-hidden="true" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  disabled={attachmentLimitReached}
+                  onChange={(event) => {
+                    addAttachmentFiles(Array.from(event.target.files ?? []));
+                    event.currentTarget.value = "";
+                  }}
+                  className="sr-only"
+                />
+              </label>
+              <label aria-label="Add Photos" title="Add Photos" className={`flex min-h-11 items-center justify-center rounded-full bg-white/60 px-3 py-2 text-[#8a6200] ${attachmentLimitReached ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                <Images className="size-5" aria-hidden="true" />
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  disabled={attachmentLimitReached}
+                  onChange={(event) => {
+                    addAttachmentFiles(Array.from(event.target.files ?? []));
+                    event.currentTarget.value = "";
+                  }}
+                  className="sr-only"
+                />
+              </label>
+            </div>
+          ) : (
+            <label className={`flex w-full rounded-2xl border border-dashed border-sky-200 bg-sky-50/50 px-3 py-3 text-sm ${attachmentLimitReached ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}>
+              <span className="rounded-full bg-sky-100 px-3 py-1.5 text-sm font-semibold text-sky-700">
+                Add Files
+              </span>
+              <input
+                type="file"
+                multiple
+                accept={attachmentAccept}
+                disabled={attachmentLimitReached}
+                onChange={(event) => {
+                  addAttachmentFiles(Array.from(event.target.files ?? []));
+                  event.currentTarget.value = "";
+                }}
+                className="sr-only"
+              />
+            </label>
+          )}
 
-          <p className="mt-1 text-xs text-zinc-500">{attachmentHelp} Up to {MAX_ATTACHMENT_FILES} files.</p>
+          {!poopPhotoDetail ? <p className="mt-1 text-xs text-zinc-500">{attachmentHelp} Up to {MAX_ATTACHMENT_FILES} files.</p> : null}
 
           {attachmentLimitReached ? <p className="mt-1 text-xs font-medium text-amber-700">Attachment limit reached.</p> : null}
 
@@ -1606,7 +1590,7 @@ export function ActivityDetailForm({
             <ul className="mt-2 space-y-1 text-xs text-zinc-600">
 
               {displayedAttachments.map((name, index) => (
-                <li key={`${name}-${index}`} className="flex items-center justify-between gap-2 rounded-xl bg-white/70 px-2.5 py-1.5 ring-1 ring-sky-100">
+                <li key={`${name}-${index}`} className={`flex items-center justify-between gap-2 rounded-xl bg-white/70 px-2.5 py-1.5 ring-1 ${poopPhotoDetail ? "ring-[#f0d27a]/50" : "ring-sky-100"}`}>
                   <span className="min-w-0 truncate">{name}</span>
                   {attachmentFiles.length ? (
                     <button

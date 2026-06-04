@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import type { CareItemTemplate } from "@/lib/care-settings";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 type Props = {
   mealName: string;
@@ -93,8 +94,8 @@ export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote
         <span className="mb-1 block font-medium text-zinc-700">Notes</span>
         <textarea
           value={fedNote}
-          onChange={(event) => onFedNoteChange(event.target.value.slice(0, 100))}
-          maxLength={100}
+          onChange={(event) => onFedNoteChange(clampText(event.target.value, TEXT_LIMITS.note))}
+          maxLength={TEXT_LIMITS.note}
           rows={3}
           placeholder={`Notes for ${mealName}`}
           className="w-full resize-none rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"

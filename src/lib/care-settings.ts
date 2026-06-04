@@ -1,6 +1,7 @@
 import type { MealTemplate } from "@/lib/meal-templates";
 import { resolveActiveNotebookAccess } from "@/lib/notebook-access";
 import { getSupabaseBrowserClient, getSupabaseCurrentSession, HEWSTER_PROFILE_SLUG } from "@/lib/supabase";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 export type CareScheduleKind = "meal" | "custom";
 export type CareItemKind = "supplement" | "medication";
@@ -44,9 +45,19 @@ const CARE_TEMPLATE_CACHE_TTL_MS = 30_000;
 const careTemplateCache = new Map<CareItemKind, { items: CareItemTemplate[]; cachedAt: number }>();
 const careTemplateLoadPromises = new Map<CareItemKind, Promise<CareItemTemplate[]>>();
 
+function clampCareTemplateText(item: CareItemTemplate): CareItemTemplate {
+  return {
+    ...item,
+    name: clampText(item.name, TEXT_LIMITS.shortName),
+    dose: clampText(item.dose, TEXT_LIMITS.dose),
+    notes: clampText(item.notes, TEXT_LIMITS.note),
+  };
+}
+
 function cacheCareTemplates(kind: CareItemKind, items: CareItemTemplate[]) {
-  careTemplateCache.set(kind, { items, cachedAt: Date.now() });
-  return items;
+  const clampedItems = items.map(clampCareTemplateText);
+  careTemplateCache.set(kind, { items: clampedItems, cachedAt: Date.now() });
+  return clampedItems;
 }
 
 function cachedCareTemplates(kind: CareItemKind) {
@@ -103,8 +114,8 @@ function normalizeCareItemTemplate(item: unknown, kind: CareItemKind): CareItemT
   return {
     id: candidate.id,
     kind,
-    name: candidate.name,
-    dose: candidate.dose,
+    name: clampText(candidate.name, TEXT_LIMITS.shortName),
+    dose: clampText(candidate.dose, TEXT_LIMITS.dose),
     scheduleKind,
     mealIds: scheduleKind === "meal" ? candidate.mealIds.filter((mealId): mealId is number => typeof mealId === "number") : [],
     customTiming: candidate.customTiming === "empty-stomach" ? "empty-stomach" : "with-food",
@@ -133,7 +144,7 @@ function normalizeCareItemTemplate(item: unknown, kind: CareItemKind): CareItemT
       : [{ id: 1, everyHours: typeof candidate.repeatEveryHours === "string" ? candidate.repeatEveryHours : "", forDays: typeof candidate.repeatForDays === "string" ? candidate.repeatForDays : "" }],
     ongoing: isSupplementMealPlan ? false : candidate.ongoing === true,
     asNeeded: candidate.asNeeded === true,
-    notes,
+    notes: clampText(notes, TEXT_LIMITS.note),
     active: candidate.active,
   };
 }
@@ -407,7 +418,7 @@ function backupKeyForCareKind(kind: CareItemKind) {
   return `${storageKeyForCareKind(kind)}.backups`;
 }
 
-function loadCareTemplateBackupItems(kind: CareItemKind) {
+export function loadCareTemplateBackupItems(kind: CareItemKind) {
   if (typeof window === "undefined") return [];
 
   try {
@@ -421,6 +432,27 @@ function loadCareTemplateBackupItems(kind: CareItemKind) {
       });
   } catch {
     return [];
+  }
+}
+
+export function loadLatestCareTemplateBackup(kind: CareItemKind) {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const backups = JSON.parse(window.localStorage.getItem(backupKeyForCareKind(kind)) ?? "[]") as Array<{ savedAt?: string; items?: unknown }>;
+    if (!Array.isArray(backups)) return null;
+
+    const backup = backups.find((candidate) => candidate.savedAt && isCareItemTemplateArray(candidate.items, kind));
+    if (!backup?.savedAt) return null;
+
+    return {
+      savedAt: backup.savedAt,
+      items: (backup.items as CareItemTemplate[])
+        .map((item) => normalizeCareItemTemplate(item, kind))
+        .filter((item): item is CareItemTemplate => Boolean(item)),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -563,7 +595,7 @@ function backupCareTemplates(kind: CareItemKind, templates: CareItemTemplate[]) 
 }
 
 export function saveCareTemplates(kind: CareItemKind, templates: CareItemTemplate[]) {
-  const repairedTemplates = repairCareTemplateIdCollisions(kind, templates);
+  const repairedTemplates = repairCareTemplateIdCollisions(kind, templates.map(clampCareTemplateText));
 
   if (typeof window !== "undefined") {
     const currentTemplates = loadCareTemplates(kind);
@@ -584,6 +616,13 @@ type CareTemplateSettingsRow = {
   items?: unknown;
   owner_id?: string | null;
   updated_at?: string | null;
+};
+
+type CareTemplateAuditRow = {
+  table_name?: string;
+  action?: "INSERT" | "UPDATE" | "DELETE";
+  old_row?: CareTemplateSettingsRow | null;
+  new_row?: CareTemplateSettingsRow | null;
 };
 
 function templatesFromCareSettingsRow(row: CareTemplateSettingsRow | null | undefined, kind: CareItemKind) {
@@ -665,6 +704,74 @@ async function loadCareTemplatesFromSupabaseUncached(kind: CareItemKind) {
   return cacheCareTemplates(kind, templates);
 }
 
+async function loadCareTemplateAuditItemsFromSupabase(kind: CareItemKind) {
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return [];
+
+  const { supabase, userId, signedInUserId } = signedInSupabase;
+  const ownerIds = [...new Set([userId, signedInUserId].filter(Boolean))];
+  const { data, error } = await supabase
+    .from("app_audit_log")
+    .select("table_name, action, old_row, new_row")
+    .in("owner_id", ownerIds)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("table_name", "care_item_templates")
+    .order("occurred_at", { ascending: false })
+    .limit(25);
+
+  if (error || !Array.isArray(data)) return [];
+
+  return (data as CareTemplateAuditRow[])
+    .filter((row) => row.old_row || row.new_row)
+    .flatMap((row) => [
+      ...templatesFromCareSettingsRow(row.old_row, kind),
+      ...templatesFromCareSettingsRow(row.new_row, kind),
+    ]);
+}
+
+export async function loadHistoricalCareTemplates(kind: CareItemKind) {
+  const currentTemplates = await loadCareTemplatesFromSupabase(kind).catch(() => loadCareTemplates(kind));
+  const backupTemplates = loadCareTemplateBackupItems(kind);
+  const auditTemplates = await loadCareTemplateAuditItemsFromSupabase(kind).catch(() => []);
+
+  return mergeCareTemplateSources(kind, auditTemplates, backupTemplates, currentTemplates);
+}
+
+export async function loadCurrentCareTemplatesFromSupabase(kind: CareItemKind) {
+  const localTemplates = loadCareTemplates(kind);
+  const signedInSupabase = await getSignedInSupabase();
+  if (!signedInSupabase) return localTemplates;
+
+  const { supabase, userId, signedInUserId } = signedInSupabase;
+  const ownerIds = [...new Set([userId, signedInUserId].filter(Boolean))];
+  const { data, error } = await supabase
+    .from("care_item_templates")
+    .select("owner_id, items, updated_at")
+    .in("owner_id", ownerIds)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("kind", kind)
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
+  if (error) {
+    if (!isOwnerScopedCareSettingsError(error)) return localTemplates;
+
+    const legacyResult = await loadLegacyCareTemplateRowsFromSupabase(supabase, kind);
+    const legacyRows = !legacyResult.error && Array.isArray(legacyResult.data) ? legacyResult.data as CareTemplateSettingsRow[] : [];
+    const legacyRow = legacyRows.find((row) => hasValidCareSettingsItems(row, kind));
+    return legacyRow ? templatesFromCareSettingsRow(legacyRow, kind) : localTemplates;
+  }
+
+  const ownerRows = Array.isArray(data) ? data as CareTemplateSettingsRow[] : [];
+  const ownerRow = ownerRows.find((row) => hasValidCareSettingsItems(row, kind));
+  if (ownerRow) return templatesFromCareSettingsRow(ownerRow, kind);
+
+  const legacyResult = await loadLegacyCareTemplateRowsFromSupabase(supabase, kind);
+  const legacyRows = !legacyResult.error && Array.isArray(legacyResult.data) ? legacyResult.data as CareTemplateSettingsRow[] : [];
+  const legacyRow = legacyRows.find((row) => hasValidCareSettingsItems(row, kind));
+  return legacyRow ? templatesFromCareSettingsRow(legacyRow, kind) : localTemplates;
+}
+
 export async function loadCareTemplatesFromSupabase(kind: CareItemKind) {
   const cached = cachedCareTemplates(kind);
   if (cached) return cached;
@@ -684,13 +791,14 @@ export async function saveCareTemplatesToSupabase(kind: CareItemKind, templates:
   if (!signedInSupabase) return;
 
   const { supabase, userId } = signedInSupabase;
-  cacheCareTemplates(kind, templates);
+  const clampedTemplates = templates.map(clampCareTemplateText);
+  cacheCareTemplates(kind, clampedTemplates);
   const { error } = await supabase.from("care_item_templates").upsert(
     {
       owner_id: userId,
       profile_slug: HEWSTER_PROFILE_SLUG,
       kind,
-      items: templates,
+      items: clampedTemplates,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "owner_id,profile_slug,kind" }
@@ -703,7 +811,7 @@ export async function saveCareTemplatesToSupabase(kind: CareItemKind, templates:
     {
       profile_slug: HEWSTER_PROFILE_SLUG,
       kind,
-      items: templates,
+      items: clampedTemplates,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "profile_slug,kind" }

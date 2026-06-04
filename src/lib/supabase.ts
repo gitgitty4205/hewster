@@ -98,6 +98,8 @@ export function getSupabaseEnv() {
   };
 }
 
+export const PASSWORD_RESET_REQUIRED_STORAGE_KEY = "petnotebook.passwordResetRequired";
+
 export async function checkSupabaseAuthReachable(): Promise<boolean> {
   if (!url || !anonKey) return false;
 
@@ -139,7 +141,7 @@ export function getSupabaseBrowserClient() {
       auth: {
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: "pkce",
+        flowType: "implicit",
         persistSession: true,
       },
     });
@@ -172,13 +174,12 @@ export async function getSupabaseCurrentSession(supabase: SupabaseClient): Promi
         SESSION_LOOKUP_TIMEOUT_MS,
         { data: { session: null }, error: null },
       );
-      const session = error || !data.session ? getStoredSupabaseSession() : data.session;
+      const session = error ? null : data.session;
       currentSessionCache = { session, expiresAt: Date.now() + SESSION_CACHE_TTL_MS };
       return session;
     } catch {
-      const session = getStoredSupabaseSession();
-      currentSessionCache = { session, expiresAt: Date.now() + SESSION_CACHE_TTL_MS };
-      return session;
+      currentSessionCache = { session: null, expiresAt: Date.now() + SESSION_CACHE_TTL_MS };
+      return null;
     } finally {
       globalThis.setTimeout(() => {
         currentSessionPromise = null;
@@ -191,7 +192,7 @@ export async function getSupabaseCurrentSession(supabase: SupabaseClient): Promi
 
 export function cacheSupabaseCurrentSession(session: Session | null) {
   currentSessionPromise = null;
-  currentSessionCache = { session: session ?? getStoredSupabaseSession(), expiresAt: Date.now() + SESSION_CACHE_TTL_MS };
+  currentSessionCache = { session, expiresAt: Date.now() + SESSION_CACHE_TTL_MS };
 }
 
 export async function refreshSupabaseCurrentSession(supabase: SupabaseClient): Promise<Session | null> {
@@ -204,13 +205,12 @@ export async function refreshSupabaseCurrentSession(supabase: SupabaseClient): P
       SESSION_LOOKUP_TIMEOUT_MS,
       { data: { session: null }, error: null },
     );
-    const session = error || !data.session ? getStoredSupabaseSession() : data.session;
+    const session = error ? null : data.session;
     currentSessionCache = { session, expiresAt: Date.now() + SESSION_CACHE_TTL_MS };
     return session;
   } catch {
-    const session = getStoredSupabaseSession();
-    currentSessionCache = { session, expiresAt: Date.now() + SESSION_CACHE_TTL_MS };
-    return session;
+    currentSessionCache = { session: null, expiresAt: Date.now() + SESSION_CACHE_TTL_MS };
+    return null;
   }
 }
 

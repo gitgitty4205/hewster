@@ -2,7 +2,7 @@
 
 
 
-import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, Paperclip, SlidersHorizontal, Tablets, TriangleAlert } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, ImageIcon, Paperclip, SlidersHorizontal, Tablets, TriangleAlert } from "lucide-react";
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
@@ -38,7 +38,7 @@ import {
 } from "@/lib/hewster-data";
 
 import { compareActivitiesChronological, formatActivityLabel, formatActivityTime, renderActivityDetail, splitTreatDetailText } from "@/lib/activity";
-import { careItemHistoricallyOccurredWithMeal, loadCareTemplates, loadCareTemplatesFromSupabase, mealPlanDoseNumberForMeal, mealPlanTotalDoseCount, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
+import { careItemsForMeal, loadCareTemplates, loadCurrentCareTemplatesFromSupabase, mealPlanDoseNumberForMeal, mealPlanTotalDoseCount, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 
 import type { MealTemplate } from "@/lib/meal-templates";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
@@ -244,22 +244,8 @@ function mealPlanTimelineCareDetailText(item: CareItemTemplate & { skipped?: boo
   return `${item.name}${item.skipped ? ` - ${item.dose}` : ` — ${item.dose}`}${routeText}`;
 }
 
-function careItemKey(item: CareItemTemplate) {
-  return `${item.kind}-${item.id}`;
-}
-
-function careItemsForMeal(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
-  return careTemplates.filter((item) => {
-    if (item.kind === "medication" || item.asNeeded || item.scheduleKind !== "meal" || !item.mealIds.includes(meal.id)) return false;
-    return careItemHistoricallyOccurredWithMeal(item, meal, meals, dayKey);
-  });
-}
-
 function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
-  return careItemsForMeal(careTemplates, meal, meals, dayKey).sort((a, b) => {
-    const kindOrder = (item: CareItemTemplate) => item.kind === "medication" ? 0 : 1;
-    return kindOrder(a) - kindOrder(b) || a.name.localeCompare(b.name) || a.id - b.id;
-  }).map((item) => {
+  return careItemsForMeal(careTemplates, meal.id, meals, dayKey).map((item) => {
     const doseNumber = mealPlanDoseNumberForMeal(item, meal, meals, dayKey);
     const totalDoses = mealPlanTotalDoseCount(item);
     return {
@@ -340,15 +326,10 @@ function matchingCareTemplate(activity: ActivityLog, careTemplates: CareItemTemp
   }) ?? null;
 }
 
-function isGeneratedCareActivity(activity: ActivityLog) {
-  return (
-    (activity.activityType === "medication" || activity.activityType === "supplement") &&
-    /^(?:medication|supplement)-\d+-(?:schedule|meal)-/.test(activity.id)
-  );
-}
-
 function isVisibleActivity(activity: ActivityLog, careTemplates: CareItemTemplate[]) {
-  return !isGeneratedCareActivity(activity) || Boolean(matchingCareTemplate(activity, careTemplates));
+  void activity;
+  void careTemplates;
+  return true;
 }
 
 function compareHistoryMeals(a: HistoryDay["meals"][number], b: HistoryDay["meals"][number]) {
@@ -466,7 +447,7 @@ function CareItemHistoryLine({ item }: { item: CareItemTemplate & { skipped: boo
   return (
     <div className={`flex items-start gap-2 text-sm leading-5 ${item.skipped ? "rounded-2xl bg-rose-50/70 px-2 py-1.5 text-rose-700 ring-1 ring-rose-200/70" : "text-[#6b3f22]/70"}`}>
       <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ${iconClassName}`}>
-        {item.kind === "supplement" ? <Tablets className="size-3" /> : <MedicationPillIcon className="size-3.5" />}
+        {item.kind === "supplement" ? <Tablets className="size-3.5" /> : <MedicationPillIcon className="size-3.5" />}
       </span>
       <div className="min-w-0 flex-1">
         <p>
@@ -667,7 +648,7 @@ function PottyDetailBadges({ detail, notes, inset = true }: { detail: string | n
 
         {showPoop ? (
 
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex min-w-0 flex-nowrap items-center gap-1.5">
 
             <span className={pottyBadgeClasses(bristol ?? "Poop")}>
 
@@ -677,7 +658,7 @@ function PottyDetailBadges({ detail, notes, inset = true }: { detail: string | n
 
             </span>
 
-            {bristolDescription ? <span className="text-xs font-medium leading-5 text-zinc-600">{bristolDescription}</span> : null}
+            {bristolDescription ? <span className="min-w-0 whitespace-nowrap text-xs font-medium leading-5 text-zinc-600">{bristolDescription}</span> : null}
 
           </span>
 
@@ -727,6 +708,64 @@ function splitActivityNotes(notes: string | null) {
 
 }
 
+function visiblePottyNotes(notes: string | null) {
+
+  return notes
+
+    ?.split("\n")
+
+    .map((line) => line.trim())
+
+    .filter((line) => line && !line.startsWith("Attachments: ") && !line.startsWith("Record Tags: "))
+
+    .join("\n")
+
+    .trim();
+
+}
+
+function PottyActivityNotes({ activity, className = "mt-2 text-sm text-zinc-500" }: { activity: ActivityLog; className?: string }) {
+
+  const notes = visiblePottyNotes(activity.notes);
+
+  if (!notes) return null;
+
+  return <ExpandableNoteText className={className}>Notes: {notes}</ExpandableNoteText>;
+
+}
+
+function PottyActivityMeta({ activity }: { activity: ActivityLog }) {
+
+  const hasAttachments = Boolean(activity.attachments?.length);
+
+  const hasNotes = Boolean(visiblePottyNotes(activity.notes));
+
+  if (!hasAttachments) {
+
+    return hasNotes ? <PottyActivityNotes activity={activity} /> : null;
+
+  }
+
+  if (!hasNotes) {
+
+    return <ActivityAttachmentLinks activity={activity} />;
+
+  }
+
+  return (
+
+    <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+
+      <PottyActivityNotes activity={activity} className="pt-1 text-sm text-zinc-500" />
+
+      <ActivityAttachmentLinks activity={activity} className="flex flex-wrap justify-end gap-2" />
+
+    </div>
+
+  );
+
+}
+
 function renderTimelineActivityDetail(activity: ActivityLog) {
 
   if (!activity.attachments?.length) return renderActivityDetail(activity);
@@ -759,28 +798,35 @@ async function openActivityAttachment(filePath: string) {
 
 
 
-function ActivityAttachmentLinks({ activity }: { activity: ActivityLog }) {
+function ActivityAttachmentLinks({ activity, className }: { activity: ActivityLog; className?: string }) {
 
   if (!activity.attachments?.length) return null;
+  const isPoopPhotoRecord = ["pee", "poop", "potty"].includes(activity.activityType);
 
   return (
 
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className={className ?? `mt-2 flex flex-wrap gap-2 ${isPoopPhotoRecord ? "justify-end" : ""}`}>
 
-      {activity.attachments.map((attachment) => (
+      {activity.attachments.map((attachment, index) => (
 
         <button
           key={attachment.id}
           type="button"
+          aria-label={isPoopPhotoRecord ? `Open image${activity.attachments && activity.attachments.length > 1 ? ` ${index + 1}` : ""}` : `Open ${attachment.fileName}`}
+          title={isPoopPhotoRecord ? `Open image${activity.attachments && activity.attachments.length > 1 ? ` ${index + 1}` : ""}` : attachment.fileName}
           onClick={(event) => {
             event.stopPropagation();
             void openActivityAttachment(attachment.filePath);
           }}
-          className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/75 px-2.5 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-200"
+          className={`inline-flex max-w-full items-center justify-center text-xs font-semibold ring-1 ${
+            isPoopPhotoRecord
+              ? "size-8 rounded-lg bg-[#4f2f1b]/95 text-[#f6d978] shadow-sm shadow-[#4f2f1b]/15 ring-1 ring-[#f6d978]/45 transition hover:bg-[#5b3720]"
+              : "gap-1.5 rounded-full bg-white/75 px-2.5 py-1 text-sky-700 ring-sky-200"
+          }`}
         >
 
-          <Paperclip className="size-3.5 shrink-0" />
-          <span className="min-w-0 truncate">{attachment.fileName}</span>
+          {isPoopPhotoRecord ? <ImageIcon className="size-3.5 shrink-0" /> : <Paperclip className="size-3.5 shrink-0" />}
+          {isPoopPhotoRecord ? null : <span className="min-w-0 truncate">{attachment.fileName}</span>}
 
         </button>
 
@@ -1062,9 +1108,9 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
 
       return {
 
-        icon: null,
+        icon: Tablets,
 
-        iconText: "\u{1F48A}",
+        iconText: null,
 
         card: "bg-[#eaf0f8]/80 ring-[#b8c9dd]",
 
@@ -1149,7 +1195,7 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
   if (activityType === "supplement") {
     return (
       <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]">
-        <Tablets className="size-3" />
+        <Tablets className="size-3.5" />
       </span>
     );
   }
@@ -1157,7 +1203,7 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
   if (activityType === "medication") {
     return (
       <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600 ring-1 ring-sky-100">
-        <MedicationPillIcon className="size-4" />
+        <MedicationPillIcon className="size-3.5" />
       </span>
     );
   }
@@ -1417,12 +1463,11 @@ export default function HistoryPage() {
         setMealLogs(state.mealLogs ?? []);
 
         const [supplements, medications] = await Promise.all([
-          loadCareTemplatesFromSupabase("supplement").catch(() => loadCareTemplates("supplement")),
-          loadCareTemplatesFromSupabase("medication").catch(() => loadCareTemplates("medication")),
+          loadCurrentCareTemplatesFromSupabase("supplement").catch(() => loadCareTemplates("supplement")),
+          loadCurrentCareTemplatesFromSupabase("medication").catch(() => loadCareTemplates("medication")),
         ]);
 
         setCareTemplates([...supplements, ...medications]);
-
         setActivityLogs(state.activityLogs);
 
         setManualAlerts(state.manualAlerts ?? []);
@@ -1572,8 +1617,6 @@ export default function HistoryPage() {
 
       const targetDay = ensureDay(day);
 
-      const skippedCareItemIds = meal.skippedCareItemIds ?? [];
-
       const mealTemplate = template ?? {
         id: meal.mealId,
         name: meal.mealName || "Meal",
@@ -1581,17 +1624,17 @@ export default function HistoryPage() {
         food: meal.food,
         notes: meal.defaultNotes,
       };
-      const mealTemplatesForDoseCount = templates.some((savedMeal) => savedMeal.id === mealTemplate.id) ? templates : [...templates, mealTemplate];
       const missedMeal = isMissedMealRecord(meal);
       const skippedMeal = isSkippedMealRecord(meal);
       const displayTime = missedMeal || skippedMeal ? mealTemplate.plannedTime || meal.actualTime : meal.actualTime || mealTemplate.plannedTime;
-      const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, mealTemplate, mealTemplatesForDoseCount, day).map((item) => ({
-
-        ...item,
-
-        skipped: skippedCareItemIds.includes(careItemKey(item)),
-
-      }));
+      const skippedCareItemIds = meal.skippedCareItemIds ?? [];
+      const mealTemplatesForDoseCount = templates.some((savedMeal) => savedMeal.id === mealTemplate.id) ? templates : [...templates, mealTemplate];
+      const mealCareItems = meal.loggedCareItems?.length
+        ? meal.loggedCareItems.map((item) => ({ ...item, skipped: Boolean(item.skipped) }))
+        : mealCareItemsWithDoseBadges(careTemplates, mealTemplate, mealTemplatesForDoseCount, day).map((item) => ({
+            ...item,
+            skipped: skippedCareItemIds.includes(`${item.kind}-${item.id}`),
+          }));
 
 
 
@@ -1883,44 +1926,65 @@ export default function HistoryPage() {
   const renderHistoryTimelineItem = (item: HistoryTimelineItem, key: string, groupedRow = false, showTime = true) => {
     const treatParts = item.activityType === "treat" ? splitTreatDetailText(item.detail) : null;
     const careActivity = item.activity && ["medication", "supplement"].includes(item.activityType) ? item.activity : null;
+    const pottyNotesActivity = item.activity && ["pee", "poop", "potty"].includes(item.activity.activityType) && pottyDetailForBadge(item.activity) ? item.activity : null;
+    const pottyAttachmentActivity = pottyNotesActivity?.attachments?.length ? pottyNotesActivity : null;
+    const [detailSummary, detailNotes] = item.detail.split(" • Notes: ", 2);
     const status = timelineStatusFor(item);
+    const showRightPhotoControls = Boolean(pottyAttachmentActivity);
+    const content = (
+      <>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
+          </div>
+          {showTime && !showRightPhotoControls ? (
+            <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+              {item.time}
+            </span>
+          ) : null}
+        </div>
+
+        {careActivity ? (
+          <CareActivityDetail activity={careActivity} careTemplates={careTemplates} />
+        ) : treatParts ? (
+          <>
+            {treatParts.summary ? <p className="mt-1 text-sm text-zinc-500">{treatParts.summary}</p> : null}
+            {treatParts.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {treatParts.notes}</ExpandableNoteText> : null}
+          </>
+        ) : item.detail.includes(" • Notes: ") ? (
+          <>
+            <TimelineDetailText detail={detailSummary} status={status} />
+            {!pottyNotesActivity && detailNotes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {detailNotes}</ExpandableNoteText> : null}
+          </>
+        ) : item.detail ? (
+          <TimelineDetailText detail={item.detail} status={status} />
+        ) : null}
+      </>
+    );
 
     return (
       <div key={key} className={groupedRow ? "px-2.5 py-3" : "rounded-2xl bg-zinc-50/75 p-2.5 ring-1 ring-zinc-200/70"}>
-        <div className="grid grid-cols-[1.35rem_1fr] gap-2.5">
+        <div className={`grid gap-2.5 ${showRightPhotoControls ? "grid-cols-[1.35rem_minmax(0,1fr)_auto]" : "grid-cols-[1.35rem_1fr]"}`}>
           <div className="flex w-5 justify-center">
             <EventFeedMarker activityType={item.activityType} />
           </div>
 
           <div className="min-w-0">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
-              </div>
+            {content}
+            {pottyNotesActivity ? (
+              pottyAttachmentActivity ? <PottyActivityNotes activity={pottyNotesActivity} /> : <PottyActivityMeta activity={pottyNotesActivity} />
+            ) : item.activity ? <ActivityAttachmentLinks activity={item.activity} /> : null}
+          </div>
+          {pottyAttachmentActivity ? (
+            <div className="flex shrink-0 flex-col items-end gap-2">
               {showTime ? (
-                <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+                <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
                   {item.time}
                 </span>
               ) : null}
+              <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="flex flex-wrap justify-end gap-2" />
             </div>
-
-            {careActivity ? (
-              <CareActivityDetail activity={careActivity} careTemplates={careTemplates} />
-            ) : treatParts ? (
-              <>
-                {treatParts.summary ? <p className="mt-1 text-sm text-zinc-500">{treatParts.summary}</p> : null}
-                {treatParts.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {treatParts.notes}</ExpandableNoteText> : null}
-              </>
-            ) : item.detail.includes(" • Notes: ") ? (
-              <>
-                <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} />
-                <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
-              </>
-            ) : item.detail ? (
-              <TimelineDetailText detail={item.detail} status={status} />
-            ) : null}
-            {item.activity ? <ActivityAttachmentLinks activity={item.activity} /> : null}
-          </div>
+          ) : null}
         </div>
       </div>
     );
@@ -2813,6 +2877,52 @@ export default function HistoryPage() {
                       const style = getActivityStyle(displayType);
 
                       const Icon = style.icon;
+                      const isPottyActivity = ["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity);
+                      const pottyAttachmentActivity = ["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity) && activity.attachments?.length ? activity : null;
+
+                      if (pottyAttachmentActivity) {
+
+                        return (
+
+                          <article key={`filtered-${activity.id}`} className={`rounded-2xl p-4 ring-1 ${style.card}`}>
+
+                            <div className="flex items-start justify-between gap-3">
+
+                              <div className="min-w-0 flex-1 text-left">
+
+                                <div className="flex items-center gap-3">
+
+                                  <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+
+                                    {Icon ? <Icon className="size-4.5" /> : <span className="text-lg leading-none">{style.iconText}</span>}
+
+                                  </span>
+
+                                  <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
+
+                                </div>
+
+                                <PottyDetailBadges detail={pottyDetailForBadge(activity)} notes={null} />
+
+                              </div>
+
+                              <div className="shrink-0 text-right">
+
+                                <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+
+                                <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="mt-2 flex flex-wrap justify-end gap-2" />
+
+                              </div>
+
+                            </div>
+
+                            <PottyActivityNotes activity={activity} />
+
+                          </article>
+
+                        );
+
+                      }
 
                       return (
 
@@ -2836,9 +2946,9 @@ export default function HistoryPage() {
 
                           </div>
 
-                          {["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity) ? (
+                          {isPottyActivity ? (
 
-                            <PottyDetailBadges detail={pottyDetailForBadge(activity)} notes={activity.notes} />
+                            <PottyDetailBadges detail={pottyDetailForBadge(activity)} notes={null} />
 
                           ) : activity.activityType === "treat" ? (
 
@@ -2855,6 +2965,8 @@ export default function HistoryPage() {
                             <ActivityDetailAndNotes activity={activity} careTemplates={careTemplates} />
 
                           )}
+
+                          {isPottyActivity ? <PottyActivityMeta activity={activity} /> : null}
 
                         </article>
 
@@ -2990,6 +3102,52 @@ export default function HistoryPage() {
                       const style = getActivityStyle(displayType);
 
                       const Icon = style.icon;
+                      const isPottyActivity = ["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity);
+                      const pottyAttachmentActivity = ["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity) && activity.attachments?.length ? activity : null;
+
+                      if (pottyAttachmentActivity) {
+
+                        return (
+
+                          <article key={activity.id} className={`rounded-2xl p-4 ring-1 ${style.card}`}>
+
+                            <div className="flex items-start justify-between gap-3">
+
+                              <div className="min-w-0 flex-1 text-left">
+
+                                <div className="flex items-center gap-3">
+
+                                  <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+
+                                    {Icon ? <Icon className="size-4.5" /> : <span className="text-lg leading-none">{style.iconText}</span>}
+
+                                  </span>
+
+                                  <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
+
+                                </div>
+
+                                <PottyDetailBadges detail={pottyDetailForBadge(activity)} notes={null} />
+
+                              </div>
+
+                              <div className="shrink-0 text-right">
+
+                                <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+
+                                <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="mt-2 flex flex-wrap justify-end gap-2" />
+
+                              </div>
+
+                            </div>
+
+                            <PottyActivityNotes activity={activity} />
+
+                          </article>
+
+                        );
+
+                      }
 
                       return (
 
@@ -3013,9 +3171,9 @@ export default function HistoryPage() {
 
                           </div>
 
-                          {["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity) ? (
+                          {isPottyActivity ? (
 
-                            <PottyDetailBadges detail={pottyDetailForBadge(activity)} notes={activity.notes} />
+                            <PottyDetailBadges detail={pottyDetailForBadge(activity)} notes={null} />
 
                           ) : activity.activityType === "treat" ? (
 
@@ -3032,6 +3190,8 @@ export default function HistoryPage() {
                             <ActivityDetailAndNotes activity={activity} careTemplates={careTemplates} />
 
                           )}
+
+                          {isPottyActivity ? <PottyActivityMeta activity={activity} /> : null}
 
                         </article>
 

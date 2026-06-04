@@ -22,14 +22,15 @@ export function ExpandableNoteText({ children, className = "", collapsedLines = 
   return (
     <span
       className={`pet-note-text block w-full cursor-pointer text-left ${className}`}
-      style={collapsedStyle}
       aria-expanded={expanded}
       onClick={(event) => {
         event.stopPropagation();
         setExpanded((current) => !current);
       }}
     >
-      {children}
+      <span className="block" style={collapsedStyle}>
+        {children}
+      </span>
     </span>
   );
 }

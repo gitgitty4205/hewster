@@ -41,6 +41,7 @@ import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 import { loadPetProfile } from "@/lib/pet-profile";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { compareActivitiesReverseChronological } from "@/lib/activity";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 function currentAlertMinuteKey() {
   const now = new Date();
@@ -490,8 +491,8 @@ export default function AlertsPage() {
     const alert: ManualAlert = {
       id: `manual-alert-${Date.now()}`,
       profileSlug: HEWSTER_PROFILE_SLUG,
-      title: titleValue.trim(),
-      message: messageValue.trim(),
+      title: clampText(titleValue.trim(), TEXT_LIMITS.shortName),
+      message: clampText(messageValue.trim(), TEXT_LIMITS.note),
       scope: scopeValue,
       weekdays: scopeValue === "certain-days" ? alertWeekdaysValue : undefined,
       time: alertTimeValue,
@@ -548,8 +549,8 @@ export default function AlertsPage() {
       alert.id === editingAlertId
         ? {
             ...alert,
-            title: editingTitleValue.trim(),
-            message: editingMessageValue.trim(),
+            title: clampText(editingTitleValue.trim(), TEXT_LIMITS.shortName),
+            message: clampText(editingMessageValue.trim(), TEXT_LIMITS.note),
             scope: editingScopeValue,
             weekdays: editingScopeValue === "certain-days" ? editingAlertWeekdaysValue : undefined,
             time: editingAlertTimeValue,
@@ -725,7 +726,8 @@ export default function AlertsPage() {
               <div className="space-y-3 rounded-2xl bg-white/60 p-3 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
                 <input
                   value={titleValue}
-                  onChange={(event) => setTitleValue(event.target.value)}
+                  onChange={(event) => setTitleValue(clampText(event.target.value, TEXT_LIMITS.shortName))}
+                  maxLength={TEXT_LIMITS.shortName}
                   placeholder="Alert Title"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                 />
@@ -811,20 +813,26 @@ export default function AlertsPage() {
                   const reviewActionButtonClass = "h-8 min-w-16 rounded-full px-3 text-xs font-semibold";
 
                   return (
-                    <article key={alert.id} className="rounded-2xl bg-white/80 p-4 ring-1 ring-[#e6c8ce]/75">
+                    <article
+                      key={alert.id}
+                      className="rounded-2xl bg-white/80 p-4 ring-1 ring-[#e6c8ce]/75"
+                    >
                       <div className="flex items-start gap-3">
                         <TriangleAlert className="mt-0.5 size-4 shrink-0 text-[#8f1739]" />
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-[#8f1739]">{alert.title}</p>
+                          <p className="block min-w-0 text-left font-semibold text-[#8f1739]">
+                            {alert.title}
+                          </p>
                           <ExpandableNoteText className="mt-1 text-sm leading-5 text-[#b71f48]/70">{alert.detail}</ExpandableNoteText>
                           {mealReviewAction || customCareReviewAction ? (
-                            <div className={`mt-3 items-center justify-end gap-2 ${showLogTime ? "grid grid-cols-[8.75rem_auto_auto]" : "flex"}`}>
+                            <div className={`mt-3 items-center justify-end gap-2 ${showLogTime ? "grid grid-cols-[8.75rem_auto_auto]" : "flex"}`} onKeyDown={(event) => event.stopPropagation()}>
                               {showLogTime ? (
                                 <label className="min-w-0">
                                   <span className="sr-only">Log time</span>
                                   <input
                                     type="time"
                                     value={reviewMealTimeValue(alert.id, reviewPlannedTime)}
+                                    onClick={(event) => event.stopPropagation()}
                                     onChange={(event) => updateReviewMealTime(alert.id, event.target.value)}
                                     className="h-10 w-full rounded-full border border-[#8f1739] bg-white px-3 text-sm font-semibold text-[#8f1739] outline-none transition focus:ring-4 focus:ring-[#e6c8ce]/55"
                                   />
@@ -834,13 +842,17 @@ export default function AlertsPage() {
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  onClick={() =>
-                                    mealReviewAction
-                                      ? resolveReviewMeal(alert.id, mealReviewAction.mealId, "skipped")
-                                      : customCareReviewAction
-                                        ? resolveReviewCustomCare(alert.id, customCareReviewAction, "skipped")
-                                        : undefined
-                                  }
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    if (mealReviewAction) {
+                                      void resolveReviewMeal(alert.id, mealReviewAction.mealId, "skipped");
+                                      return;
+                                    }
+
+                                    if (customCareReviewAction) {
+                                      void resolveReviewCustomCare(alert.id, customCareReviewAction, "skipped");
+                                    }
+                                  }}
                                   className={`${reviewActionButtonClass} border-[#e6c8ce] text-[#d91f56] hover:bg-[#fff0f1]`}
                                 >
                                   Skip
@@ -850,7 +862,10 @@ export default function AlertsPage() {
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  onClick={() => setActiveReviewLogId((current) => (current === alert.id ? null : current))}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setActiveReviewLogId((current) => (current === alert.id ? null : current));
+                                  }}
                                   className={`${reviewActionButtonClass} border-[#e6c8ce] text-[#d91f56] hover:bg-[#fff0f1]`}
                                 >
                                   Cancel
@@ -858,7 +873,8 @@ export default function AlertsPage() {
                               ) : null}
                               <Button
                                 type="button"
-                                onClick={() => {
+                                onClick={(event) => {
+                                  event.stopPropagation();
                                   if (!showLogTime) {
                                     openReviewLogTime(alert.id, reviewPlannedTime);
                                     return;
@@ -883,7 +899,10 @@ export default function AlertsPage() {
                         {alert.kind === "manual" ? (
                           <Button
                             type="button"
-                            onClick={() => resolveManualAlert(alert.id)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              resolveManualAlert(alert.id);
+                            }}
                             className="h-8 shrink-0 rounded-full bg-[#8f1739] px-3 text-xs text-white hover:bg-[#7c1431]"
                           >
                             Done
@@ -900,12 +919,16 @@ export default function AlertsPage() {
               <div className="space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-3">
                 <h3 className="text-sm font-semibold text-[#8f1739]/80">Saved Alerts</h3>
                 {savedManualAlerts.map((alert) => (
-                <article key={alert.id} className="rounded-2xl bg-white/75 p-4 ring-1 ring-[#e6c8ce]/70">
+                <article
+                  key={alert.id}
+                  className="rounded-2xl bg-white/75 p-4 ring-1 ring-[#e6c8ce]/70"
+                >
                   {editingAlertId === alert.id ? (
                     <div className="space-y-3">
                       <input
                         value={editingTitleValue}
-                        onChange={(event) => setEditingTitleValue(event.target.value)}
+                        onChange={(event) => setEditingTitleValue(clampText(event.target.value, TEXT_LIMITS.shortName))}
+                        maxLength={TEXT_LIMITS.shortName}
                         placeholder="Alert Title"
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                       />
@@ -983,7 +1006,9 @@ export default function AlertsPage() {
                   ) : (
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-medium text-[#8f1739]">{alert.title}</p>
+                        <p className="block min-w-0 text-left font-medium text-[#8f1739]">
+                          {alert.title}
+                        </p>
                         <p className="mt-1 text-sm text-[#b71f48]/70">
                           {alertScopeLabel(alert)}{alert.time ? ` ${formatReminderTime(alert.time)}` : ""}
                         </p>
@@ -1049,7 +1074,10 @@ export default function AlertsPage() {
               <div className="space-y-2 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-3">
                 <h3 className="text-sm font-semibold text-[var(--hewie-active-text,#334155)]/85">Saved Reminders</h3>
                 {reminderRules.map((rule) => (
-                  <article key={rule.id} className="rounded-2xl bg-white/70 p-4 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+                  <article
+                    key={rule.id}
+                    className="rounded-2xl bg-white/70 p-4 ring-1 ring-[var(--hewie-ring,#cbd5e1)]"
+                  >
                     {editingReminderRuleId === rule.id ? (
                       <div className="space-y-3">
                         <div className="grid grid-cols-[1fr_auto] gap-3">
@@ -1100,7 +1128,6 @@ export default function AlertsPage() {
             ) : null}
           </div>
         </section>
-
 
         <BottomNav alertsCount={alertCards.length} />
       </div>

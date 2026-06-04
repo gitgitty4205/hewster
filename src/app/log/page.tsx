@@ -158,6 +158,10 @@ function mergeDayWithTime(dayKey: string, timeValue: string) {
 
 }
 
+function attachmentDocumentTypesForActivity(activityType: ActivityType) {
+  return activityType === "poop" || activityType === "potty" ? ["Poop Photo"] : ["Medical Attachment"];
+}
+
 
 
 const generatedCareNoteValues = new Set(["With Food", "Empty Stomach", "Oral", "Topical", "Injection", "Other"]);
@@ -298,7 +302,7 @@ function mealLogStatus(mealLog: MealLog | undefined, fallbackStatus: MealStatus)
   return "done";
 }
 
-function buildMealLog(meal: MealTemplate, actualTime: string, fedNotes: string | null, dayKey: string, skippedCareItemIds: string[] = []): MealLog {
+function buildMealLog(meal: MealTemplate, actualTime: string, fedNotes: string | null, dayKey: string, skippedCareItemIds: string[] = [], loggedCareItems: MealLog["loggedCareItems"] = []): MealLog {
   return {
     id: `${dayKey}-${meal.id}`,
     profileSlug: HEWSTER_PROFILE_SLUG,
@@ -309,6 +313,7 @@ function buildMealLog(meal: MealTemplate, actualTime: string, fedNotes: string |
     defaultNotes: meal.notes,
     fedNotes,
     skippedCareItemIds,
+    loggedCareItems,
     actualTime,
     createdAt: new Date().toISOString(),
   };
@@ -390,6 +395,13 @@ function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: Me
   });
 }
 
+function loggedCareItemsForMeal(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string, skippedCareItemIds: string[] = []) {
+  return mealCareItemsWithDoseBadges(careTemplates, meal, meals, dayKey).map((item) => ({
+    ...item,
+    skipped: skippedCareItemIds.includes(`${item.kind}-${item.id}`),
+  }));
+}
+
 function TodayMealPlanCard({
   dayKey,
   isToday,
@@ -450,15 +462,23 @@ function TodayMealPlanCard({
           const missed = mealLog ? isMissedMealLog(mealLog) : false;
           const checked = status === "done" && !skipped && !missed;
           const notLoggedPast = !isToday && !actualTime && !skipped && !missed;
-          const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, templates, dayKey);
           const skippedCareItemIds = mealLog?.skippedCareItemIds ?? mealState?.skippedCareItemIds ?? [];
+          const mealCareItems = mealLog?.loggedCareItems?.length
+            ? mealLog.loggedCareItems.map((item) => ({ ...item, skipped: Boolean(item.skipped) }))
+            : mealCareItemsWithDoseBadges(careTemplates, meal, templates, dayKey).map((item) => ({
+                ...item,
+                skipped: skippedCareItemIds.includes(`${item.kind}-${item.id}`),
+              }));
+          const displayMealName = mealLog?.mealName || meal.name;
+          const displayMealFood = mealLog?.food || meal.food;
+          const displayMealNotes = mealLog?.defaultNotes ?? meal.notes;
 
           return (
             <article key={meal.id} className="rounded-2xl bg-white/72 p-4 shadow-sm ring-1 ring-[#d8b895]/55">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="min-w-0 font-semibold leading-6 text-[#4f2f1b]">{meal.name}</h3>
+                    <h3 className="min-w-0 font-semibold leading-6 text-[#4f2f1b]">{displayMealName}</h3>
                     {checked ? (
                       <span className="flex size-5 shrink-0 -translate-y-0.5 items-center justify-center rounded-full bg-[#8a5a35]/85 text-white" aria-label="Done" title="Done">
                         <Check className="size-3" strokeWidth={3} />
@@ -473,13 +493,13 @@ function TodayMealPlanCard({
                       <span className={`mt-0.5 shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusClasses(status)}`}>{status}</span>
                     )}
                   </div>
-                  <p className="mt-2 text-sm text-[#6b3f22]/72">{meal.food}</p>
+                  <p className="mt-2 text-sm text-[#6b3f22]/72">{displayMealFood}</p>
                 </div>
                 <Button
                   variant={checked ? "secondary" : "outline"}
                   className="size-7 rounded-full border-0 bg-white/75 p-0 text-[#6b3f22]/65 ring-1 ring-[#d8b895]/55 hover:bg-white hover:text-[#6b3f22]"
                   onClick={() => onOpenMealEditor(meal.id, actualTime)}
-                  aria-label={`Edit ${meal.name}`}
+                  aria-label={`Edit ${displayMealName}`}
                 >
                   <Ellipsis className="size-3.5" />
                 </Button>
@@ -491,20 +511,20 @@ function TodayMealPlanCard({
                 <p>Actual: {actualTime ?? "Not Logged"}</p>
               </div>
               <div className="mt-3">
-                {meal.notes ? <ExpandableNoteText className="text-sm text-[#6b3f22]/58">{meal.notes}</ExpandableNoteText> : null}
+                {displayMealNotes ? <ExpandableNoteText className="text-sm text-[#6b3f22]/58">{displayMealNotes}</ExpandableNoteText> : null}
                 {fedNotes && !skipped && !missed ? <ExpandableNoteText className="mt-1 text-sm font-semibold leading-6 text-[#6b3f22]/72">Notes: {fedNotes}</ExpandableNoteText> : null}
               </div>
 
               {mealCareItems.length ? (
                 <div className="mt-3 space-y-1.5 border-t border-[#d8b895]/45 pt-3">
-                  {mealCareItems.map((item) => <CareItemLine key={`${item.kind}-${item.id}`} item={item} skipped={skippedCareItemIds.includes(`${item.kind}-${item.id}`)} />)}
+                  {mealCareItems.map((item) => <CareItemLine key={`${item.kind}-${item.id}`} item={item} skipped={("skipped" in item && Boolean(item.skipped)) || skippedCareItemIds.includes(`${item.kind}-${item.id}`)} />)}
                 </div>
               ) : null}
 
               {editingMealTimeId === meal.id ? (
                 <div className="mt-3">
                   <MealTimeForm
-                    mealName={meal.name}
+                    mealName={displayMealName}
                     actualTime={editingMealTimeValue}
                     onActualTimeChange={onActualTimeChange}
                     fedNote={editingMealNoteValue}
@@ -817,7 +837,14 @@ export default function LogPage() {
 
     let nextMealLogs = mealLogs;
     if (actualTime) {
-      const mealLog = buildMealLog(template, actualTime, editingMealNoteValue.trim() || null, logDayKey, editingSkippedCareItemIds);
+      const mealLog = buildMealLog(
+        template,
+        actualTime,
+        editingMealNoteValue.trim() || null,
+        logDayKey,
+        editingSkippedCareItemIds,
+        loggedCareItemsForMeal(careTemplates, template, templatesForLogDay, logDayKey, editingSkippedCareItemIds)
+      );
       nextMealLogs = [mealLog, ...mealLogs.filter((entry) => entry.id !== mealLogId && entry.id !== missedMealLogId(logDayKey, editingMealTimeId))];
       if (supabaseReady) {
         try {
@@ -971,6 +998,7 @@ export default function LogPage() {
     }
 
     setHappenedAtValue(toTimeInputValue(activity.happenedAt));
+    setAttachmentFiles([]);
 
   };
 
@@ -1129,7 +1157,7 @@ export default function LogPage() {
     await saveActivity(activity, editingActivityId ? "update" : "create");
 
     if (attachmentFiles.length) {
-      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, ["Medical Attachment"]);
+      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypesForActivity(activity.activityType));
 
       if (savedAttachments.length) {
         setActivityLogs((current) => {
@@ -1170,6 +1198,9 @@ export default function LogPage() {
   const deleteActivity = async () => {
 
     if (!editingActivityId) return;
+
+    const confirmed = window.confirm("Delete this event? This cannot be undone.");
+    if (!confirmed) return;
 
 
 
@@ -1229,7 +1260,7 @@ export default function LogPage() {
                 onNotesChange={setNotesValue}
                 onExtraNotesChange={setExtraNotesValue}
                 attachmentFiles={attachmentFiles}
-                attachmentNames={attachmentFiles.map((file) => file.name)}
+                attachmentNames={attachmentFiles.length ? attachmentFiles.map((file) => file.name) : activity.attachments?.map((attachment) => attachment.fileName) ?? []}
                 onAttachmentsChange={setAttachmentFiles}
                 recordTags={recordTags}
                 onRecordTagsChange={setRecordTags}
@@ -1356,7 +1387,7 @@ export default function LogPage() {
 
                 attachmentFiles={attachmentFiles}
 
-                attachmentNames={attachmentFiles.map((file) => file.name)}
+                attachmentNames={attachmentFiles.length ? attachmentFiles.map((file) => file.name) : []}
 
                 onAttachmentsChange={setAttachmentFiles}
 

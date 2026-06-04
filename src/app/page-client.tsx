@@ -2,16 +2,18 @@
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import {
+  Image as ImageIcon,
   Bell,
   StickyNote,
   Tablets,
   TriangleAlert,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ActivityDetailForm } from "@/components/activity-detail-form";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useAuth } from "@/components/auth-provider";
+import { ExpandableNoteText } from "@/components/expandable-note-text";
 import { PottyDetailBadges } from "@/components/potty-detail-badges";
 import { BottomNav } from "@/components/bottom-nav";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
@@ -47,14 +49,14 @@ import {
 import {
   type DailyMeal,
   type MealTemplate,
-  initialTemplates,
   isInitialMealTemplatePlan,
   isMealTemplateActiveForDay,
 } from "@/lib/meal-templates";
 import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail } from "@/lib/activity";
 import { formatManualAlertTimelineDetail, loadReminderAlertRules, resolveAlerts, type ReminderAlertRule } from "@/lib/alerts";
-import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { getSupabaseBrowserClient, HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 import { loadPetProfile } from "@/lib/pet-profile";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import {
   careItemsForMeal,
@@ -131,7 +133,6 @@ function currentAlertMinuteKey() {
 }
 
 const DUE_ACTION_WINDOW_MS = 60 * 60 * 1000;
-
 function resolveActivityTypeForSave(activityType: ActivityType, detail: string): ActivityType {
   if (activityType !== "potty") return activityType;
 
@@ -198,17 +199,47 @@ function mealPlanCareDetailText(item: CareItemTemplate) {
 }
 
 const MAX_MEAL_PLAN_SUPPLEMENTS = 4;
-const MEAL_CARE_NOTE_PREVIEW_LENGTH = 100;
 
 function mealCareNameDose(item: CareItemTemplate) {
   return `${item.name}${item.dose ? ` ${item.dose}` : ""}`;
 }
 
+function OpenableClippedText({
+  children,
+  className = "",
+  lines = 1,
+  onOpen,
+}: {
+  children: ReactNode;
+  className?: string;
+  lines?: 1 | 2;
+  onOpen: () => void;
+}) {
+  return (
+    <button type="button" className={`relative block min-w-0 max-w-full text-left ${className}`} onClick={onOpen}>
+      <span
+        className={lines === 1 ? "block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" : "block min-w-0 overflow-hidden break-words"}
+        style={lines === 1
+          ? undefined
+          : {
+              WebkitBoxOrient: "vertical",
+              WebkitLineClamp: lines,
+              display: "-webkit-box",
+            }}
+      >
+        {children}
+      </span>
+    </button>
+  );
+}
+
 function CompactMealCareSummary({
   items,
+  onOpenDetail,
   onOpenNote,
 }: {
   items: CareItemTemplate[];
+  onOpenDetail: (item: CareItemTemplate) => void;
   onOpenNote: (item: CareItemTemplate) => void;
 }) {
   const supplements = items.filter((item) => item.kind === "supplement").slice(0, MAX_MEAL_PLAN_SUPPLEMENTS);
@@ -217,7 +248,7 @@ function CompactMealCareSummary({
   const singleSupplement = supplements.length === 1 ? supplements[0] : null;
   const singleSupplementNote = singleSupplement?.notes?.trim() ?? "";
   const containerClassName = singleSupplement
-    ? "mt-1.5 flex w-full min-w-0 items-start gap-1 overflow-hidden rounded-xl bg-white/34 px-1.5 py-1 text-left text-[10.5px] font-bold leading-[13px] text-[#1f3d5c] ring-1 ring-white/35"
+    ? "mt-1 flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl bg-white/34 px-1.5 py-0.5 text-left text-[10.5px] font-bold leading-[11px] text-[#1f3d5c] ring-1 ring-white/35"
     : "mt-1.5 flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl bg-white/34 px-1.5 py-0.5 text-left text-[10.5px] font-bold leading-[11px] text-[#1f3d5c] ring-1 ring-white/35";
 
   return (
@@ -227,9 +258,11 @@ function CompactMealCareSummary({
       </span>
       <span className="min-w-0 flex-1">
         {singleSupplement ? (
-          <span className="line-clamp-2 break-words">{mealCareNameDose(singleSupplement)}</span>
+          <OpenableClippedText className="w-full" onOpen={() => onOpenDetail(singleSupplement)}>
+            {mealCareNameDose(singleSupplement)}
+          </OpenableClippedText>
         ) : (
-          <span className="block truncate">{supplements.length} supplements</span>
+          <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{supplements.length} supplements</span>
         )}
       </span>
       {singleSupplement && singleSupplementNote ? (
@@ -246,7 +279,7 @@ function CompactMealCareSummary({
   );
 }
 
-function buildMealLog(meal: DailyMeal, fedNotes: string | null, dayKey: string, skippedCareItemIds: string[] = []): MealLog {
+function buildMealLog(meal: DailyMeal, fedNotes: string | null, dayKey: string, skippedCareItemIds: string[] = [], loggedCareItems: MealLog["loggedCareItems"] = []): MealLog {
   return {
     id: `${dayKey}-${meal.id}`,
     profileSlug: HEWSTER_PROFILE_SLUG,
@@ -257,6 +290,7 @@ function buildMealLog(meal: DailyMeal, fedNotes: string | null, dayKey: string, 
     defaultNotes: meal.notes,
     fedNotes,
     skippedCareItemIds,
+    loggedCareItems,
     actualTime: meal.actualTime ?? "",
     createdAt: new Date().toISOString(),
   };
@@ -276,11 +310,18 @@ function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: Me
   });
 }
 
+function loggedCareItemsForMeal(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string, skippedCareItemIds: string[] = []) {
+  return mealCareItemsWithDoseBadges(careTemplates, meal, meals, dayKey).map((item) => ({
+    ...item,
+    skipped: skippedCareItemIds.includes(`${item.kind}-${item.id}`),
+  }));
+}
+
 function missedMealLogId(dayKey: string, mealId: number) {
   return `${dayKey}-${mealId}-missed`;
 }
 
-function buildMissedMealLog(template: MealTemplate, dayKey: string, skippedCareItemIds: string[] = []): MealLog {
+function buildMissedMealLog(template: MealTemplate, dayKey: string, skippedCareItemIds: string[] = [], loggedCareItems: MealLog["loggedCareItems"] = []): MealLog {
   return {
     id: missedMealLogId(dayKey, template.id),
     profileSlug: HEWSTER_PROFILE_SLUG,
@@ -291,12 +332,13 @@ function buildMissedMealLog(template: MealTemplate, dayKey: string, skippedCareI
     defaultNotes: template.notes,
     fedNotes: "Missed",
     skippedCareItemIds,
+    loggedCareItems,
     actualTime: template.plannedTime,
     createdAt: new Date().toISOString(),
   };
 }
 
-function buildSkippedMealLog(template: MealTemplate, dayKey: string, skippedCareItemIds: string[] = []): MealLog {
+function buildSkippedMealLog(template: MealTemplate, dayKey: string, skippedCareItemIds: string[] = [], loggedCareItems: MealLog["loggedCareItems"] = []): MealLog {
   return {
     id: `${dayKey}-${template.id}`,
     profileSlug: HEWSTER_PROFILE_SLUG,
@@ -307,6 +349,7 @@ function buildSkippedMealLog(template: MealTemplate, dayKey: string, skippedCare
     defaultNotes: template.notes,
     fedNotes: "Skipped",
     skippedCareItemIds,
+    loggedCareItems,
     actualTime: template.plannedTime,
     createdAt: new Date().toISOString(),
   };
@@ -393,6 +436,51 @@ function sortMsForClockTime(dayKey: string, time: string) {
 
   date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
   return date.getTime();
+}
+
+function attachmentDocumentTypesForActivity(activityType: ActivityType) {
+  return activityType === "poop" || activityType === "potty" ? ["Poop Photo"] : ["Medical Attachment"];
+}
+
+async function openPoopRecordAttachment(filePath: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return;
+
+  const { data, error } = await supabase.storage
+    .from("pet-attachments")
+    .createSignedUrl(filePath, 60 * 10);
+
+  if (error || !data?.signedUrl) {
+    console.warn("Could not open poop image", error);
+    return;
+  }
+
+  window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+}
+
+function PoopRecordImageLinks({ activity, className = "" }: { activity: ActivityLog; className?: string }) {
+  const attachments = activity.attachments ?? [];
+  if (!attachments.length) return null;
+
+  return (
+    <div className={`flex flex-wrap justify-end gap-2 ${className}`}>
+      {attachments.map((attachment, index) => (
+        <button
+          key={attachment.id}
+          type="button"
+          aria-label={`Open image${attachments.length > 1 ? ` ${index + 1}` : ""}`}
+          title={`Open image${attachments.length > 1 ? ` ${index + 1}` : ""}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            void openPoopRecordAttachment(attachment.filePath);
+          }}
+          className="inline-flex size-8 items-center justify-center rounded-lg bg-[#4f2f1b]/95 text-[#f6d978] shadow-sm shadow-[#4f2f1b]/15 ring-1 ring-[#f6d978]/45 transition hover:bg-[#5b3720]"
+        >
+          <ImageIcon className="size-3.5 shrink-0" />
+        </button>
+      ))}
+    </div>
+  );
 }
 
 type CustomCareOccurrence = {
@@ -752,12 +840,13 @@ export default function HomeApp() {
   const [poopRecordsWindowDays, setPoopRecordsWindowDays] = useState<3 | 7>(3);
   const [customCareSkipKey, setCustomCareSkipKey] = useState<string | null>(null);
   const [customCareSkipNotes, setCustomCareSkipNotes] = useState<Record<string, string>>({});
-  const [expandedAlertIds, setExpandedAlertIds] = useState<Set<string>>(() => new Set());
   const [upcomingOverflowExpanded, setUpcomingOverflowExpanded] = useState(false);
   const [upcomingNoteModal, setUpcomingNoteModal] = useState<{
     title: string;
     subtitle: string;
+    label?: string;
     text: string;
+    sections?: { label: string; text: string }[];
     tone: {
       panel: string;
       closeButton: string;
@@ -1098,7 +1187,9 @@ export default function HomeApp() {
         const missedMealLogs = activeTemplatesForPreviousDay.flatMap((template) => {
           const mealState = dailyMealState.find((entry) => entry.mealId === template.id && (entry.dayKey ?? todayKey) === todayKey);
           if (mealState?.status === "done") return [];
-          return [buildMissedMealLog(template, todayKey, mealState?.skippedCareItemIds ?? [])];
+          const skippedCareItemIds = mealState?.skippedCareItemIds ?? [];
+          const rolloverCareTemplates = [...supplementTemplates, ...medicationTemplates];
+          return [buildMissedMealLog(template, todayKey, skippedCareItemIds, loggedCareItemsForMeal(rolloverCareTemplates, template, activeTemplatesForPreviousDay, todayKey, skippedCareItemIds))];
         });
 
         if (missedMealLogs.length) {
@@ -1144,7 +1235,7 @@ export default function HomeApp() {
       window.removeEventListener("focus", resetForNewDay);
       document.removeEventListener("visibilitychange", resetForNewDay);
     };
-  }, [dailyMealState, petRemembered, supabaseReady, templates, todayKey]);
+  }, [dailyMealState, medicationTemplates, petRemembered, supplementTemplates, supabaseReady, templates, todayKey]);
 
   const todayMealState = useMemo(() => {
     const activeTodayKey = todayKey || currentTodayKey();
@@ -1155,16 +1246,40 @@ export default function HomeApp() {
     const activeTodayKey = todayKey || currentTodayKey();
     const activeTemplates = templates.filter((template) => isMealTemplateActiveForDay(template, activeTodayKey));
     const stateByMealId = new Map(todayMealState.map((entry) => [entry.mealId, entry]));
+    const loggedMealsById = new Map(
+      mealLogs
+        .filter((mealLog) => mealLog.dayKey === activeTodayKey && !isMissedMealLog(mealLog))
+        .map((mealLog) => [mealLog.mealId, mealLog])
+    );
 
-    return activeTemplates.map((template) => {
+    const activeMeals = activeTemplates.map((template) => {
       const existing = stateByMealId.get(template.id);
+      const loggedMeal = loggedMealsById.get(template.id);
       return {
         ...template,
-        actualTime: existing?.actualTime ?? null,
+        name: loggedMeal?.mealName || template.name,
+        food: loggedMeal?.food || template.food,
+        notes: loggedMeal?.defaultNotes ?? template.notes,
+        actualTime: existing?.actualTime ?? loggedMeal?.actualTime ?? null,
         status: existing?.status ?? "upcoming",
       };
     });
-  }, [templates, todayMealState, todayKey]);
+
+    const activeMealIds = new Set(activeMeals.map((meal) => meal.id));
+    const loggedOnlyMeals = [...loggedMealsById.values()]
+      .filter((mealLog) => !activeMealIds.has(mealLog.mealId))
+      .map((mealLog) => ({
+        id: mealLog.mealId,
+        name: mealLog.mealName || "Meal",
+        plannedTime: mealLog.actualTime,
+        food: mealLog.food,
+        notes: mealLog.defaultNotes,
+        actualTime: mealLog.actualTime,
+        status: "done" as const,
+      }));
+
+    return [...activeMeals, ...loggedOnlyMeals].sort((a, b) => parseClockMinutes(a.plannedTime) - parseClockMinutes(b.plannedTime) || a.id - b.id);
+  }, [mealLogs, templates, todayMealState, todayKey]);
 
   const missedMealIds = useMemo(() => {
     void alertMinuteKey;
@@ -1450,15 +1565,22 @@ export default function HomeApp() {
         const fedNotes = mealState?.fedNotes?.trim();
         const skippedMeal = fedNotes === "Skipped";
         const mealLog = mealLogs.find((entry) => entry.dayKey === activeTodayKey && entry.mealId === meal.id && !isMissedMealLog(entry));
+        const mealName = mealLog?.mealName || meal.name;
+        const mealFood = mealLog?.food || meal.food;
         const displayTime = skippedMeal ? meal.plannedTime || actualTime : actualTime;
         const sortMinutes = parseClockMinutes(displayTime);
         const sortMs = sortMsForClockTime(activeTodayKey, displayTime);
         const skippedCareItemIds = mealState?.skippedCareItemIds ?? [];
         const mealAt = new Date(sortMsForClockTime(activeTodayKey, displayTime));
-        const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, dailyMeals, activeTodayKey);
+        const mealCareItems = mealLog?.loggedCareItems?.length
+          ? mealLog.loggedCareItems
+          : mealCareItemsWithDoseBadges(careTemplates, meal, dailyMeals, activeTodayKey);
         const mealLinkedCareItems = mealCareItems.filter((item) => {
           const itemOccurrenceCount = dailyMeals.filter((dailyMeal) =>
-            mealCareItemsWithDoseBadges(careTemplates, dailyMeal, dailyMeals, activeTodayKey).some((candidate) => candidate.kind === item.kind && candidate.id === item.id)
+            (
+              mealLogs.find((entry) => entry.dayKey === activeTodayKey && entry.mealId === dailyMeal.id && !isMissedMealLog(entry))?.loggedCareItems ??
+              mealCareItemsWithDoseBadges(careTemplates, dailyMeal, dailyMeals, activeTodayKey)
+            ).some((candidate) => candidate.kind === item.kind && candidate.id === item.id)
           ).length;
           return !todayActivityLogs.some((activity) =>
             activityMatchesMealLinkedCareTimeline(activity, item, mealAt, meal.id, activeTodayKey, itemOccurrenceCount)
@@ -1475,7 +1597,7 @@ export default function HomeApp() {
         const mealItem = {
           time: displayTime,
           label: skippedMeal ? "Skipped Meal" : "Fed",
-          detail: fedNotes && !skippedMeal ? `${meal.name}: ${meal.food} • Notes: ${fedNotes}` : `${meal.name}: ${meal.food}`,
+          detail: fedNotes && !skippedMeal ? `${mealName}: ${mealFood} • Notes: ${fedNotes}` : `${mealName}: ${mealFood}`,
           activityType: "meal" as const,
           mealGroupId: `meal-${meal.id}`,
           mealLinkedCareItems,
@@ -1508,7 +1630,7 @@ export default function HomeApp() {
       return {
         time: formatActivityTime(happenedAt.toISOString()),
         label: formatActivityLabel(activity.activityType),
-        detail: renderActivityDetail(activity),
+        detail: ["pee", "poop", "potty"].includes(activity.activityType) ? activity.detail ?? "" : renderActivityDetail(activity),
         activity,
         activityType: activity.activityType,
         sortMinutes: happenedAt.getHours() * 60 + happenedAt.getMinutes(),
@@ -1635,11 +1757,13 @@ export default function HomeApp() {
     const updatedMeal = meal ? { ...meal, actualTime: timestamp, status: "done" as const } : null;
 
     if (updatedMeal) {
+      const skippedCareItemIds = nextMealState.find((entry) => entry.mealId === mealId)?.skippedCareItemIds ?? [];
       const mealLog = buildMealLog(
         updatedMeal,
         nextMealState.find((entry) => entry.mealId === mealId)?.fedNotes ?? null,
         activeTodayKey,
-        nextMealState.find((entry) => entry.mealId === mealId)?.skippedCareItemIds ?? []
+        skippedCareItemIds,
+        loggedCareItemsForMeal(careTemplates, updatedMeal, dailyMeals, activeTodayKey, skippedCareItemIds)
       );
       setMealLogs((current) => [mealLog, ...current.filter((entry) => entry.id !== mealLog.id && entry.id !== missedMealLogId(activeTodayKey, mealId))]);
 
@@ -1686,7 +1810,7 @@ export default function HomeApp() {
 
     const meal = dailyMeals.find((dailyMeal) => dailyMeal.id === mealId);
     const skippedCareItemIds = meal ? mealCareItemsWithDoseBadges(careTemplates, meal, dailyMeals, activeTodayKey).map((item) => `${item.kind}-${item.id}`) : [];
-    const mealLog = buildSkippedMealLog(template, activeTodayKey, skippedCareItemIds);
+    const mealLog = buildSkippedMealLog(template, activeTodayKey, skippedCareItemIds, meal ? loggedCareItemsForMeal(careTemplates, meal, dailyMeals, activeTodayKey, skippedCareItemIds) : []);
 
     const nextMealState = dailyMealState.map((meal) =>
       meal.mealId === mealId
@@ -1895,7 +2019,7 @@ export default function HomeApp() {
 
     await saveActivity(activity, editingActivityId ? "update" : "create");
     if (attachmentFiles.length) {
-      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, ["Medical Attachment"]);
+      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypesForActivity(activity.activityType));
 
       if (savedAttachments.length) {
         setActivityLogs((current) => {
@@ -1913,6 +2037,9 @@ export default function HomeApp() {
 
   const deleteActivity = async () => {
     if (!editingActivityId) return;
+
+    const confirmed = window.confirm("Delete this event? This cannot be undone.");
+    if (!confirmed) return;
 
     const deletingId = editingActivityId;
     setActivityLogs((current) => current.filter((activity) => activity.id !== deletingId));
@@ -2004,48 +2131,24 @@ export default function HomeApp() {
         {todayAlertCards.length ? (
           <section className="mb-3 space-y-2">
             {todayAlertCards.slice(0, 3).map((alert) => {
-              const expanded = expandedAlertIds.has(alert.id);
               return (
                 <div
                   key={alert.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    setExpandedAlertIds((current) => {
-                      const next = new Set(current);
-                      if (next.has(alert.id)) next.delete(alert.id);
-                      else next.add(alert.id);
-                      return next;
-                    });
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setExpandedAlertIds((current) => {
-                        const next = new Set(current);
-                        if (next.has(alert.id)) next.delete(alert.id);
-                        else next.add(alert.id);
-                        return next;
-                      });
-                    }
-                  }}
-                  className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#fff0f1] to-[#fcebed] px-3.5 py-2 text-[#d91f56] shadow-[0_8px_18px_rgba(255,27,90,0.10)] ring-1 ring-[#e6c8ce]/80 transition active:translate-y-px"
+                  className="flex min-h-12 items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#fff0f1] to-[#fcebed] px-3.5 py-2 text-[#d91f56] shadow-[0_8px_18px_rgba(255,27,90,0.10)] ring-1 ring-[#e6c8ce]/80"
                 >
-                  <div className="flex min-w-0 items-start gap-2">
+                  <div className="flex min-w-0 flex-1 items-start gap-2 text-left">
                     <TriangleAlert className="size-4 shrink-0 self-center text-[#8f1739]" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold leading-4 text-[#8f1739]">{alert.title}</p>
-                      <p
-                        className="pet-note-text text-xs leading-4 text-[#b71f48]/65"
-                        style={expanded ? undefined : { WebkitBoxOrient: "vertical", WebkitLineClamp: 1, display: "-webkit-box", overflow: "hidden" }}
-                      >
+                      <ExpandableNoteText className="text-xs leading-4 text-[#b71f48]/65" collapsedLines={1}>
                         {alert.detail}
-                      </p>
+                      </ExpandableNoteText>
                     </div>
                   </div>
                   {alert.kind === "manual" ? (
                     <button
                       type="button"
+                      onKeyDown={(event) => event.stopPropagation()}
                       onClick={(event) => {
                         event.stopPropagation();
                         void resolveManualAlert(alert.id);
@@ -2069,7 +2172,10 @@ export default function HomeApp() {
               const careKind = card.type === "custom-care" ? card.occurrence.item.kind : null;
 
               return (
-                <div key={`overdue-${card.sortKey}`} className="flex min-h-12 items-center gap-2 rounded-2xl bg-gradient-to-r from-white/85 to-[var(--hewie-active-bg,#f1f5f9)]/80 px-3 py-2 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/75">
+                <div
+                  key={`overdue-${card.sortKey}`}
+                  className="flex min-h-12 items-center gap-2 rounded-2xl bg-gradient-to-r from-white/85 to-[var(--hewie-active-bg,#f1f5f9)]/80 px-3 py-2 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/75"
+                >
                   {card.type === "meal" ? (
                     <Bell className="size-4 shrink-0 text-[var(--hewie-active-text,#334155)]" />
                   ) : careKind === "supplement" ? (
@@ -2077,26 +2183,40 @@ export default function HomeApp() {
                   ) : (
                     <MedicationPillIcon className="size-4 shrink-0 text-sky-600" />
                   )}
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 text-left">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="truncate text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{title}</p>
                       {card.type === "custom-care" && card.occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
                     </div>
                     {detail ? <p className="truncate text-xs leading-4 text-[var(--hewie-active-text,#334155)]/60">{detail}</p> : null}
                   </div>
-                  <div className="flex shrink-0 gap-1">
+                  <div className="flex shrink-0 gap-1" onKeyDown={(event) => event.stopPropagation()}>
                     <Button
                       type="button"
                       variant="outline"
                       className="h-7 rounded-full border-0 bg-white/65 px-2.5 text-[11px] font-semibold text-[var(--hewie-active-text,#334155)]/70 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 hover:bg-white/85"
-                      onClick={() => card.type === "meal" ? markMealSkipped(card.meal.id) : markCustomCareSkipped(card.occurrence)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (card.type === "meal") {
+                          void markMealSkipped(card.meal.id);
+                        } else {
+                          void markCustomCareSkipped(card.occurrence);
+                        }
+                      }}
                     >
                       Skip
                     </Button>
                     <Button
                       type="button"
                       className="h-7 rounded-full bg-[var(--hewie-accent,#64748b)] px-2.5 text-[11px] font-semibold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90"
-                      onClick={() => card.type === "meal" ? markMealFed(card.meal.id) : markCustomCareGiven(card.occurrence)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (card.type === "meal") {
+                          void markMealFed(card.meal.id);
+                        } else {
+                          void markCustomCareGiven(card.occurrence);
+                        }
+                      }}
                     >
                       Done
                     </Button>
@@ -2114,28 +2234,37 @@ export default function HomeApp() {
               const hasMealActions = reminderMealId !== null && Number.isFinite(reminderMealId);
 
               return (
-                <div key={reminder.id} className="rounded-2xl bg-gradient-to-r from-white/85 to-[var(--hewie-active-bg,#f1f5f9)]/80 px-3.5 py-3 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/75">
+                <div
+                  key={reminder.id}
+                  className="rounded-2xl bg-gradient-to-r from-white/85 to-[var(--hewie-active-bg,#f1f5f9)]/80 px-3.5 py-3 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/75"
+                >
                   <div className="flex min-h-10 items-start gap-3">
                     <Bell className="mt-0.5 size-4 shrink-0 text-[var(--hewie-active-text,#334155)]" />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 text-left">
                       <p className="text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{reminder.title}</p>
                       <p className="mt-0.5 text-xs leading-4 text-[var(--hewie-active-text,#334155)]/60">{reminder.detail}</p>
                     </div>
                   </div>
                   {hasMealActions ? (
-                    <div className="mt-2 grid grid-cols-2 gap-2 pl-7">
+                    <div className="mt-2 grid grid-cols-2 gap-2 pl-7" onKeyDown={(event) => event.stopPropagation()}>
                       <Button
                         type="button"
                         variant="outline"
                         className="h-8 rounded-full border-0 bg-white/65 px-3 text-xs font-semibold text-[var(--hewie-active-text,#334155)]/70 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 hover:bg-white/85"
-                        onClick={() => markMealSkipped(reminderMealId as number)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          markMealSkipped(reminderMealId as number);
+                        }}
                       >
                         Skip
                       </Button>
                       <Button
                         type="button"
                         className="h-8 rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-xs font-semibold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90"
-                        onClick={() => markMealFed(reminderMealId as number)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          markMealFed(reminderMealId as number);
+                        }}
                       >
                         Mark Fed
                       </Button>
@@ -2156,34 +2285,65 @@ export default function HomeApp() {
                     const plannedTimeLabel = scheduleTimeLabel(card.sortAt, card.meal.plannedTime, todayKey || currentTodayKey());
                     const mealDayKey = dayKeyFromDate(card.sortAt);
                     const cardMealCareItems = mealCareItemsWithDoseBadges(careTemplates, card.meal, templates, mealDayKey);
-                    const mealNoteText = card.meal.notes?.trim().slice(0, 100) ?? "";
+                    const mealNoteText = card.meal.notes?.trim().slice(0, TEXT_LIMITS.note) ?? "";
                     const mealNoteButtonClassName = "bg-[var(--hewie-active-text,#334155)]/12 text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]/80 hover:bg-[var(--hewie-active-text,#334155)]/18";
                     const mealNoteModalTone = {
                       panel: "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]",
                       closeButton: "bg-white/55 text-current/58 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white/80 hover:text-current/75",
-                      noteBox: "bg-white/55 text-current/75 ring-[var(--hewie-ring,#cbd5e1)]/80",
+                      noteBox: "border border-[var(--hewie-ring,#cbd5e1)] bg-white text-current/75",
                     };
                     const mealCareNoteModalTone = {
                       panel: "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]",
                       closeButton: "bg-white/55 text-current/58 ring-[#b8c9dd]/80 transition hover:bg-white/80 hover:text-current/75",
-                      noteBox: "bg-white/55 text-current/75 ring-[#b8c9dd]/80",
+                      noteBox: "border border-[#b8c9dd] bg-white text-current/75",
                     };
                     const mealTextInsetClassName = mealNoteText ? "pr-7" : "";
-
+                    const mealFoodText = card.meal.food.trim();
+                    const mealTextSections = (primary: "food" | "notes") => {
+                      const foodSection = mealFoodText ? { label: "Food / Ingredients", text: mealFoodText } : null;
+                      const notesSection = mealNoteText ? { label: "Notes", text: mealNoteText } : null;
+                      return primary === "food"
+                        ? [foodSection, notesSection].filter(Boolean) as { label: string; text: string }[]
+                        : [notesSection, foodSection].filter(Boolean) as { label: string; text: string }[];
+                    };
                     const mealPriorityClassName = priorityScheduleTime === card.sortAt.getTime() && upcomingScheduleCards.length > 1
                       ? "hewie-priority-border"
                       : "";
 
                     return (
                       <div key={card.sortKey} className={`${mealPriorityClassName} relative flex aspect-square min-w-0 overflow-hidden flex-col justify-between rounded-2xl bg-white/32 p-2.5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/55`}>
-                        <div className="min-h-0 min-w-0">
+                        <div className="min-h-0 min-w-0 overflow-hidden">
                           <p className={`${mealTextInsetClassName} text-[10px] font-bold uppercase leading-3 tracking-wide text-current/55`}>Next Meal</p>
                           <div className={`mt-0.5 flex min-w-0 flex-wrap items-center gap-1 ${mealTextInsetClassName}`}>
-                            <p className="truncate text-sm font-semibold leading-4 text-current/95">{card.meal.name}</p>
+                            <OpenableClippedText
+                              className="text-sm font-semibold leading-4 text-current/95"
+                              onOpen={() => setUpcomingNoteModal({
+                                title: card.meal.name,
+                                subtitle: plannedTimeLabel,
+                                text: "",
+                                sections: mealTextSections("food"),
+                                tone: mealNoteModalTone,
+                              })}
+                            >
+                              {card.meal.name}
+                            </OpenableClippedText>
                             {card.meal.status === "late" ? <span className="rounded-full bg-white/75 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-current/75 ring-1 ring-current/15">Late</span> : null}
                           </div>
                           <p className={`${mealTextInsetClassName} text-[13px] font-semibold leading-4 text-current/70`}>{plannedTimeLabel}</p>
-                          <p className={`mt-0.5 line-clamp-2 text-[12px] leading-4 text-current/72 ${mealTextInsetClassName}`}>{card.meal.food}</p>
+                          <OpenableClippedText
+                            className="mt-0.5 w-full text-[12px] leading-4 text-current/72"
+                            lines={2}
+                            onOpen={() => setUpcomingNoteModal({
+                              title: card.meal.name,
+                              subtitle: plannedTimeLabel,
+                              label: "Food / Ingredients",
+                              text: mealFoodText,
+                              sections: mealTextSections("food"),
+                              tone: mealNoteModalTone,
+                            })}
+                          >
+                            {mealFoodText}
+                          </OpenableClippedText>
                           {mealNoteText ? (
                             <button
                               type="button"
@@ -2192,7 +2352,9 @@ export default function HomeApp() {
                               onClick={() => setUpcomingNoteModal({
                                 title: card.meal.name,
                                 subtitle: plannedTimeLabel,
+                                label: "Notes",
                                 text: mealNoteText,
+                                sections: mealTextSections("notes"),
                                 tone: mealNoteModalTone,
                               })}
                             >
@@ -2202,10 +2364,28 @@ export default function HomeApp() {
                           {cardMealCareItems.length ? (
                             <CompactMealCareSummary
                               items={cardMealCareItems}
+                              onOpenDetail={(item) => setUpcomingNoteModal({
+                                title: item.name,
+                                subtitle: plannedTimeLabel,
+                                label: "Supplement",
+                                text: item.name,
+                                sections: [
+                                  { label: "Supplement", text: item.name },
+                                  item.dose ? { label: "Dose", text: item.dose } : null,
+                                  item.notes?.trim() ? { label: "Notes", text: item.notes.trim().slice(0, TEXT_LIMITS.note) } : null,
+                                ].filter(Boolean) as { label: string; text: string }[],
+                                tone: mealCareNoteModalTone,
+                              })}
                               onOpenNote={(item) => setUpcomingNoteModal({
                                 title: item.name,
-                                subtitle: mealCareNameDose(item),
-                                text: item.notes.trim().slice(0, MEAL_CARE_NOTE_PREVIEW_LENGTH),
+                                subtitle: plannedTimeLabel,
+                                label: "Notes",
+                                text: item.notes.trim().slice(0, TEXT_LIMITS.note),
+                                sections: [
+                                  { label: "Notes", text: item.notes.trim().slice(0, TEXT_LIMITS.note) },
+                                  { label: "Supplement", text: item.name },
+                                  item.dose ? { label: "Dose", text: item.dose } : null,
+                                ].filter(Boolean) as { label: string; text: string }[],
                                 tone: mealCareNoteModalTone,
                               })}
                             />
@@ -2245,12 +2425,12 @@ export default function HomeApp() {
                     ? {
                         panel: "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]",
                         closeButton: "bg-white/55 text-current/58 ring-[#b8c9dd]/80 transition hover:bg-white/80 hover:text-current/75",
-                        noteBox: "bg-white/55 text-current/75 ring-[#b8c9dd]/80",
+                        noteBox: "border border-[#b8c9dd] bg-white text-current/75",
                       }
                     : {
                         panel: "bg-sky-50 text-sky-700 ring-sky-200",
                         closeButton: "bg-white/55 text-current/58 ring-sky-200 transition hover:bg-white/80 hover:text-current/75",
-                        noteBox: "bg-white/55 text-current/75 ring-sky-200/80",
+                        noteBox: "border border-sky-200 bg-white text-current/75",
                       };
                   const noteText = occurrence.item.notes?.trim() ?? "";
 
@@ -2264,15 +2444,60 @@ export default function HomeApp() {
                           {isSupplement ? <Tablets className="size-4" /> : <MedicationPillIcon className="size-5" />}
                         </span>
                         <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 pr-9">
-                          <p className="truncate text-sm font-semibold leading-4 text-current/95">{occurrence.item.name}</p>
+                          <OpenableClippedText
+                            className="text-sm font-semibold leading-4 text-current/95"
+                            onOpen={() => setUpcomingNoteModal({
+                              title: occurrence.item.name,
+                              subtitle: occurrenceTimeLabel,
+                              label: isSupplement ? "Supplement" : "Medication",
+                              text: occurrence.item.name,
+                              sections: [
+                                { label: isSupplement ? "Supplement" : "Medication", text: occurrence.item.name },
+                                { label: "Details", text: customCareGiveText(occurrence.item) },
+                                noteText ? { label: "Notes", text: noteText } : null,
+                              ].filter(Boolean) as { label: string; text: string }[],
+                              tone: noteModalTone,
+                            })}
+                          >
+                            {occurrence.item.name}
+                          </OpenableClippedText>
                         </div>
                         <p className="text-[13px] font-semibold leading-4 text-current/70">{occurrenceTimeLabel}</p>
-                        <p className="mt-0.5 line-clamp-1 text-[12px] leading-4 text-current/68">{customCareGiveText(occurrence.item)}</p>
+                        <OpenableClippedText
+                          className="mt-0.5 w-full text-[12px] leading-4 text-current/68"
+                          onOpen={() => setUpcomingNoteModal({
+                            title: occurrence.item.name,
+                            subtitle: occurrenceTimeLabel,
+                            label: "Details",
+                            text: `${occurrence.item.name}\n${customCareGiveText(occurrence.item)}`,
+                            sections: [
+                              { label: isSupplement ? "Supplement" : "Medication", text: occurrence.item.name },
+                              { label: "Details", text: customCareGiveText(occurrence.item) },
+                              noteText ? { label: "Notes", text: noteText } : null,
+                            ].filter(Boolean) as { label: string; text: string }[],
+                            tone: noteModalTone,
+                          })}
+                        >
+                          {customCareGiveText(occurrence.item)}
+                        </OpenableClippedText>
                         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1 pr-7">
                           {occurrence.isLastDose ? <span className="inline-flex shrink-0 rounded-full bg-amber-100/80 px-1.5 py-0 text-[10px] font-semibold leading-4 text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
                           {timingLabel ? <span className={`inline-flex shrink-0 rounded-full px-1.5 py-0 text-[10px] font-normal leading-4 ${timingBadgeClassName}`}>{timingLabel}</span> : null}
                         </div>
-                        {occurrence.frequencyText ? <p className="mt-0.5 truncate text-[11px] font-normal leading-4 text-current/45">{occurrence.frequencyText}</p> : null}
+                        {occurrence.frequencyText ? (
+                          <OpenableClippedText
+                            className="mt-0.5 w-full text-[11px] font-normal leading-4 text-current/45"
+                            onOpen={() => setUpcomingNoteModal({
+                              title: occurrence.item.name,
+                              subtitle: occurrenceTimeLabel,
+                              label: "Schedule",
+                              text: occurrence.frequencyText,
+                              tone: noteModalTone,
+                            })}
+                          >
+                            {occurrence.frequencyText}
+                          </OpenableClippedText>
+                        ) : null}
                       </div>
                       {noteText ? (
                         <button
@@ -2282,7 +2507,13 @@ export default function HomeApp() {
                           onClick={() => setUpcomingNoteModal({
                             title: occurrence.item.name,
                             subtitle: occurrenceTimeLabel,
+                            label: "Notes",
                             text: noteText,
+                            sections: [
+                              { label: isSupplement ? "Supplement" : "Medication", text: occurrence.item.name },
+                              { label: "Details", text: customCareGiveText(occurrence.item) },
+                              { label: "Notes", text: noteText },
+                            ],
                             tone: noteModalTone,
                           })}
                         >
@@ -2293,8 +2524,8 @@ export default function HomeApp() {
                         <div className="mt-1.5 space-y-1">
                           <textarea
                             value={customCareSkipNotes[occurrence.key] ?? ""}
-                            onChange={(event) => updateCustomCareSkipNote(occurrence, event.target.value.slice(0, 100))}
-                            maxLength={100}
+                            onChange={(event) => updateCustomCareSkipNote(occurrence, clampText(event.target.value, TEXT_LIMITS.note))}
+                            maxLength={TEXT_LIMITS.note}
                             placeholder="Notes / Reasons"
                             rows={1}
                             className="h-8 w-full resize-none rounded-xl border border-current/15 bg-white/70 px-2 py-1 text-xs text-inherit outline-none placeholder:text-current/40 focus:ring-2 focus:ring-current/15"
@@ -2353,7 +2584,7 @@ export default function HomeApp() {
                             <span className="shrink-0 rounded-full bg-white/45 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-3 text-current/50">
                               {upcomingScheduleCardKindLabel(card)}
                             </span>
-                            <span className="min-w-0 truncate font-semibold text-current/82">
+                            <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold text-current/82">
                               {upcomingScheduleCardTitle(card)}
                             </span>
                           </div>
@@ -2379,7 +2610,7 @@ export default function HomeApp() {
             <div className={`relative w-full max-w-md rounded-3xl p-4 shadow-2xl ring-1 ${upcomingNoteModal.tone.panel}`}>
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p id="upcoming-note-title" className="truncate text-base font-semibold">{upcomingNoteModal.title}</p>
+                  <p id="upcoming-note-title" className="whitespace-normal break-words text-base font-semibold leading-5">{upcomingNoteModal.title}</p>
                   <p className="mt-0.5 text-sm text-current/58">{upcomingNoteModal.subtitle}</p>
                 </div>
                 <button
@@ -2391,13 +2622,26 @@ export default function HomeApp() {
                   ×
                 </button>
               </div>
-              <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-current/58">
-                <StickyNote className="size-3.5" />
-                <span>Notes</span>
-              </div>
-              <div className={`max-h-[45vh] overflow-y-auto whitespace-pre-wrap break-words rounded-2xl p-3 text-sm leading-6 ring-1 ${upcomingNoteModal.tone.noteBox}`}>
-                {upcomingNoteModal.text}
-              </div>
+              {upcomingNoteModal.label ? (
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-current/58">
+                  {upcomingNoteModal.label === "Notes" && !upcomingNoteModal.sections ? <StickyNote className="size-3.5" /> : null}
+                  <span>{upcomingNoteModal.label}</span>
+                </div>
+              ) : null}
+              {upcomingNoteModal.sections?.length ? (
+                <div className="max-h-[45vh] space-y-3 overflow-y-auto">
+                  {upcomingNoteModal.sections.map((section) => (
+                    <section key={section.label} className={`rounded-2xl p-3 ${upcomingNoteModal.tone.noteBox}`}>
+                      <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-current/48">{section.label}</p>
+                      <p className="whitespace-pre-wrap break-words text-sm leading-6">{section.text}</p>
+                    </section>
+                  ))}
+                </div>
+              ) : upcomingNoteModal.text ? (
+                <div className={`max-h-[45vh] overflow-y-auto whitespace-pre-wrap break-words rounded-2xl p-3 text-sm leading-6 ${upcomingNoteModal.tone.noteBox}`}>
+                  {upcomingNoteModal.text}
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -2415,7 +2659,7 @@ export default function HomeApp() {
               onDetailChange={setDetailValue}
               onNotesChange={setNotesValue}
               onExtraNotesChange={setExtraNotesValue}
-              attachmentNames={attachmentFiles.map((file) => file.name)}
+              attachmentNames={attachmentFiles.length ? attachmentFiles.map((file) => file.name) : []}
               onAttachmentsChange={setAttachmentFiles}
               recordTags={recordTags}
               onRecordTagsChange={setRecordTags}
@@ -2453,13 +2697,16 @@ export default function HomeApp() {
           <div className="space-y-3">
             {poopRecords.length ? (
               poopRecords.map((record) => (
-                <article key={record.id} className="rounded-2xl bg-[#ead7a8] p-4 shadow-sm ring-1 ring-[#ead28a]/55">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="flex size-9 items-center justify-center rounded-full bg-white/60 text-[#8a6200] ring-1 ring-[#f0d27a]/60">
-                        <span className="text-lg leading-none">{"\u{1F6BD}"}</span>
-                      </span>
-                      <p className="font-medium text-[#6f4c0f]">Potty</p>
+                <article key={record.id} className="relative rounded-2xl bg-[#ead7a8] p-4 shadow-sm ring-1 ring-[#ead28a]/55">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-3">
+                        <span className="flex size-9 items-center justify-center rounded-full bg-white/60 text-[#8a6200] ring-1 ring-[#f0d27a]/60">
+                          <span className="text-lg leading-none">{"\u{1F6BD}"}</span>
+                        </span>
+                        <p className="font-medium text-[#6f4c0f]">Potty</p>
+                      </div>
+                      <PottyDetailBadges detail={record.detail} notes={record.notes} />
                     </div>
                     <div className="text-right">
                       <p className="whitespace-nowrap text-sm font-semibold text-[#6f4c0f]">
@@ -2470,9 +2717,9 @@ export default function HomeApp() {
                         }).format(new Date(record.happenedAt))}
                       </p>
                       <p className="mt-1 whitespace-nowrap text-xs text-[#765313]/55">{formatActivityTime(record.happenedAt)}</p>
+                      <PoopRecordImageLinks activity={record} className="mt-2" />
                     </div>
                   </div>
-                  <PottyDetailBadges detail={record.detail} notes={record.notes} />
                 </article>
               ))
             ) : (

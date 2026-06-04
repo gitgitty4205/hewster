@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertCircle, LogIn, PawPrint } from "lucide-react";
+import { AlertCircle, LogIn } from "lucide-react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -45,8 +46,15 @@ export function LoginForm() {
     <main className="min-h-dvh bg-[#f8f4ef] text-zinc-950">
       <section className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10">
         <div className="mb-8 flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-lg bg-zinc-950 text-white shadow-sm">
-            <PawPrint className="size-5" aria-hidden="true" />
+          <span className="flex size-12 items-center justify-center rounded-xl bg-zinc-950 shadow-sm">
+            <Image
+              src="/paw-notes-transparent.svg"
+              alt=""
+              width={40}
+              height={40}
+              className="pointer-events-none size-10 object-contain"
+              aria-hidden="true"
+            />
           </span>
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.12em] text-zinc-500">Pet Notebook</p>

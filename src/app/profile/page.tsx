@@ -34,6 +34,9 @@ import {
   type PetProfile,
   type ThemeId,
 } from "@/lib/pet-profile";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
+
+const EMAIL_MAX_LENGTH = 254;
 
 function petNotebookName(profile: PetProfile) {
   const petFirstName = profile.petFirstName.trim() || profile.petName.split(/\s+/)[0] || "Pet";
@@ -91,6 +94,63 @@ function formatRememberedDate(value: string) {
   }).format(date);
 }
 
+const MAX_PROFILE_PHOTO_ORIGINAL_BYTES = 900_000;
+const MAX_PROFILE_PHOTO_SIZE = 1600;
+const PROFILE_PHOTO_JPEG_QUALITY = 0.92;
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read this photo."));
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("Could not read this photo."));
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function prepareProfilePhoto(file: File) {
+  if (file.size <= MAX_PROFILE_PHOTO_ORIGINAL_BYTES) {
+    return fileToDataUrl(file);
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read this photo."));
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("Could not read this photo."));
+        return;
+      }
+
+      const image = new window.Image();
+      image.onerror = () => reject(new Error("Could not load this photo."));
+      image.onload = () => {
+        const scale = Math.min(1, MAX_PROFILE_PHOTO_SIZE / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("Could not prepare this photo."));
+          return;
+        }
+
+        context.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", PROFILE_PHOTO_JPEG_QUALITY));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<PetProfile>(defaultPetProfile);
@@ -107,6 +167,7 @@ export default function ProfilePage() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [missingPetInfoFields, setMissingPetInfoFields] = useState<Set<RequiredPetInfoField>>(new Set());
   const [profileValidationMessage, setProfileValidationMessage] = useState("");
+  const [profilePhotoMessage, setProfilePhotoMessage] = useState("");
   const [showGoodbyeIntro, setShowGoodbyeIntro] = useState(false);
   const [showMemorialSettings, setShowMemorialSettings] = useState(false);
 
@@ -230,7 +291,11 @@ export default function ProfilePage() {
       petName: [merged.petFirstName, merged.petLastName].filter(Boolean).join(" ") || merged.petName,
     };
     setProfile(updated);
-    savePetProfile(updated);
+    const saved = savePetProfile(updated);
+    if (!saved) {
+      setProfilePhotoMessage("Could not save this change because browser storage is full.");
+      return;
+    }
     if (profileValidationMessage) {
       const missing = missingRequiredPetInfoFields(updated);
       setMissingPetInfoFields(new Set(missing));
@@ -240,16 +305,17 @@ export default function ProfilePage() {
     window.setTimeout(() => setSaveState("idle"), 1400);
   };
 
-  const handleProfilePhotoFile = (file?: File) => {
+  const handleProfilePhotoFile = async (file?: File) => {
+    if (!canManageProfilePhoto) return;
     if (!file || !file.type.startsWith("image/")) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        updateProfile({ photoUrl: reader.result });
-      }
-    };
-    reader.readAsDataURL(file);
+    setProfilePhotoMessage("");
+    try {
+      const photoUrl = await prepareProfilePhoto(file);
+      updateProfile({ photoUrl });
+    } catch {
+      setProfilePhotoMessage("Could not save this photo. Try a different image.");
+    }
   };
 
   const handleDoneEditingProfile = () => {
@@ -278,6 +344,7 @@ export default function ProfilePage() {
   const canManageNotebookAccess = activeNotebookRole === "owner" && activeNotebookOwnerId === user?.id;
   const notebookRoleLoaded = !user || Boolean(activeNotebookOwnerId);
   const canEditProfile = !user || (notebookRoleLoaded && (activeNotebookRole === "owner" || activeNotebookRole === "co-owner"));
+  const canManageProfilePhoto = !user || (notebookRoleLoaded && activeNotebookRole === "owner" && activeNotebookOwnerId === user.id);
   const profileDetailsLocked = !canEditProfile || !isEditingProfile;
   const calculatedAge = displayPetAge(profile);
   const petFirstName = profile.petFirstName.trim() || profile.petName.split(/\s+/)[0] || "Pet";
@@ -369,7 +436,8 @@ export default function ProfilePage() {
                 <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">First Name <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.petFirstName}
-                  onChange={(event) => updateProfile({ petFirstName: event.target.value })}
+                  onChange={(event) => updateProfile({ petFirstName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                  maxLength={TEXT_LIMITS.shortName}
                   required
                   className={petInfoInputClass("petFirstName")}
                 />
@@ -378,7 +446,8 @@ export default function ProfilePage() {
                 <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Last Name <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.petLastName}
-                  onChange={(event) => updateProfile({ petLastName: event.target.value })}
+                  onChange={(event) => updateProfile({ petLastName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                  maxLength={TEXT_LIMITS.shortName}
                   required
                   className={petInfoInputClass("petLastName")}
                 />
@@ -390,7 +459,8 @@ export default function ProfilePage() {
                 <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Species <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.species}
-                  onChange={(event) => updateProfile({ species: event.target.value })}
+                  onChange={(event) => updateProfile({ species: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                  maxLength={TEXT_LIMITS.shortName}
                   required
                   className={petInfoInputClass("species")}
                 />
@@ -399,7 +469,8 @@ export default function ProfilePage() {
                 <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Breed <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.breed}
-                  onChange={(event) => updateProfile({ breed: event.target.value })}
+                  onChange={(event) => updateProfile({ breed: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                  maxLength={TEXT_LIMITS.shortName}
                   required
                   className={petInfoInputClass("breed")}
                 />
@@ -423,6 +494,7 @@ export default function ProfilePage() {
                   type="text"
                   value={calculatedAge}
                   onChange={(event) => updateProfile({ manualAge: event.target.value.slice(0, 24) })}
+                  maxLength={24}
                   placeholder="Optional"
                   readOnly={Boolean(profile.birthday) || profileDetailsLocked}
                   aria-readonly={Boolean(profile.birthday) || profileDetailsLocked}
@@ -466,7 +538,8 @@ export default function ProfilePage() {
                 <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Microchip #</span>
                 <input
                   value={profile.microchipNumber}
-                  onChange={(event) => updateProfile({ microchipNumber: event.target.value })}
+                  onChange={(event) => updateProfile({ microchipNumber: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                  maxLength={TEXT_LIMITS.shortName}
                   placeholder="Optional"
                   className={petInfoInputClass()}
                 />
@@ -475,7 +548,8 @@ export default function ProfilePage() {
                 <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Color <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.color}
-                  onChange={(event) => updateProfile({ color: event.target.value })}
+                  onChange={(event) => updateProfile({ color: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                  maxLength={TEXT_LIMITS.shortName}
                   required
                   className={petInfoInputClass("color")}
                 />
@@ -594,8 +668,8 @@ export default function ProfilePage() {
                     <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Memory Notes</span>
                     <textarea
                       value={profile.memorialNotes}
-                      onChange={(event) => updateProfile({ memorialNotes: event.target.value.slice(0, 100) })}
-                      maxLength={100}
+                      onChange={(event) => updateProfile({ memorialNotes: clampText(event.target.value, TEXT_LIMITS.note) })}
+                      maxLength={TEXT_LIMITS.note}
                       rows={3}
                       placeholder="A favorite memory, nickname, or note"
                       disabled={profileDetailsLocked}
@@ -624,40 +698,45 @@ export default function ProfilePage() {
           </div>
 
           <fieldset disabled={profileDetailsLocked} className="space-y-3 disabled:opacity-80">
-            <div className="block text-sm">
-              <span className="mb-2 block font-medium text-[var(--hewie-active-text,#334155)]/85">Profile Photo</span>
-              <label
-                className={`relative flex size-16 overflow-hidden rounded-[1.05rem] bg-white/55 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 ${
-                  canEditProfile ? "cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]" : ""
-                }`}
-                aria-label={`Change ${petFirstName}'s profile photo`}
-              >
-                <Image
-                  src={profile.photoUrl || DEFAULT_PET_PHOTO_URL}
-                  alt={profile.petFirstName || profile.petName || "Pet profile photo"}
-                  fill
-                  className="object-cover object-center"
-                  sizes="64px"
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  disabled={!canEditProfile}
-                  onChange={(event) => {
-                    handleProfilePhotoFile(event.target.files?.[0]);
-                    event.currentTarget.value = "";
-                  }}
-                  className="sr-only"
-                />
-              </label>
-            </div>
+            {canManageProfilePhoto ? (
+              <div className="block text-sm">
+                <span className="mb-2 block font-medium text-[var(--hewie-active-text,#334155)]/85">Profile Photo</span>
+                <label
+                  className={`relative flex size-16 overflow-hidden rounded-[1.05rem] bg-white/55 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 ${
+                    canEditProfile ? "cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]" : ""
+                  }`}
+                  aria-label={`Change ${petFirstName}'s profile photo`}
+                >
+                  <Image
+                    src={profile.photoUrl || DEFAULT_PET_PHOTO_URL}
+                    alt={profile.petFirstName || profile.petName || "Pet profile photo"}
+                    fill
+                    className="object-cover object-center"
+                    sizes="64px"
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={!canEditProfile}
+                    onChange={(event) => {
+                      void handleProfilePhotoFile(event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                    className="sr-only"
+                  />
+                </label>
+                {profilePhotoMessage ? (
+                  <p className="mt-2 text-xs font-semibold text-rose-600">{profilePhotoMessage}</p>
+                ) : null}
+              </div>
+            ) : null}
 
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Personality</span>
               <textarea
                 value={profile.personality}
-                onChange={(event) => updateProfile({ personality: event.target.value.slice(0, 100) })}
-                maxLength={100}
+                onChange={(event) => updateProfile({ personality: clampText(event.target.value, TEXT_LIMITS.note) })}
+                maxLength={TEXT_LIMITS.note}
                 rows={2}
                 placeholder="e.g. Shy at first, playful once comfortable"
                 className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
@@ -669,8 +748,8 @@ export default function ProfilePage() {
                 <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Likes</span>
                 <textarea
                   value={profile.likes}
-                  onChange={(event) => updateProfile({ likes: event.target.value.slice(0, 100) })}
-                  maxLength={100}
+                  onChange={(event) => updateProfile({ likes: clampText(event.target.value, TEXT_LIMITS.note) })}
+                  maxLength={TEXT_LIMITS.note}
                   rows={2}
                   placeholder="Treats, toys, routines"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
@@ -680,8 +759,8 @@ export default function ProfilePage() {
                 <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Dislikes</span>
                 <textarea
                   value={profile.dislikes}
-                  onChange={(event) => updateProfile({ dislikes: event.target.value.slice(0, 100) })}
-                  maxLength={100}
+                  onChange={(event) => updateProfile({ dislikes: clampText(event.target.value, TEXT_LIMITS.note) })}
+                  maxLength={TEXT_LIMITS.note}
                   rows={2}
                   placeholder="Sounds, handling, foods"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
@@ -693,8 +772,8 @@ export default function ProfilePage() {
               <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Care Preferences</span>
               <textarea
                 value={profile.carePreferences}
-                onChange={(event) => updateProfile({ carePreferences: event.target.value.slice(0, 100) })}
-                maxLength={100}
+                onChange={(event) => updateProfile({ carePreferences: clampText(event.target.value, TEXT_LIMITS.note) })}
+                maxLength={TEXT_LIMITS.note}
                 rows={3}
                 placeholder="Feeding quirks, walking style, bedtime routine"
                 className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
@@ -756,7 +835,8 @@ export default function ProfilePage() {
                   <input
                     type="email"
                     value={accessEmail}
-                    onChange={(event) => setAccessEmail(event.target.value)}
+                    onChange={(event) => setAccessEmail(clampText(event.target.value, EMAIL_MAX_LENGTH))}
+                    maxLength={EMAIL_MAX_LENGTH}
                     placeholder="name@example.com"
                     className="mt-2 w-full rounded-2xl border-0 bg-white px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-[var(--hewie-ring,#cbd5e1)] placeholder:text-zinc-400"
                   />

@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
-import { Check, Ellipsis, KeyRound, LogOut, UserRound } from "lucide-react";
+import { Check, Ellipsis, KeyRound, UserRound } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -15,19 +15,21 @@ import {
   selectActiveNotebookMembership,
   type NotebookAccessRole,
 } from "@/lib/notebook-access";
-import { getStoredSupabaseSession, getSupabaseBrowserClient, refreshSupabaseCurrentSession } from "@/lib/supabase";
+import { getStoredSupabaseSession, getSupabaseBrowserClient, PASSWORD_RESET_REQUIRED_STORAGE_KEY, refreshSupabaseCurrentSession } from "@/lib/supabase";
 import {
-  PET_PROFILE_STORAGE_KEY,
   PET_THEME_UPDATED_EVENT,
   appThemes,
   applyPetTheme,
   defaultPetProfile,
   loadUserTheme,
-  normalizePetProfile,
   type ThemeId,
 } from "@/lib/pet-profile";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
-const defaultPetProfileSnapshot = JSON.stringify(defaultPetProfile);
+const EMAIL_MAX_LENGTH = 254;
+const PHONE_MAX_LENGTH = 32;
+const PASSWORD_MAX_LENGTH = 128;
+
 const ACCOUNT_INFO_STORAGE_KEY = "petnotebook.accountInfoSnapshot";
 type TwoFactorMethod = "email" | "sms";
 type AccountInfoSnapshot = {
@@ -54,21 +56,6 @@ const planOptions = [
     description: "Multiple pet notebooks and shared access.",
   },
 ];
-
-function getPetProfileSnapshot() {
-  if (typeof window === "undefined") return defaultPetProfileSnapshot;
-  return window.localStorage.getItem(PET_PROFILE_STORAGE_KEY) ?? defaultPetProfileSnapshot;
-}
-
-function subscribeToPetProfile(onStoreChange: () => void) {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener("focus", onStoreChange);
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener("focus", onStoreChange);
-  };
-}
 
 function notebookRoleLabel(role: NotebookAccessRole | null) {
   if (role === "co-owner") return "Co-Owner";
@@ -144,7 +131,6 @@ export default function AccountSettingsPage() {
   const [ownerLastName, setOwnerLastName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPhoneNumber, setOwnerPhoneNumber] = useState("");
-  const [phoneVerified, setPhoneVerified] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [twoFactorMethod, setTwoFactorMethod] = useState<TwoFactorMethod>("email");
   const [savedOwnerInfo, setSavedOwnerInfo] = useState<AccountInfoSnapshot>({ firstName: "", lastName: "", email: "", phoneNumber: "", phoneVerified: false, twoFactorEnabled: false, twoFactorMethod: "email" });
@@ -160,22 +146,10 @@ export default function AccountSettingsPage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [passwordStatus, setPasswordStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordResetRequired, setPasswordResetRequired] = useState(false);
   const [twoFactorStatus, setTwoFactorStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [twoFactorMessage, setTwoFactorMessage] = useState("");
   const [themeId, setThemeId] = useState<ThemeId>(defaultPetProfile.themeId);
-
-  const profileSnapshot = useSyncExternalStore(
-    subscribeToPetProfile,
-    getPetProfileSnapshot,
-    () => defaultPetProfileSnapshot,
-  );
-  const profile = useMemo(() => {
-    try {
-      return normalizePetProfile(JSON.parse(profileSnapshot));
-    } catch {
-      return defaultPetProfile;
-    }
-  }, [profileSnapshot]);
 
   useEffect(() => {
     const refreshTheme = () => setThemeId(loadUserTheme(user?.id));
@@ -197,9 +171,15 @@ export default function AccountSettingsPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("resetPassword") !== "1") return;
 
-    setPasswordEditing(true);
-    setPasswordStatus("idle");
-    setPasswordMessage("Choose a new password for this account.");
+    const timeoutId = window.setTimeout(() => {
+      window.localStorage.setItem(PASSWORD_RESET_REQUIRED_STORAGE_KEY, "1");
+      setPasswordResetRequired(true);
+      setPasswordEditing(true);
+      setPasswordStatus("idle");
+      setPasswordMessage("Choose a new password for this account.");
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   useEffect(() => {
@@ -233,7 +213,6 @@ export default function AccountSettingsPage() {
         setOwnerLastName("");
         setOwnerEmail("");
         setOwnerPhoneNumber("");
-        setPhoneVerified(false);
         setTwoFactorEnabled(false);
         setTwoFactorMethod("email");
         setSavedOwnerInfo({ firstName: "", lastName: "", email: "", phoneNumber: "", phoneVerified: false, twoFactorEnabled: false, twoFactorMethod: "email" });
@@ -248,7 +227,6 @@ export default function AccountSettingsPage() {
       setOwnerLastName(nextOwnerInfo.lastName);
       setOwnerEmail(nextOwnerInfo.email);
       setOwnerPhoneNumber(nextOwnerInfo.phoneNumber);
-      setPhoneVerified(nextOwnerInfo.phoneVerified);
       setTwoFactorEnabled(nextOwnerInfo.twoFactorEnabled);
       setTwoFactorMethod(nextOwnerInfo.phoneNumber ? nextOwnerInfo.twoFactorMethod : "email");
       setSavedOwnerInfo(nextOwnerInfo);
@@ -315,10 +293,10 @@ export default function AccountSettingsPage() {
   }
 
   async function handleSaveAccountInfo() {
-    const trimmedFirstName = ownerFirstName.trim();
-    const trimmedLastName = ownerLastName.trim();
-    const trimmedEmail = ownerEmail.trim().toLowerCase();
-    const trimmedPhoneNumber = ownerPhoneNumber.trim();
+    const trimmedFirstName = clampText(ownerFirstName.trim(), TEXT_LIMITS.shortName);
+    const trimmedLastName = clampText(ownerLastName.trim(), TEXT_LIMITS.shortName);
+    const trimmedEmail = clampText(ownerEmail.trim().toLowerCase(), EMAIL_MAX_LENGTH);
+    const trimmedPhoneNumber = clampText(ownerPhoneNumber.trim(), PHONE_MAX_LENGTH);
 
     if (!displayUser) {
       setAccountStatus("error");
@@ -371,7 +349,6 @@ export default function AccountSettingsPage() {
     const nextPhoneVerified = trimmedPhoneNumber && trimmedPhoneNumber === savedOwnerInfo.phoneNumber ? savedOwnerInfo.phoneVerified : false;
     const nextTwoFactorMethod = trimmedPhoneNumber ? savedOwnerInfo.twoFactorMethod : "email";
     const nextTwoFactorEnabled = savedOwnerInfo.twoFactorEnabled;
-    setPhoneVerified(nextPhoneVerified);
     setTwoFactorEnabled(nextTwoFactorEnabled);
     setTwoFactorMethod(nextTwoFactorMethod);
     setSavedOwnerInfo({
@@ -442,6 +419,8 @@ export default function AccountSettingsPage() {
       return;
     }
 
+    window.localStorage.removeItem(PASSWORD_RESET_REQUIRED_STORAGE_KEY);
+    setPasswordResetRequired(false);
     setNewPassword("");
     setConfirmNewPassword("");
     setPasswordEditing(false);
@@ -519,6 +498,7 @@ export default function AccountSettingsPage() {
           </div>
         </header>
 
+        {!passwordResetRequired ? (
         <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
@@ -559,7 +539,8 @@ export default function AccountSettingsPage() {
                 <input
                   type="text"
                   value={ownerFirstName}
-                  onChange={(event) => setOwnerFirstName(event.target.value)}
+                  onChange={(event) => setOwnerFirstName(clampText(event.target.value, TEXT_LIMITS.shortName))}
+                  maxLength={TEXT_LIMITS.shortName}
                   placeholder={authLoading ? "Loading..." : "First"}
                   disabled={!ownerInfoEditing}
                   className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
@@ -572,7 +553,8 @@ export default function AccountSettingsPage() {
                 <input
                   type="text"
                   value={ownerLastName}
-                  onChange={(event) => setOwnerLastName(event.target.value)}
+                  onChange={(event) => setOwnerLastName(clampText(event.target.value, TEXT_LIMITS.shortName))}
+                  maxLength={TEXT_LIMITS.shortName}
                   placeholder={authLoading ? "Loading..." : "Last"}
                   disabled={!ownerInfoEditing}
                   className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
@@ -586,7 +568,8 @@ export default function AccountSettingsPage() {
               <input
                 type="email"
                 value={ownerEmail || displayUser?.email || ""}
-                onChange={(event) => setOwnerEmail(event.target.value)}
+                onChange={(event) => setOwnerEmail(clampText(event.target.value, EMAIL_MAX_LENGTH))}
+                maxLength={EMAIL_MAX_LENGTH}
                 placeholder={authLoading ? "Loading account..." : "name@example.com"}
                 disabled={!ownerInfoEditing}
                 className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
@@ -599,7 +582,8 @@ export default function AccountSettingsPage() {
               <input
                 type="tel"
                 value={ownerPhoneNumber}
-                onChange={(event) => setOwnerPhoneNumber(event.target.value)}
+                onChange={(event) => setOwnerPhoneNumber(clampText(event.target.value, PHONE_MAX_LENGTH))}
+                maxLength={PHONE_MAX_LENGTH}
                 placeholder={authLoading ? "Loading account..." : "Optional for account recovery"}
                 disabled={!ownerInfoEditing}
                 autoComplete="tel"
@@ -639,6 +623,8 @@ export default function AccountSettingsPage() {
           ) : null}
         </section>
 
+        ) : null}
+
         <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
@@ -650,7 +636,7 @@ export default function AccountSettingsPage() {
               </span>
               <div>
                 <h2 className="text-lg font-semibold">Security</h2>
-                <p className="mt-1 text-sm leading-5 text-zinc-500">Update password and login verification settings.</p>
+                <p className="mt-1 text-sm leading-5 text-zinc-500">{passwordResetRequired ? "Choose a new password to finish account recovery." : "Update password and login verification settings."}</p>
               </div>
             </div>
           </div>
@@ -662,10 +648,11 @@ export default function AccountSettingsPage() {
                 <input
                   type="password"
                   value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
+                  onChange={(event) => setNewPassword(clampText(event.target.value, PASSWORD_MAX_LENGTH))}
                   placeholder="New password"
                   autoComplete="new-password"
                   minLength={6}
+                  maxLength={PASSWORD_MAX_LENGTH}
                   className="mt-2 w-full rounded-2xl border-0 bg-zinc-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-zinc-200 placeholder:text-zinc-400"
                 />
               </label>
@@ -674,16 +661,18 @@ export default function AccountSettingsPage() {
                 <input
                   type="password"
                   value={confirmNewPassword}
-                  onChange={(event) => setConfirmNewPassword(event.target.value)}
+                  onChange={(event) => setConfirmNewPassword(clampText(event.target.value, PASSWORD_MAX_LENGTH))}
                   placeholder="Confirm password"
                   autoComplete="new-password"
                   minLength={6}
+                  maxLength={PASSWORD_MAX_LENGTH}
                   className="mt-2 w-full rounded-2xl border-0 bg-zinc-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-zinc-200 placeholder:text-zinc-400"
                 />
               </label>
             </div>
           ) : null}
 
+          {!passwordResetRequired ? (
           <div className="mt-2">
             <div className="flex items-center gap-3 rounded-2xl bg-zinc-50 px-4 py-2 ring-1 ring-zinc-200">
               <p className="shrink-0 text-sm font-semibold text-zinc-800">2FA</p>
@@ -723,6 +712,7 @@ export default function AccountSettingsPage() {
               </div>
             </div>
           </div>
+          ) : null}
 
           {twoFactorMessage ? (
             <p className={`mt-3 rounded-2xl p-3 text-sm ring-1 ${twoFactorStatus === "error" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-emerald-50 text-emerald-700 ring-emerald-100"}`}>
@@ -738,15 +728,17 @@ export default function AccountSettingsPage() {
 
           {passwordEditing ? (
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={resetPasswordForm}
-                className="rounded-full bg-white text-zinc-700"
-                disabled={passwordStatus === "saving"}
-              >
-                Cancel
-              </Button>
+              {passwordResetRequired ? <div /> : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetPasswordForm}
+                  className="rounded-full bg-white text-zinc-700"
+                  disabled={passwordStatus === "saving"}
+                >
+                  Cancel
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={() => void handleSavePassword()}
@@ -759,7 +751,7 @@ export default function AccountSettingsPage() {
           ) : null}
         </section>
 
-        {canViewMembershipPlan ? (
+        {!passwordResetRequired && canViewMembershipPlan ? (
           <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Membership Plan</h2>
@@ -795,6 +787,7 @@ export default function AccountSettingsPage() {
           </section>
         ) : null}
 
+        {!passwordResetRequired ? (
         <div className="mt-5">
           {authLoading && !displayUser ? (
             <Button type="button" className="w-full rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-[var(--hewie-accent-text,#ffffff)] opacity-80" disabled>
@@ -805,9 +798,8 @@ export default function AccountSettingsPage() {
               type="button"
               variant="outline"
               onClick={() => void signOut()}
-              className="w-full rounded-full bg-white px-4 text-zinc-700"
+              className="h-12 w-full rounded-full bg-white px-4 text-zinc-700 shadow-sm"
             >
-              <LogOut className="size-4" />
               Sign Out
             </Button>
           ) : (
@@ -819,6 +811,7 @@ export default function AccountSettingsPage() {
             <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-xs leading-5 text-amber-700 ring-1 ring-amber-100">Supabase auth needs the public URL and anon key before login can work.</p>
           ) : null}
         </div>
+        ) : null}
 
         <BottomNav />
       </div>

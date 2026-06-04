@@ -62,7 +62,8 @@ export function PageIntroGuide() {
   useEffect(() => {
     if (window.localStorage.getItem(PAGE_INTRO_STORAGE_KEY) !== "true") {
       const storedStep = Number.parseInt(window.localStorage.getItem(PAGE_INTRO_STEP_STORAGE_KEY) ?? "0", 10);
-      setStep(Number.isFinite(storedStep) ? Math.min(Math.max(storedStep, 0), introPages.length - 1) : 0);
+      const nextStep = Number.isFinite(storedStep) ? Math.min(Math.max(storedStep, 0), introPages.length - 1) : 0;
+      queueMicrotask(() => setStep(nextStep));
     }
   }, []);
 

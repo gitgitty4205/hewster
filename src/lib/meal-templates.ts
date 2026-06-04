@@ -1,4 +1,6 @@
-﻿export type MealTemplate = {
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
+
+export type MealTemplate = {
   id: number;
   name: string;
   plannedTime: string;
@@ -14,6 +16,21 @@ export type DailyMeal = MealTemplate & {
 };
 
 export const STORAGE_KEY = "hewster.mealTemplates";
+export const MEAL_NAME_MAX_LENGTH = TEXT_LIMITS.shortName;
+export const MEAL_FOOD_MAX_LENGTH = TEXT_LIMITS.mediumText;
+export const MEAL_NOTE_MAX_LENGTH = TEXT_LIMITS.note;
+
+export function clampMealNameText(value: string) {
+  return clampText(value, MEAL_NAME_MAX_LENGTH);
+}
+
+export function clampMealFoodText(value: string) {
+  return clampText(value, MEAL_FOOD_MAX_LENGTH);
+}
+
+export function clampMealNoteText(value: string) {
+  return clampText(value, MEAL_NOTE_MAX_LENGTH);
+}
 
 export const initialTemplates: MealTemplate[] = [
   {

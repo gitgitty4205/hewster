@@ -13,6 +13,12 @@ import {
   saveTemplatesToSupabase,
 } from "@/lib/hewster-data";
 import {
+  MEAL_FOOD_MAX_LENGTH,
+  MEAL_NAME_MAX_LENGTH,
+  MEAL_NOTE_MAX_LENGTH,
+  clampMealFoodText,
+  clampMealNameText,
+  clampMealNoteText,
   type MealTemplate,
   initialTemplates,
   isInitialMealTemplatePlan,
@@ -159,21 +165,29 @@ export default function MealsPage() {
   const updateDraft = (field: keyof MealTemplate, value: string) => {
     setEditingDraft((current) => {
       if (!current) return current;
+      const nextValue = field === "name" ? clampMealNameText(value) : field === "food" ? clampMealFoodText(value) : value;
+      const clampedValue = field === "notes" ? clampMealNoteText(nextValue) : nextValue;
       return {
         ...current,
-        meal: { ...current.meal, [field]: value },
+        meal: { ...current.meal, [field]: clampedValue },
       };
     });
   };
 
   const saveEditingMeal = () => {
     if (!editingDraft) return;
+    const mealToSave = {
+      ...editingDraft.meal,
+      name: clampMealNameText(editingDraft.meal.name),
+      food: clampMealFoodText(editingDraft.meal.food),
+      notes: clampMealNoteText(editingDraft.meal.notes),
+    };
 
     setTemplates((current) => {
-      const mealExists = current.some((meal) => meal.id === editingDraft.meal.id);
+      const mealExists = current.some((meal) => meal.id === mealToSave.id);
       const nextTemplates = mealExists
-        ? current.map((meal) => (meal.id === editingDraft.meal.id ? editingDraft.meal : meal))
-        : [...current, editingDraft.meal];
+        ? current.map((meal) => (meal.id === mealToSave.id ? mealToSave : meal))
+        : [...current, mealToSave];
 
       return sortMealTemplatesByTime(nextTemplates);
     });
@@ -316,8 +330,8 @@ export default function MealsPage() {
               return (
                 <article key={meal.id} className="rounded-2xl bg-zinc-50 p-4 ring-1 ring-zinc-200">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-medium text-zinc-900">{displayedMeal.name || "New Meal"}</h3>
+                    <div className="min-w-0">
+                      <h3 className="break-words font-medium text-zinc-900 [overflow-wrap:anywhere]">{displayedMeal.name || "New Meal"}</h3>
                       <p className="text-sm text-zinc-500">Template Used For Future Daily Checklists.</p>
                     </div>
                     {isEditing ? null : (
@@ -338,9 +352,15 @@ export default function MealsPage() {
                       <input
                         value={displayedMeal.name}
                         disabled={!isEditing}
+                        maxLength={MEAL_NAME_MAX_LENGTH}
                         onChange={(event) => updateDraft("name", event.target.value)}
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
+                      {isEditing ? (
+                        <span className="mt-1 block text-xs text-zinc-400">
+                          {displayedMeal.name.length}/{MEAL_NAME_MAX_LENGTH} characters
+                        </span>
+                      ) : null}
                     </label>
 
                     <label className="block text-sm">
@@ -359,9 +379,15 @@ export default function MealsPage() {
                       <input
                         value={displayedMeal.food}
                         disabled={!isEditing}
+                        maxLength={MEAL_FOOD_MAX_LENGTH}
                         onChange={(event) => updateDraft("food", event.target.value)}
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
+                      {isEditing ? (
+                        <span className="mt-1 block text-xs text-zinc-400">
+                          {displayedMeal.food.length}/{MEAL_FOOD_MAX_LENGTH} characters
+                        </span>
+                      ) : null}
                     </label>
 
                     <label className="block text-sm">
@@ -369,8 +395,8 @@ export default function MealsPage() {
                       <textarea
                         value={displayedMeal.notes}
                         disabled={!isEditing}
-                        maxLength={100}
-                        onChange={(event) => updateDraft("notes", event.target.value.slice(0, 100))}
+                        maxLength={MEAL_NOTE_MAX_LENGTH}
+                        onChange={(event) => updateDraft("notes", event.target.value)}
                         rows={2}
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />

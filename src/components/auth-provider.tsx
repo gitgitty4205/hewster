@@ -7,7 +7,7 @@ import {
   cacheSupabaseCurrentSession,
   getSupabaseBrowserClient,
   getSupabaseCurrentSession,
-  getStoredSupabaseSession,
+  PASSWORD_RESET_REQUIRED_STORAGE_KEY,
   isSupabaseConfigured,
 } from "@/lib/supabase";
 
@@ -34,9 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     const bootTimeoutId = window.setTimeout(() => {
       if (!active) return;
-      const storedSession = getStoredSupabaseSession();
-      cacheSupabaseCurrentSession(storedSession);
-      setSession(storedSession);
+      cacheSupabaseCurrentSession(null);
+      setSession(null);
       setLoading(false);
     }, AUTH_BOOT_TIMEOUT_MS);
 
@@ -50,9 +49,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       window.clearTimeout(bootTimeoutId);
-      const recoveredSession = nextSession ?? getStoredSupabaseSession();
-      cacheSupabaseCurrentSession(recoveredSession);
-      setSession(recoveredSession);
+      cacheSupabaseCurrentSession(nextSession);
+      setSession(nextSession);
       setLoading(false);
     });
 
@@ -71,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut: async () => {
       if (!supabase) return;
       await supabase.auth.signOut();
+      window.localStorage.removeItem(PASSWORD_RESET_REQUIRED_STORAGE_KEY);
       setSession(null);
     },
   }), [configured, loading, session, supabase]);

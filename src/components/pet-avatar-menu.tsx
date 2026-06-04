@@ -15,6 +15,7 @@ import {
 } from "@/lib/notebook-access";
 import { DEFAULT_PET_PHOTO_URL, defaultPetProfile, loadPetProfile, savePetProfile, type PetProfile } from "@/lib/pet-profile";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 import { cn } from "@/lib/utils";
 
 const PET_ROSTER_STORAGE_KEY = "hewster.petRoster";
@@ -199,8 +200,8 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
   const imageSize = shape === "tile" ? 72 : 80;
 
   const addPet = async () => {
-    const name = newPetName.trim();
-    const species = newPetSpecies.trim() || "Pet";
+    const name = clampText(newPetName.trim(), TEXT_LIMITS.shortName);
+    const species = clampText(newPetSpecies.trim(), TEXT_LIMITS.shortName) || "Pet";
     const supabase = getSupabaseBrowserClient();
     if (!name || !user || !supabase) return;
     const [petFirstName, ...petLastNameParts] = name.split(/\s+/).filter(Boolean);
@@ -349,7 +350,8 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                     Pet Name
                     <input
                       value={newPetName}
-                      onChange={(event) => setNewPetName(event.target.value)}
+                      onChange={(event) => setNewPetName(clampText(event.target.value, TEXT_LIMITS.shortName))}
+                      maxLength={TEXT_LIMITS.shortName}
                       placeholder="e.g. Miso"
                       className="mt-1 w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm font-medium outline-none focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                     />
@@ -358,7 +360,8 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                     Species
                     <input
                       value={newPetSpecies}
-                      onChange={(event) => setNewPetSpecies(event.target.value)}
+                      onChange={(event) => setNewPetSpecies(clampText(event.target.value, TEXT_LIMITS.shortName))}
+                      maxLength={TEXT_LIMITS.shortName}
                       placeholder="Dog, Cat, Rabbit..."
                       className="mt-1 w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm font-medium outline-none focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                     />

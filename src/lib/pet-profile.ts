@@ -1,6 +1,7 @@
 ﻿export type ThemeId = "slate" | "violet" | "sky" | "rose" | "emerald" | "amber";
 
 import { getStoredSupabaseSession } from "@/lib/supabase";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 export type PetProfile = {
   petName: string;
@@ -137,31 +138,31 @@ export function normalizePetProfile(value: unknown): PetProfile {
 
   const legacyPetName = typeof profile.petName === "string" ? profile.petName.trim() : defaultPetProfile.petName;
   const [legacyFirstName, ...legacyLastNameParts] = legacyPetName.trim().split(/\s+/).filter(Boolean);
-  const petFirstName = typeof profile.petFirstName === "string" ? profile.petFirstName.trim() : legacyFirstName || defaultPetProfile.petFirstName;
-  const petLastName = typeof profile.petLastName === "string" ? profile.petLastName.trim() : legacyLastNameParts.join(" ");
+  const petFirstName = clampText(typeof profile.petFirstName === "string" ? profile.petFirstName.trim() : legacyFirstName || defaultPetProfile.petFirstName, TEXT_LIMITS.shortName);
+  const petLastName = clampText(typeof profile.petLastName === "string" ? profile.petLastName.trim() : legacyLastNameParts.join(" "), TEXT_LIMITS.shortName);
 
   return {
     petName: [petFirstName, petLastName].filter(Boolean).join(" ") || defaultPetProfile.petName,
     petFirstName,
     petLastName,
-    species: typeof profile.species === "string" ? profile.species : defaultPetProfile.species,
-    breed: typeof profile.breed === "string" ? profile.breed : defaultPetProfile.breed,
+    species: clampText(typeof profile.species === "string" ? profile.species : defaultPetProfile.species, TEXT_LIMITS.shortName),
+    breed: clampText(typeof profile.breed === "string" ? profile.breed : defaultPetProfile.breed, TEXT_LIMITS.shortName),
     birthday: typeof profile.birthday === "string" ? profile.birthday : defaultPetProfile.birthday,
-    manualAge: typeof profile.manualAge === "string" ? profile.manualAge : defaultPetProfile.manualAge,
-    microchipNumber: typeof profile.microchipNumber === "string" ? profile.microchipNumber : defaultPetProfile.microchipNumber,
-    color: typeof profile.color === "string" ? profile.color : defaultPetProfile.color,
+    manualAge: clampText(typeof profile.manualAge === "string" ? profile.manualAge : defaultPetProfile.manualAge, 24),
+    microchipNumber: clampText(typeof profile.microchipNumber === "string" ? profile.microchipNumber : defaultPetProfile.microchipNumber, TEXT_LIMITS.shortName),
+    color: clampText(typeof profile.color === "string" ? profile.color : defaultPetProfile.color, TEXT_LIMITS.shortName),
     sex: profile.sex === "female" || profile.sex === "male" ? profile.sex : defaultPetProfile.sex,
     spayNeuterStatus:
       profile.spayNeuterStatus === "spayed" || profile.spayNeuterStatus === "neutered" || profile.spayNeuterStatus === "intact"
         ? profile.spayNeuterStatus
         : defaultPetProfile.spayNeuterStatus,
-    personality: typeof profile.personality === "string" ? profile.personality : defaultPetProfile.personality,
-    likes: typeof profile.likes === "string" ? profile.likes : defaultPetProfile.likes,
-    dislikes: typeof profile.dislikes === "string" ? profile.dislikes : defaultPetProfile.dislikes,
-    carePreferences: typeof profile.carePreferences === "string" ? profile.carePreferences : defaultPetProfile.carePreferences,
+    personality: clampText(typeof profile.personality === "string" ? profile.personality : defaultPetProfile.personality, TEXT_LIMITS.note),
+    likes: clampText(typeof profile.likes === "string" ? profile.likes : defaultPetProfile.likes, TEXT_LIMITS.note),
+    dislikes: clampText(typeof profile.dislikes === "string" ? profile.dislikes : defaultPetProfile.dislikes, TEXT_LIMITS.note),
+    carePreferences: clampText(typeof profile.carePreferences === "string" ? profile.carePreferences : defaultPetProfile.carePreferences, TEXT_LIMITS.note),
     hasPassedAway: typeof profile.hasPassedAway === "boolean" ? profile.hasPassedAway : defaultPetProfile.hasPassedAway,
     passedAwayDate: typeof profile.passedAwayDate === "string" ? profile.passedAwayDate : defaultPetProfile.passedAwayDate,
-    memorialNotes: typeof profile.memorialNotes === "string" ? profile.memorialNotes : defaultPetProfile.memorialNotes,
+    memorialNotes: clampText(typeof profile.memorialNotes === "string" ? profile.memorialNotes : defaultPetProfile.memorialNotes, TEXT_LIMITS.note),
     archivedFromPetSwitcher: typeof profile.archivedFromPetSwitcher === "boolean" ? profile.archivedFromPetSwitcher : defaultPetProfile.archivedFromPetSwitcher,
     photoUrl: typeof profile.photoUrl === "string" ? profile.photoUrl : defaultPetProfile.photoUrl,
     weightUnit: profile.weightUnit === "kg" ? "kg" : "lb",
@@ -206,8 +207,13 @@ export function loadPetProfile() {
 }
 
 export function savePetProfile(profile: PetProfile) {
-  window.localStorage.setItem(PET_PROFILE_STORAGE_KEY, JSON.stringify(profile));
-  window.dispatchEvent(new Event("pet-profile-updated"));
+  try {
+    window.localStorage.setItem(PET_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+    window.dispatchEvent(new Event("pet-profile-updated"));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function userThemeStorageKey(userId?: string | null) {

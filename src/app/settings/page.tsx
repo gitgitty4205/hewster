@@ -4,19 +4,17 @@ import { ChevronRight, Tablets, UserRound } from "lucide-react";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { useAuth } from "@/components/auth-provider";
 import {
   PET_THEME_UPDATED_EVENT,
-  PET_PROFILE_STORAGE_KEY,
   appThemes,
   applyPetTheme,
   defaultPetProfile,
   loadUserTheme,
-  normalizePetProfile,
   type ThemeId,
 } from "@/lib/pet-profile";
 
@@ -79,38 +77,9 @@ function CutePawIcon() {
   );
 }
 
-const defaultPetProfileSnapshot = JSON.stringify(defaultPetProfile);
-
-function getPetProfileSnapshot() {
-  if (typeof window === "undefined") return defaultPetProfileSnapshot;
-  return window.localStorage.getItem(PET_PROFILE_STORAGE_KEY) ?? defaultPetProfileSnapshot;
-}
-
-function subscribeToPetProfile(onStoreChange: () => void) {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener("focus", onStoreChange);
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener("focus", onStoreChange);
-  };
-}
-
 export default function SettingsPage() {
   const { user } = useAuth();
   const [themeId, setThemeId] = useState<ThemeId>(defaultPetProfile.themeId);
-  const profileSnapshot = useSyncExternalStore(
-    subscribeToPetProfile,
-    getPetProfileSnapshot,
-    () => defaultPetProfileSnapshot,
-  );
-  const profile = useMemo(() => {
-    try {
-      return normalizePetProfile(JSON.parse(profileSnapshot));
-    } catch {
-      return defaultPetProfile;
-    }
-  }, [profileSnapshot]);
 
   useEffect(() => {
     const refreshTheme = () => setThemeId(loadUserTheme(user?.id));

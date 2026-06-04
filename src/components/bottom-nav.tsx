@@ -85,8 +85,8 @@ function PencilIcon() {
   );
 }
 
-function FilledBookmarkIcon() {
-  return <Bookmark className="size-[1.72rem] fill-current" strokeWidth={1.65} aria-hidden="true" />;
+function BookmarkIcon() {
+  return <Bookmark className="size-[1.72rem]" strokeWidth={1.65} aria-hidden="true" />;
 }
 
 function WeightIcon() {
@@ -161,31 +161,6 @@ function clampFloatingMenuPosition(position: FloatingMenuPosition, width: number
   };
 }
 
-function readFloatingMenuPosition(userId?: string | null) {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const stored = window.localStorage.getItem(floatingMenuPositionStorageKey(userId));
-    if (!stored) return null;
-
-    const parsed = JSON.parse(stored);
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      typeof parsed.x === "number" &&
-      typeof parsed.y === "number" &&
-      Number.isFinite(parsed.x) &&
-      Number.isFinite(parsed.y)
-    ) {
-      return parsed as FloatingMenuPosition;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
 export function BottomNav({ alertsCount }: Props) {
   const { user } = useAuth();
   const pathname = usePathname();
@@ -220,21 +195,36 @@ export function BottomNav({ alertsCount }: Props) {
   }, [open]);
 
   useEffect(() => {
-    const savedPosition = readFloatingMenuPosition(user?.id);
-    if (!savedPosition) {
-      setFloatingMenuPosition(null);
+    if (typeof window === "undefined") return;
+
+    const stored = window.localStorage.getItem(floatingMenuPositionStorageKey(user?.id));
+    if (!stored) {
+      queueMicrotask(() => setFloatingMenuPosition(null));
       return;
     }
 
-    const rect = floatingMenuButtonRef.current?.getBoundingClientRect();
-    setFloatingMenuPosition(clampFloatingMenuPosition(savedPosition, rect?.width ?? 68, rect?.height ?? 68));
+    try {
+      const parsed = JSON.parse(stored) as Partial<FloatingMenuPosition>;
+      const x = parsed.x;
+      const y = parsed.y;
+      if (typeof x !== "number" || typeof y !== "number") {
+        window.localStorage.removeItem(floatingMenuPositionStorageKey(user?.id));
+        queueMicrotask(() => setFloatingMenuPosition(null));
+        return;
+      }
+
+      queueMicrotask(() => setFloatingMenuPosition(clampFloatingMenuPosition({ x, y }, 68, 68)));
+    } catch {
+      window.localStorage.removeItem(floatingMenuPositionStorageKey(user?.id));
+      queueMicrotask(() => setFloatingMenuPosition(null));
+    }
   }, [user?.id]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const stored = window.localStorage.getItem(pagesBackgroundModeStorageKey(user?.id));
-    setPagesBackgroundMode(stored === "full" ? "full" : "soft");
+    queueMicrotask(() => setPagesBackgroundMode(stored === "full" ? "full" : "soft"));
   }, [user?.id]);
 
   useEffect(() => {
@@ -315,7 +305,6 @@ export function BottomNav({ alertsCount }: Props) {
       setFloatingMenuPosition((position) => {
         if (!position) return null;
         const nextPosition = clampFloatingMenuPosition(position, rect?.width ?? 68, rect?.height ?? 68);
-        window.localStorage.setItem(floatingMenuPositionStorageKey(user?.id), JSON.stringify(nextPosition));
         return nextPosition;
       });
     };
@@ -441,7 +430,7 @@ export function BottomNav({ alertsCount }: Props) {
                             : "bg-[var(--hewie-bg,#979ca7)]/76 text-[var(--hewie-accent-text,#ffffff)] shadow-[0_10px_24px_rgba(15,23,42,0.11)] ring-[rgba(15,23,42,0.08)] backdrop-blur-[1.5px] group-hover:bg-[var(--hewie-accent,#64748b)]/88"
                         }`}
                       >
-                        {item.iconKind === "paw" ? <PawIcon /> : item.iconKind === "weight" ? <WeightIcon /> : item.iconKind === "pencil" ? <PencilIcon /> : item.iconKind === "bookmark" ? <FilledBookmarkIcon /> : Icon ? <Icon className="size-[1.72rem]" strokeWidth={1.65} /> : null}
+                        {item.iconKind === "paw" ? <PawIcon /> : item.iconKind === "weight" ? <WeightIcon /> : item.iconKind === "pencil" ? <PencilIcon /> : item.iconKind === "bookmark" ? <BookmarkIcon /> : Icon ? <Icon className="size-[1.72rem]" strokeWidth={1.65} /> : null}
                         {showBadge ? (
                           <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
                             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}

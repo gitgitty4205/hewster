@@ -83,6 +83,11 @@ export function PottyDetailBadges({
   const alignItems = align === "right" ? "items-end text-right" : "items-start text-left";
   const rowJustify = align === "right" ? "justify-end" : "justify-start";
   const marginTop = inset ? "mt-2" : "";
+  const visibleNotes = notes
+    ?.split("\n")
+    .filter((line) => !line.startsWith("Attachments: "))
+    .join("\n")
+    .trim();
 
   return (
     <div className={`${marginTop} flex flex-col gap-1.5 ${alignItems}`}>
@@ -95,13 +100,13 @@ export function PottyDetailBadges({
         </div>
       ) : null}
       {showPoop ? (
-        <div className={`flex w-full max-w-full flex-wrap items-center gap-2 ${rowJustify}`}>
+        <div className={`flex w-full max-w-full flex-nowrap items-center gap-1.5 ${rowJustify}`}>
           <span className={`${pottyBadgeClasses(bristol ?? "Poop")} whitespace-nowrap`}>
             <span className="mr-1">{"\u{1F4A9}"}</span>
             {bristolType ?? "Poop"}
           </span>
           {bristolDescription ? (
-            <span className="min-w-0 text-xs font-medium leading-5 text-zinc-600">{bristolDescription}</span>
+            <span className="min-w-0 whitespace-nowrap text-xs font-medium leading-5 text-zinc-600">{bristolDescription}</span>
           ) : null}
         </div>
       ) : null}
@@ -115,7 +120,7 @@ export function PottyDetailBadges({
           <span className={`${pottyBadgeClasses("Pee")} whitespace-nowrap`}>Potty Break</span>
         </div>
       ) : null}
-      {notes ? <ExpandableNoteText className="text-sm text-zinc-600">{notes}</ExpandableNoteText> : null}
+      {visibleNotes ? <ExpandableNoteText className="text-sm text-zinc-600">{visibleNotes}</ExpandableNoteText> : null}
     </div>
   );
 }

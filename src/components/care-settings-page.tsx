@@ -21,10 +21,10 @@ import {
   saveCareTemplatesToSupabase,
 } from "@/lib/care-settings";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 const HEWSTER_BRIDGE_SOURCE = "https://lindy.b-average.com";
 const MAX_SUPPLEMENTS_PER_MEAL_PLAN_TILE = 4;
-const MAX_CARE_ITEM_NAME_LENGTH = 40;
 
 type BridgeCarePayload = {
   supplementSettings?: CareItemTemplate[];
@@ -122,7 +122,6 @@ function normalizeMedicationSchedule(item: CareItemTemplate) {
 export function CareSettingsPage({
   kind,
   title,
-  description,
   emptyLabel,
   icon: Icon,
   accentClassName,
@@ -315,6 +314,11 @@ export function CareSettingsPage({
   };
 
   const deleteItem = (id: number) => {
+    const item = items.find((candidate) => candidate.id === id);
+    const itemName = item?.name.trim() || `this saved ${kind}`;
+    const confirmed = window.confirm(`Delete ${itemName}? This will remove it from saved ${kind} settings.`);
+    if (!confirmed) return;
+
     commitItems(items.filter((item) => item.id !== id));
     setDraftItems((current) => {
       const next = { ...current };
@@ -348,7 +352,7 @@ export function CareSettingsPage({
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <span className={`flex size-12 shrink-0 items-center justify-center rounded-full ring-1 ${iconClassName}`}>
-                <Icon className="size-6" />
+                <Icon className={kind === "supplement" ? "size-7" : "size-6"} />
               </span>
               <div>
                 <h2 className="text-lg font-semibold">{kind === "supplement" ? "Saved Supplements" : "Saved Medications"}</h2>
@@ -418,8 +422,8 @@ export function CareSettingsPage({
                       <input
                         value={item.name}
                         disabled={!isEditing}
-                        onChange={(event) => updateItem(item.id, { name: event.target.value.slice(0, MAX_CARE_ITEM_NAME_LENGTH) })}
-                        maxLength={MAX_CARE_ITEM_NAME_LENGTH}
+                        onChange={(event) => updateItem(item.id, { name: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                        maxLength={TEXT_LIMITS.shortName}
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
                     </label>
@@ -534,7 +538,8 @@ export function CareSettingsPage({
                       <input
                         value={item.dose}
                         disabled={!isEditing}
-                        onChange={(event) => updateItem(item.id, { dose: event.target.value })}
+                        onChange={(event) => updateItem(item.id, { dose: clampText(event.target.value, TEXT_LIMITS.dose) })}
+                        maxLength={TEXT_LIMITS.dose}
                         placeholder="Example: 1 capsule, 5 mg"
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
@@ -680,8 +685,8 @@ export function CareSettingsPage({
                       <textarea
                         value={item.notes}
                         disabled={!isEditing}
-                        onChange={(event) => updateItem(item.id, { notes: event.target.value.slice(0, 100) })}
-                        maxLength={100}
+                        onChange={(event) => updateItem(item.id, { notes: clampText(event.target.value, TEXT_LIMITS.note) })}
+                        maxLength={TEXT_LIMITS.note}
                         rows={2}
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />

@@ -1,5 +1,6 @@
 "use client";
 
+import { Image as ImageIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
@@ -10,6 +11,7 @@ import {
   loadAppState,
 } from "@/lib/hewster-data";
 import { formatActivityTime } from "@/lib/activity";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 function formatDayLabel(isoString: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -26,6 +28,47 @@ function isActualPoopRecord(activity: ActivityLog) {
   if (detail === "No Poop") return activity.activityType === "poop" || activity.activityType === "potty";
   if (activity.activityType !== "poop") return false;
   return detail === "Poop" || detail === "Pee & Poop" || detail.includes("• Type ") || detail.startsWith("Type ");
+}
+
+async function openPoopRecordAttachment(filePath: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return;
+
+  const { data, error } = await supabase.storage
+    .from("pet-attachments")
+    .createSignedUrl(filePath, 60 * 10);
+
+  if (error || !data?.signedUrl) {
+    console.warn("Could not open poop image", error);
+    return;
+  }
+
+  window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+}
+
+function PoopRecordImageLinks({ activity }: { activity: ActivityLog }) {
+  const attachments = activity.attachments ?? [];
+  if (!attachments.length) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap justify-end gap-2">
+      {attachments.map((attachment, index) => (
+        <button
+          key={attachment.id}
+          type="button"
+          aria-label={`Open image${attachments.length > 1 ? ` ${index + 1}` : ""}`}
+          title={`Open image${attachments.length > 1 ? ` ${index + 1}` : ""}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            void openPoopRecordAttachment(attachment.filePath);
+          }}
+          className="inline-flex size-8 items-center justify-center rounded-lg bg-[#4f2f1b]/95 text-[#f6d978] shadow-sm shadow-[#4f2f1b]/15 ring-1 ring-[#f6d978]/45 transition hover:bg-[#5b3720]"
+        >
+          <ImageIcon className="size-3.5 shrink-0" />
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export default function PoopHistoryPage() {
@@ -86,7 +129,10 @@ export default function PoopHistoryPage() {
                           </span>
                           <p className="font-medium text-zinc-900">Potty</p>
                         </div>
-                        <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(log.happenedAt)}</p>
+                        <div className="shrink-0 text-right">
+                          <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(log.happenedAt)}</p>
+                          <PoopRecordImageLinks activity={log} />
+                        </div>
                       </div>
                       <PottyDetailBadges detail={log.detail} notes={log.notes} />
                     </article>

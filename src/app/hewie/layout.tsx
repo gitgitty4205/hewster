@@ -1,20 +1,23 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
-import { checkSupabaseAuthReachable } from "@/lib/supabase";
+import { checkSupabaseAuthReachable, PASSWORD_RESET_REQUIRED_STORAGE_KEY } from "@/lib/supabase";
 
 const HEWIE_AUTH_GATE_TIMEOUT_MS = 5_000;
+const PASSWORD_RESET_PATH = "/hewie/account-settings?resetPassword=1";
 
 export default function HewieLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { configured, loading, user } = useAuth();
   const [authGateTimedOut, setAuthGateTimedOut] = useState(false);
   const [authReachable, setAuthReachable] = useState<boolean | null>(null);
   const [browserHostname, setBrowserHostname] = useState<string | null>(null);
+  const [passwordResetRequired, setPasswordResetRequired] = useState(false);
   const shouldBypassAuthGate =
     process.env.NODE_ENV === "development" &&
     browserHostname !== null &&
@@ -28,6 +31,26 @@ export default function HewieLayout({ children }: { children: React.ReactNode })
     const timeoutId = window.setTimeout(() => setBrowserHostname(window.location.hostname), 0);
     return () => window.clearTimeout(timeoutId);
   }, []);
+
+  useEffect(() => {
+    const refreshPasswordResetRequired = () => {
+      setPasswordResetRequired(window.localStorage.getItem(PASSWORD_RESET_REQUIRED_STORAGE_KEY) === "1");
+    };
+
+    refreshPasswordResetRequired();
+    window.addEventListener("focus", refreshPasswordResetRequired);
+    window.addEventListener("storage", refreshPasswordResetRequired);
+    return () => {
+      window.removeEventListener("focus", refreshPasswordResetRequired);
+      window.removeEventListener("storage", refreshPasswordResetRequired);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (passwordResetRequired && pathname !== "/hewie/account-settings") {
+      router.replace(PASSWORD_RESET_PATH);
+    }
+  }, [passwordResetRequired, pathname, router]);
 
   useEffect(() => {
     if (shouldBypassAuthGate || !configured || user) {
@@ -66,6 +89,18 @@ export default function HewieLayout({ children }: { children: React.ReactNode })
             Opening <PetNotebookTitle />...
           </h1>
           <p className="mt-2 text-sm leading-6 text-zinc-500">Getting the notebook ready.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (passwordResetRequired && pathname !== "/hewie/account-settings") {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[var(--hewie-bg,#999b96)] px-4 text-zinc-900">
+        <section className="w-full max-w-sm rounded-[2rem] bg-white p-6 text-center shadow-sm ring-1 ring-zinc-200">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-400">Pet Notebook</p>
+          <h1 className="mt-2 text-xl font-bold text-zinc-800">Finish password reset</h1>
+          <p className="mt-2 text-sm leading-6 text-zinc-500">Choose a new password before opening the notebook.</p>
         </section>
       </main>
     );

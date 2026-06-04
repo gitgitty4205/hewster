@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Ellipsis } from "lucide-react";
+import { ChevronDown, ChevronRight, Ellipsis, Trash2 } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -28,6 +28,9 @@ import {
 } from "@/lib/pet-profile";
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
+import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
+
+const WEIGHT_VALUE_MAX_LENGTH = 12;
 
 function todayInputValue() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -183,7 +186,7 @@ export default function WeightPage() {
       profileSlug: HEWSTER_PROFILE_SLUG,
       date: dateValue,
       weight: formatWeightWithUnit(weightValue, profile.weightUnit),
-      note: noteValue.trim() || null,
+      note: clampText(noteValue.trim(), TEXT_LIMITS.note) || null,
     };
 
     const nextLogs = [entry, ...weightLogs];
@@ -213,7 +216,7 @@ export default function WeightPage() {
     setEditingWeightId(entry.id);
     setEditingDateValue(entry.date);
     setEditingWeightValue(weightInputValue(entry.weight));
-    setEditingNoteValue(entry.note ?? "");
+    setEditingNoteValue(clampText(entry.note ?? "", TEXT_LIMITS.note));
     setSaveState("idle");
   };
 
@@ -260,7 +263,7 @@ export default function WeightPage() {
       ...existing,
       date: editingDateValue,
       weight: formatWeightWithUnit(editingWeightValue, profile.weightUnit),
-      note: editingNoteValue.trim() || null,
+      note: clampText(editingNoteValue.trim(), TEXT_LIMITS.note) || null,
     };
     const nextLogs = weightLogs.map((log) => (log.id === editingWeightId ? entry : log));
     const localState = loadLocalState();
@@ -297,12 +300,22 @@ export default function WeightPage() {
           <Ellipsis className="size-3.5" />
         </button>
       ) : null}
+      {canDeleteEntries ? (
+        <button
+          type="button"
+          onClick={() => deleteWeight(entry)}
+          className="absolute right-10 top-2.5 flex size-7 items-center justify-center rounded-full bg-white/75 text-rose-500 ring-1 ring-rose-200/60 transition hover:bg-rose-50 hover:text-rose-600"
+          aria-label={`Delete weight from ${formatWeightDate(entry.date)}`}
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      ) : null}
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="font-medium">{formatWeightDate(entry.date)}</p>
           {entry.note ? <ExpandableNoteText className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/75">{entry.note}</ExpandableNoteText> : null}
         </div>
-        <p className="mr-5 shrink-0 text-sm font-semibold">{formatWeightWithUnit(entry.weight, profile.weightUnit)}</p>
+        <p className="mr-14 shrink-0 text-sm font-semibold">{formatWeightWithUnit(entry.weight, profile.weightUnit)}</p>
       </div>
       {editingWeightId === entry.id ? (
         <div className="mt-4 space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-4">
@@ -322,7 +335,8 @@ export default function WeightPage() {
               <input
                 inputMode="decimal"
                 value={editingWeightValue}
-                onChange={(event) => setEditingWeightValue(event.target.value)}
+                onChange={(event) => setEditingWeightValue(clampText(event.target.value, WEIGHT_VALUE_MAX_LENGTH))}
+                maxLength={WEIGHT_VALUE_MAX_LENGTH}
                 placeholder={`e.g. 24.8 ${profile.weightUnit}`}
                 className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
               />
@@ -343,12 +357,13 @@ export default function WeightPage() {
 
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Notes</span>
-            <input
-              value={editingNoteValue}
-              onChange={(event) => setEditingNoteValue(event.target.value)}
-              placeholder="Optional Notes"
-              className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
-            />
+              <input
+                value={editingNoteValue}
+                onChange={(event) => setEditingNoteValue(clampText(event.target.value, TEXT_LIMITS.note))}
+                maxLength={TEXT_LIMITS.note}
+                placeholder="Optional Notes"
+                className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+              />
           </label>
 
           <div className="flex flex-wrap gap-2">
@@ -357,7 +372,7 @@ export default function WeightPage() {
               className="rounded-full !text-white hover:opacity-90"
               style={{ backgroundColor: theme.activeText }}
             >
-              Save Changes
+              Save
             </Button>
             <Button variant="outline" onClick={cancelEdit} className="rounded-full">
               Cancel
@@ -444,7 +459,8 @@ export default function WeightPage() {
                 <input
                   inputMode="decimal"
                   value={weightValue}
-                  onChange={(event) => setWeightValue(event.target.value)}
+                  onChange={(event) => setWeightValue(clampText(event.target.value, WEIGHT_VALUE_MAX_LENGTH))}
+                  maxLength={WEIGHT_VALUE_MAX_LENGTH}
                   placeholder={`e.g. 24.8 ${profile.weightUnit}`}
                   className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                 />
@@ -467,7 +483,8 @@ export default function WeightPage() {
               <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Notes</span>
               <input
                 value={noteValue}
-                onChange={(event) => setNoteValue(event.target.value)}
+                onChange={(event) => setNoteValue(clampText(event.target.value, TEXT_LIMITS.note))}
+                maxLength={TEXT_LIMITS.note}
                 placeholder="Optional Notes"
                 className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
               />

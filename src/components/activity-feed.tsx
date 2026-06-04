@@ -1,4 +1,5 @@
-import { Check, Droplets, Ellipsis, Paperclip, Tablets, TriangleAlert } from "lucide-react";
+import { Check, Droplets, Ellipsis, Image as ImageIcon, Paperclip, Tablets, TriangleAlert } from "lucide-react";
+import { useState } from "react";
 
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
 import { PottyDetailBadges, pottyDetailForBadge } from "@/components/potty-detail-badges";
@@ -34,6 +35,47 @@ type Props = {
   careTemplates?: CareItemTemplate[];
 };
 
+type TextModal = {
+  title: string;
+  subtitle?: string;
+  label?: string;
+  text: string;
+};
+
+function OpenableText({
+  children,
+  className = "",
+  modal,
+  onOpen,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  modal: TextModal;
+  onOpen?: (modal: TextModal) => void;
+}) {
+  if (!onOpen) return <span className={className}>{children}</span>;
+
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      className={`${className} cursor-pointer`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen(modal);
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        event.stopPropagation();
+        onOpen(modal);
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 function TreatDetail({ activity }: { activity: ActivityLog }) {
   const { summary, notes } = renderTreatDetailParts(activity);
 
@@ -54,6 +96,22 @@ function splitActivityNotes(notes: string | null) {
     notesText: lines.filter((line) => line !== attachmentLine).join("\n"),
     attachmentLine,
   };
+}
+
+function visiblePottyNotes(notes: string | null) {
+  return notes
+    ?.split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("Attachments: ") && !line.startsWith("Record Tags: "))
+    .join("\n")
+    .trim();
+}
+
+function PottyActivityNotes({ activity, className = "mt-2 text-sm text-zinc-500" }: { activity: ActivityLog; className?: string }) {
+  const notes = visiblePottyNotes(activity.notes);
+  if (!notes) return null;
+
+  return <ExpandableNoteText className={className}>Notes: {notes}</ExpandableNoteText>;
 }
 
 function careTemplateRouteLabel(item: CareItemTemplate | null) {
@@ -97,18 +155,13 @@ function matchingCareTemplate(activity: ActivityLog, careTemplates: CareItemTemp
   }) ?? null;
 }
 
-function isGeneratedCareActivity(activity: ActivityLog) {
-  return (
-    (activity.activityType === "medication" || activity.activityType === "supplement") &&
-    /^(?:medication|supplement)-\d+-(?:schedule|meal)-/.test(activity.id)
-  );
-}
-
 function isVisibleActivity(activity: ActivityLog, careTemplates: CareItemTemplate[]) {
-  return !isGeneratedCareActivity(activity) || Boolean(matchingCareTemplate(activity, careTemplates));
+  void activity;
+  void careTemplates;
+  return true;
 }
 
-function CareTemplateTimelineDetail({ item, detail, skipped = false }: { item: CareItemTemplate & { isLastDose?: boolean }; detail: string; skipped?: boolean }) {
+function CareTemplateTimelineDetail({ item, detail, skipped = false, onOpenText }: { item: CareItemTemplate & { isLastDose?: boolean }; detail: string; skipped?: boolean; onOpenText?: (modal: TextModal) => void }) {
   const timingLine = careTemplateTimingLabel(item);
   const giveText = careTemplateGiveText(item);
   const noteText = skipped ? "" : item.notes?.trim() ?? "";
@@ -116,13 +169,13 @@ function CareTemplateTimelineDetail({ item, detail, skipped = false }: { item: C
   return (
     <div className="mt-2 space-y-1.5 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="font-semibold text-zinc-800">{item.name}</p>
+        <OpenableText className="font-semibold text-zinc-800" modal={{ title: item.name, label: "Details", text: `${item.name}${giveText ? `\n${giveText}` : ""}` }} onOpen={onOpenText}>{item.name}</OpenableText>
         {item.isLastDose ? <span className="inline-flex rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
         {skipped ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
       </div>
       {giveText || timingLine ? (
         <div className="flex flex-wrap items-center gap-2 text-zinc-600">
-          {giveText ? <p>{giveText}</p> : null}
+          {giveText ? <OpenableText modal={{ title: item.name, label: "Details", text: `${item.name}\n${giveText}` }} onOpen={onOpenText}>{giveText}</OpenableText> : null}
           {timingLine ? (
             <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${item.kind === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : "bg-sky-100/80 text-sky-700/60"}`}>
               {timingLine}
@@ -135,7 +188,7 @@ function CareTemplateTimelineDetail({ item, detail, skipped = false }: { item: C
   );
 }
 
-function CareActivityDetail({ activity, careTemplates = [] }: { activity: ActivityLog; careTemplates?: CareItemTemplate[] }) {
+function CareActivityDetail({ activity, careTemplates = [], onOpenText }: { activity: ActivityLog; careTemplates?: CareItemTemplate[]; onOpenText?: (modal: TextModal) => void }) {
   const { lines, attachmentLine } = splitActivityNotes(activity.notes);
   const showAttachmentFallback = !activity.attachments?.length;
   const detail = activity.detail ?? "";
@@ -159,12 +212,12 @@ function CareActivityDetail({ activity, careTemplates = [] }: { activity: Activi
   return (
     <div className="mt-2 space-y-1.5 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        {name ? <p className="font-semibold text-zinc-800">{name}</p> : null}
+        {name ? <OpenableText className="font-semibold text-zinc-800" modal={{ title: name, label: "Details", text: [name, giveDetail].filter(Boolean).join("\n") }} onOpen={onOpenText}>{name}</OpenableText> : null}
         {skipped || missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{missed ? "Missed" : skipReason ? `Skipped — ${skipReason}` : "Skipped"}</span> : null}
       </div>
       {giveDetail || timingLine || isLastDose ? (
         <div className="flex flex-wrap items-center gap-2 text-zinc-600">
-          {giveDetail ? <p>{giveDetail}</p> : null}
+          {giveDetail ? <OpenableText modal={{ title: name || displayActivityLabel(activity), label: "Details", text: [name, giveDetail].filter(Boolean).join("\n") }} onOpen={onOpenText}>{giveDetail}</OpenableText> : null}
           <div className="inline-flex shrink-0 items-center gap-2">
             {timingLine ? (
               <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${activity.activityType === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : "bg-sky-100/80 text-sky-700/60"}`}>
@@ -181,17 +234,17 @@ function CareActivityDetail({ activity, careTemplates = [] }: { activity: Activi
   );
 }
 
-function ActivityDetailAndNotes({ activity, careTemplates = [] }: { activity: ActivityLog; careTemplates?: CareItemTemplate[] }) {
+function ActivityDetailAndNotes({ activity, careTemplates = [], onOpenText }: { activity: ActivityLog; careTemplates?: CareItemTemplate[]; onOpenText?: (modal: TextModal) => void }) {
   const { notesText, attachmentLine } = splitActivityNotes(activity.notes);
   const showAttachmentFallback = !activity.attachments?.length;
 
   if (["medication", "supplement"].includes(activity.activityType)) {
-    return <CareActivityDetail activity={activity} careTemplates={careTemplates} />;
+    return <CareActivityDetail activity={activity} careTemplates={careTemplates} onOpenText={onOpenText} />;
   }
 
   return (
     <div className="mt-2 space-y-1 text-sm text-zinc-600">
-      {activity.detail ? <p>{activity.detail}</p> : null}
+      {activity.detail ? <OpenableText modal={{ title: displayActivityLabel(activity), label: "Details", text: activity.detail }} onOpen={onOpenText}>{activity.detail}</OpenableText> : null}
       {notesText ? <ExpandableNoteText>Notes: {notesText}</ExpandableNoteText> : null}
       {showAttachmentFallback && attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
     </div>
@@ -214,25 +267,53 @@ async function openActivityAttachment(filePath: string) {
   window.open(data.signedUrl, "_blank", "noopener,noreferrer");
 }
 
-function ActivityAttachmentLinks({ activity }: { activity: ActivityLog }) {
-  if (!activity.attachments?.length) return null;
+function ActivityAttachmentLinks({ activity, className }: { activity: ActivityLog; className?: string }) {
+  const attachments = activity.attachments ?? [];
+  if (!attachments.length) return null;
+  const isPoopPhotoRecord = ["pee", "poop", "potty"].includes(activity.activityType);
 
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {activity.attachments.map((attachment) => (
+    <div className={className ?? `mt-2 flex flex-wrap gap-2 ${isPoopPhotoRecord ? "justify-end" : ""}`}>
+      {attachments.map((attachment, index) => (
         <button
           key={attachment.id}
           type="button"
+          aria-label={isPoopPhotoRecord ? `Open image${attachments.length > 1 ? ` ${index + 1}` : ""}` : `Open ${attachment.fileName}`}
+          title={isPoopPhotoRecord ? `Open image${attachments.length > 1 ? ` ${index + 1}` : ""}` : attachment.fileName}
           onClick={(event) => {
             event.stopPropagation();
             void openActivityAttachment(attachment.filePath);
           }}
-          className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/75 px-2.5 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-200"
+          className={`inline-flex max-w-full items-center justify-center text-xs font-semibold ring-1 ${
+            isPoopPhotoRecord
+              ? "size-8 rounded-lg bg-[#4f2f1b]/95 text-[#f6d978] shadow-sm shadow-[#4f2f1b]/15 ring-1 ring-[#f6d978]/45 transition hover:bg-[#5b3720]"
+              : "gap-1.5 rounded-full bg-white/75 px-2.5 py-1 text-sky-700 ring-sky-200"
+          }`}
         >
-          <Paperclip className="size-3.5 shrink-0" />
-          <span className="min-w-0 truncate">{attachment.fileName}</span>
+          {isPoopPhotoRecord ? <ImageIcon className="size-3.5 shrink-0" /> : <Paperclip className="size-3.5 shrink-0" />}
+          {isPoopPhotoRecord ? null : <span className="min-w-0 truncate">{attachment.fileName}</span>}
         </button>
       ))}
+    </div>
+  );
+}
+
+function PottyActivityMeta({ activity }: { activity: ActivityLog }) {
+  const hasAttachments = Boolean(activity.attachments?.length);
+  const hasNotes = Boolean(visiblePottyNotes(activity.notes));
+
+  if (!hasAttachments) {
+    return hasNotes ? <PottyActivityNotes activity={activity} /> : null;
+  }
+
+  if (!hasNotes) {
+    return <ActivityAttachmentLinks activity={activity} />;
+  }
+
+  return (
+    <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+      <PottyActivityNotes activity={activity} className="pt-1 text-sm text-zinc-500" />
+      <ActivityAttachmentLinks activity={activity} className="flex flex-wrap justify-end gap-2" />
     </div>
   );
 }
@@ -264,27 +345,47 @@ function TimelineStatusBadge({ status }: { status: "Skipped" | "Missed" | null }
   return status ? <span className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{status}</span> : null;
 }
 
-function TimelineDetailText({ detail, status, className = "mt-1 text-sm leading-5 text-zinc-600" }: { detail: string; status: "Skipped" | "Missed" | null; className?: string }) {
+function TimelineDetailText({ detail, status, className = "mt-1 text-sm leading-5 text-zinc-600", title = "Details", onOpenText }: { detail: string; status: "Skipped" | "Missed" | null; className?: string; title?: string; onOpenText?: (modal: TextModal) => void }) {
   const cleanDetail = cleanTimelineDetail(detail, status);
   const detailLines = cleanDetail.split("\n").filter(Boolean);
 
   return (
     <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${className}`}>
       {detailLines.length ? (
-        <span className="min-w-0">
+        <OpenableText className="min-w-0" modal={{ title, label: "Details", text: cleanDetail }} onOpen={onOpenText}>
           {detailLines.map((line, index) => (
             <span key={`${line}-${index}`} className="block">
               {line}
             </span>
           ))}
-        </span>
+        </OpenableText>
       ) : null}
       <TimelineStatusBadge status={status} />
     </div>
   );
 }
 
-function MealLinkedCareRows({ items }: { items?: TimelineItem["mealLinkedCareItems"] }) {
+function InlineTimelineDetailText({ detail, status, className = "mt-1 text-sm leading-5 text-zinc-600" }: { detail: string; status: "Skipped" | "Missed" | null; className?: string }) {
+  const cleanDetail = cleanTimelineDetail(detail, status);
+  const detailLines = cleanDetail.split("\n").filter(Boolean);
+
+  return (
+    <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${className}`}>
+      {detailLines.length ? (
+        <ExpandableNoteText collapsedLines={2}>
+          {detailLines.map((line, index) => (
+            <span key={`${line}-${index}`} className="block">
+              {line}
+            </span>
+          ))}
+        </ExpandableNoteText>
+      ) : null}
+      <TimelineStatusBadge status={status} />
+    </div>
+  );
+}
+
+function MealLinkedCareRows({ items, onOpenText }: { items?: TimelineItem["mealLinkedCareItems"]; onOpenText?: (modal: TextModal) => void }) {
   if (!items?.length) return null;
 
   return (
@@ -292,16 +393,19 @@ function MealLinkedCareRows({ items }: { items?: TimelineItem["mealLinkedCareIte
       {items.map((item) => {
         const status = timelineStatusFor({ time: "", label: item.label, detail: item.detail });
         const [summary, notes] = item.detail.split(" • Notes: ", 2);
+        const markerStyle = getTimelineStyle(item.careItem.kind);
         return (
           <div key={`${item.careItem.kind}-${item.careItem.id}-${item.label}`} className="grid grid-cols-[1.35rem_1fr] gap-2.5">
             <div className="flex w-5 justify-center">
-              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#eaf0f8] ring-1 ring-[#b8c9dd]">
-                <Tablets className="size-3 text-[#1f3d5c]" />
-              </span>
+              <TimelineMarker style={markerStyle} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-zinc-900">{item.label}</p>
-              <TimelineDetailText detail={summary} status={status} className="mt-1 text-sm text-zinc-500" />
+              <OpenableText className="text-sm font-semibold text-zinc-900" modal={{ title: item.label, label: "Details", text: [item.label, summary].filter(Boolean).join("\n") }} onOpen={onOpenText}>{item.label}</OpenableText>
+              {onOpenText ? (
+                <TimelineDetailText detail={summary} status={status} className="mt-1 text-sm text-zinc-500" title={item.label} onOpenText={onOpenText} />
+              ) : (
+                <InlineTimelineDetailText detail={summary} status={status} className="mt-1 text-sm text-zinc-500" />
+              )}
               {notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {notes}</ExpandableNoteText> : null}
             </div>
           </div>
@@ -464,12 +568,12 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
     case "supplement":
       return {
         dot: "bg-[#eaf0f8] ring-1 ring-[#b8c9dd]",
-        icon: <Tablets className="size-3 text-[#1f3d5c]" />,
+        icon: <Tablets className="size-3.5 text-[#1f3d5c]" />,
       };
     case "medication":
       return {
         dot: "bg-sky-100 ring-1 ring-sky-100",
-        icon: <MedicationPillIcon className="size-4 text-sky-600" />,
+        icon: <MedicationPillIcon className="size-3.5 text-sky-600" />,
       };
     case "sick":
       return {
@@ -499,6 +603,14 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
   }
 }
 
+function TimelineMarker({ style }: { style: ReturnType<typeof getTimelineStyle> }) {
+  return (
+    <div className={`mt-1 flex size-5 shrink-0 items-center justify-center rounded-full ${style.dot}`}>
+      {style.icon}
+    </div>
+  );
+}
+
 export function ActivityFeed({
   activityLogs,
   timelineItems,
@@ -509,6 +621,7 @@ export function ActivityFeed({
   renderInlineEditor,
   careTemplates = [],
 }: Props) {
+  const [textModal, setTextModal] = useState<TextModal | null>(null);
   const visibleActivityLogs = activityLogs.filter((activity) => isVisibleActivity(activity, careTemplates));
   const visibleTimelineItems = timelineItems?.filter((item) => !item.activity || isVisibleActivity(item.activity, careTemplates));
 
@@ -535,6 +648,31 @@ export function ActivityFeed({
                   const Icon = style.icon;
                   const inlineEditor = renderInlineEditor ? renderInlineEditor(activity) : null;
                   const isPottyActivity = ["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity);
+                  const pottyAttachmentActivity = isPottyActivity && activity.attachments?.length ? activity : null;
+
+                  if (pottyAttachmentActivity) {
+                    return (
+                      <div key={activity.id} className={`rounded-2xl p-4 ring-1 ${style.card}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <button className="min-w-0 flex-1 text-left" onClick={() => onSelectActivity?.(activity)}>
+                            <div className="flex items-center gap-3">
+                              <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+                                {Icon ? <Icon className="size-4.5" /> : <span className="text-lg leading-none">{style.iconText}</span>}
+                              </span>
+                              <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
+                            </div>
+                            <PottyDetailBadges detail={pottyDetailForBadge(activity)} />
+                          </button>
+                          <div className="shrink-0 text-right">
+                            <p className="whitespace-nowrap text-sm text-zinc-500">{customCareDisplayTime(activity)}</p>
+                            <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="mt-2 flex flex-wrap justify-end gap-2" />
+                          </div>
+                        </div>
+                        <PottyActivityNotes activity={activity} />
+                        {inlineEditor ? <div className="mt-3">{inlineEditor}</div> : null}
+                      </div>
+                    );
+                  }
 
                   return (
                     <div key={activity.id} className={`rounded-2xl p-4 ring-1 ${style.card}`}>
@@ -546,17 +684,17 @@ export function ActivityFeed({
                             </span>
                             <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
                           </div>
-                          <p className="text-sm text-zinc-500">{customCareDisplayTime(activity)}</p>
+                          <p className="shrink-0 text-sm text-zinc-500">{customCareDisplayTime(activity)}</p>
                         </div>
                         {isPottyActivity ? (
-                          <PottyDetailBadges detail={pottyDetailForBadge(activity)} notes={activity.notes} />
+                          <PottyDetailBadges detail={pottyDetailForBadge(activity)} />
                         ) : activity.activityType === "treat" ? (
                           <TreatDetail activity={activity} />
                         ) : (
-                          <ActivityDetailAndNotes activity={activity} careTemplates={careTemplates} />
+                          <ActivityDetailAndNotes activity={activity} careTemplates={careTemplates} onOpenText={setTextModal} />
                         )}
                       </button>
-                      <ActivityAttachmentLinks activity={activity} />
+                      {isPottyActivity ? (pottyAttachmentActivity ? <PottyActivityNotes activity={activity} /> : <PottyActivityMeta activity={activity} />) : <ActivityAttachmentLinks activity={activity} />}
                       {inlineEditor ? <div className="mt-3">{inlineEditor}</div> : null}
                     </div>
                   );
@@ -574,11 +712,11 @@ export function ActivityFeed({
                       <div className="col-span-2 col-start-2 min-w-0">
                         {item.detail.includes(" • Notes: ") ? (
                           <>
-                            <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="text-sm text-zinc-600" />
+                            <InlineTimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="text-sm text-zinc-600" />
                             <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
                           </>
                         ) : (
-                          <TimelineDetailText detail={item.detail} status={status} className="text-sm text-zinc-600" />
+                          <InlineTimelineDetailText detail={item.detail} status={status} className="text-sm text-zinc-600" />
                         )}
                       </div>
                     </div>
@@ -627,14 +765,14 @@ export function ActivityFeed({
                           <p className="text-sm text-zinc-500">{customCareDisplayTime(activity)}</p>
                         </div>
                         {["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity) ? (
-                          <PottyDetailBadges detail={pottyDetailForBadge(activity)} notes={activity.notes} />
+                          <PottyDetailBadges detail={pottyDetailForBadge(activity)} />
                         ) : activity.activityType === "treat" ? (
                           <TreatDetail activity={activity} />
                         ) : (
-                          <ActivityDetailAndNotes activity={activity} careTemplates={careTemplates} />
+                          <ActivityDetailAndNotes activity={activity} careTemplates={careTemplates} onOpenText={setTextModal} />
                         )}
                       </button>
-                      <ActivityAttachmentLinks activity={activity} />
+                      {["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity) ? <PottyActivityMeta activity={activity} /> : <ActivityAttachmentLinks activity={activity} />}
                       {inlineEditor ? <div className="mt-3">{inlineEditor}</div> : null}
                     </div>
                   );
@@ -652,16 +790,22 @@ export function ActivityFeed({
     const treatParts = item.activityType === "treat" ? splitTreatDetailText(item.detail) : null;
     const careActivity = item.activity && ["medication", "supplement"].includes(item.activityType ?? "") ? item.activity : null;
     const inlineEditor = item.activity && renderInlineEditor ? renderInlineEditor(item.activity) : null;
+    const pottyNotesActivity = item.activity && ["pee", "poop", "potty"].includes(item.activity.activityType) && pottyDetailForBadge(item.activity) ? item.activity : null;
+    const pottyAttachmentActivity = pottyNotesActivity?.attachments?.length ? pottyNotesActivity : null;
+    const [detailSummary, detailNotes] = item.detail.split(" • Notes: ", 2);
     const status = timelineStatusFor(item);
+    const showRightPhotoControls = Boolean(pottyAttachmentActivity);
     const content = (
       <>
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
           </div>
-          <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
-            {item.time}
-          </span>
+          {!showRightPhotoControls ? (
+            <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+              {item.time}
+            </span>
+          ) : null}
         </div>
         {item.careItem ? (
           <CareTemplateTimelineDetail item={item.careItem} detail={item.detail} skipped={status === "Skipped"} />
@@ -674,22 +818,20 @@ export function ActivityFeed({
           </>
         ) : item.detail.includes(" • Notes: ") ? (
           <>
-            <TimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="mt-1 text-sm text-zinc-500" />
-            <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
+            <InlineTimelineDetailText detail={detailSummary} status={status} className="mt-1 text-sm text-zinc-500" />
+            {!pottyNotesActivity && detailNotes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {detailNotes}</ExpandableNoteText> : null}
           </>
         ) : (
-          <TimelineDetailText detail={item.detail} status={status} />
+          <InlineTimelineDetailText detail={item.detail} status={status} />
         )}
       </>
     );
 
     return (
       <div key={key} className="rounded-2xl bg-zinc-50/75 p-2.5 ring-1 ring-zinc-200/70">
-        <div className="grid grid-cols-[1.35rem_1fr] gap-2.5">
+        <div className={`grid gap-2.5 ${showRightPhotoControls ? "grid-cols-[1.35rem_minmax(0,1fr)_auto]" : "grid-cols-[1.35rem_1fr]"}`}>
           <div className="flex w-5 justify-center">
-            <div className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full shadow-sm ring-2 ring-white ${style.dot}`}>
-              {style.icon}
-            </div>
+            <TimelineMarker style={style} />
           </div>
           <div className="min-w-0">
             {item.activity && onSelectActivity ? (
@@ -697,9 +839,19 @@ export function ActivityFeed({
                 {content}
               </button>
             ) : content}
-            {item.activity ? <ActivityAttachmentLinks activity={item.activity} /> : null}
+            {pottyNotesActivity ? (
+              pottyAttachmentActivity ? <PottyActivityNotes activity={pottyNotesActivity} /> : <PottyActivityMeta activity={pottyNotesActivity} />
+            ) : item.activity ? <ActivityAttachmentLinks activity={item.activity} /> : null}
             {inlineEditor ? <div className="mt-3">{inlineEditor}</div> : null}
           </div>
+          {pottyAttachmentActivity ? (
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+                {item.time}
+              </span>
+              <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="flex flex-wrap justify-end gap-2" />
+            </div>
+          ) : null}
         </div>
         <MealLinkedCareRows items={item.mealLinkedCareItems} />
       </div>
@@ -707,6 +859,7 @@ export function ActivityFeed({
   };
 
   return (
+    <>
     <section className="mb-4 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-zinc-200/80">
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-zinc-800">{title}</h2>
@@ -720,5 +873,26 @@ export function ActivityFeed({
         )}
       </div>
     </section>
+    {textModal ? (
+      <div className="fixed inset-0 z-50 flex items-end bg-black/35 p-3 backdrop-blur-[2px] sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="timeline-text-title">
+        <button type="button" aria-label="Close details" className="absolute inset-0 cursor-default" onClick={() => setTextModal(null)} />
+        <div className="relative w-full max-w-md rounded-3xl bg-white p-4 text-zinc-800 shadow-2xl ring-1 ring-zinc-200">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p id="timeline-text-title" className="truncate text-base font-semibold">{textModal.title}</p>
+              {textModal.subtitle ? <p className="mt-0.5 text-sm text-zinc-500">{textModal.subtitle}</p> : null}
+            </div>
+            <button type="button" aria-label="Close details" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-50 text-lg leading-none text-zinc-500 ring-1 ring-zinc-200" onClick={() => setTextModal(null)}>
+              ×
+            </button>
+          </div>
+          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-zinc-500">{textModal.label ?? "Details"}</div>
+          <div className="max-h-[45vh] overflow-y-auto whitespace-pre-wrap break-words rounded-2xl bg-zinc-50 p-3 text-sm leading-6 ring-1 ring-zinc-200">
+            {textModal.text}
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }
