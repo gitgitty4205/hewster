@@ -1361,6 +1361,8 @@ export default function LogPage() {
               onQuickLog={quickLogActivity}
               title={<span className="inline-flex items-center justify-center gap-2"><LogPencilIcon />Log</span>}
               accentBackground
+              onHeaderClick={collapseLogEvent}
+              headerClickLabel="Collapse Log"
             >
 
             {detailActivityType && !editingActivityId ? (

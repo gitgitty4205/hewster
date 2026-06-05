@@ -1,12 +1,11 @@
 "use client";
 
-import { Bell, Ellipsis, TriangleAlert } from "lucide-react";
+import { Bell, ChevronDown, Ellipsis, TriangleAlert } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
-import { useEffect, useMemo, useState } from "react";
+import { type MouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
-import { ExpandableNoteText } from "@/components/expandable-note-text";
 import { useAuth } from "@/components/auth-provider";
 import {
   ALERT_BADGE_COUNT_STORAGE_KEY,
@@ -78,6 +77,46 @@ function repeatHelperText(scope: ManualAlert["scope"]) {
   if (scope === "every-other-day") return "Repeats every other day. If today's time already passed, it starts tomorrow.";
   if (scope === "certain-days") return "Repeats on the selected days. If today's time already passed, it starts on the next matching day.";
   return null;
+}
+
+function ExpandDetailsButton({
+  expanded,
+  onClick,
+  className,
+}: {
+  expanded: boolean;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+  className: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={expanded ? "Hide details" : "Show details"}
+      aria-expanded={expanded}
+      onClick={onClick}
+      className={`inline-flex size-7 shrink-0 items-center justify-center transition active:translate-y-px ${className}`}
+    >
+      <ChevronDown className={`size-5 transition-transform ${expanded ? "rotate-180" : ""}`} strokeWidth={2.8} />
+    </button>
+  );
+}
+
+function InlineDetails({
+  expanded,
+  children,
+  className,
+}: {
+  expanded: boolean;
+  children: ReactNode;
+  className: string;
+}) {
+  if (!expanded) return null;
+
+  return (
+    <div className={`mt-2 whitespace-pre-line rounded-2xl px-3 py-2 text-sm leading-5 ${className}`}>
+      {children}
+    </div>
+  );
 }
 
 function timeInputValueFromDisplay(value: string) {
@@ -227,6 +266,7 @@ export default function AlertsPage() {
   const [editingReminderTimeValue, setEditingReminderTimeValue] = useState("15:00");
   const [reviewMealTimeValues, setReviewMealTimeValues] = useState<Record<string, string>>({});
   const [activeReviewLogId, setActiveReviewLogId] = useState<string | null>(null);
+  const [expandedAlertDetails, setExpandedAlertDetails] = useState<Record<string, boolean>>({});
   const [hydrated, setHydrated] = useState(false);
   const [alertMinuteKey, setAlertMinuteKey] = useState("");
   const [petRemembered, setPetRemembered] = useState(false);
@@ -810,7 +850,9 @@ export default function AlertsPage() {
                   const customCareReviewAction = alert.reviewAction?.type === "custom-care" ? alert.reviewAction : null;
                   const reviewPlannedTime = mealReviewAction?.plannedTime ?? (customCareReviewAction ? timeInputValueFromIso(customCareReviewAction.scheduledAt) : "");
                   const showLogTime = activeReviewLogId === alert.id;
-                  const reviewActionButtonClass = "h-8 min-w-16 rounded-full px-3 text-xs font-semibold";
+                  const reviewActionButtonClass = "h-8 min-w-14 rounded-full px-2.5 text-xs font-semibold";
+                  const detailKey = `unresolved-${alert.id}`;
+                  const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
 
                   return (
                     <article
@@ -823,79 +865,16 @@ export default function AlertsPage() {
                           <p className="block min-w-0 text-left font-semibold text-[#8f1739]">
                             {alert.title}
                           </p>
-                          <ExpandableNoteText className="mt-1 text-sm leading-5 text-[#b71f48]/70">{alert.detail}</ExpandableNoteText>
-                          {mealReviewAction || customCareReviewAction ? (
-                            <div className={`mt-3 items-center justify-end gap-2 ${showLogTime ? "grid grid-cols-[8.75rem_auto_auto]" : "flex"}`} onKeyDown={(event) => event.stopPropagation()}>
-                              {showLogTime ? (
-                                <label className="min-w-0">
-                                  <span className="sr-only">Log time</span>
-                                  <input
-                                    type="time"
-                                    value={reviewMealTimeValue(alert.id, reviewPlannedTime)}
-                                    onClick={(event) => event.stopPropagation()}
-                                    onChange={(event) => updateReviewMealTime(alert.id, event.target.value)}
-                                    className="h-10 w-full rounded-full border border-[#8f1739] bg-white px-3 text-sm font-semibold text-[#8f1739] outline-none transition focus:ring-4 focus:ring-[#e6c8ce]/55"
-                                  />
-                                </label>
-                              ) : null}
-                              {!showLogTime ? (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    if (mealReviewAction) {
-                                      void resolveReviewMeal(alert.id, mealReviewAction.mealId, "skipped");
-                                      return;
-                                    }
-
-                                    if (customCareReviewAction) {
-                                      void resolveReviewCustomCare(alert.id, customCareReviewAction, "skipped");
-                                    }
-                                  }}
-                                  className={`${reviewActionButtonClass} border-[#e6c8ce] text-[#d91f56] hover:bg-[#fff0f1]`}
-                                >
-                                  Skip
-                                </Button>
-                              ) : null}
-                              {showLogTime ? (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    setActiveReviewLogId((current) => (current === alert.id ? null : current));
-                                  }}
-                                  className={`${reviewActionButtonClass} border-[#e6c8ce] text-[#d91f56] hover:bg-[#fff0f1]`}
-                                >
-                                  Cancel
-                                </Button>
-                              ) : null}
-                              <Button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  if (!showLogTime) {
-                                    openReviewLogTime(alert.id, reviewPlannedTime);
-                                    return;
-                                  }
-
-                                  if (mealReviewAction) {
-                                    void resolveReviewMeal(alert.id, mealReviewAction.mealId, "done");
-                                    return;
-                                  }
-
-                                  if (customCareReviewAction) {
-                                    void resolveReviewCustomCare(alert.id, customCareReviewAction, "done");
-                                  }
-                                }}
-                                className={`${reviewActionButtonClass} bg-[#8f1739] text-white hover:bg-[#7c1431]`}
-                              >
-                                {showLogTime ? "Done" : "Log"}
-                              </Button>
-                            </div>
-                          ) : null}
+                          <p className="mt-1 truncate text-sm leading-5 text-[#b71f48]/70">{alert.detail}</p>
                         </div>
+                        <ExpandDetailsButton
+                          expanded={detailsExpanded}
+                          className="text-[#8f1739] hover:text-[#7c1431]"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
+                          }}
+                        />
                         {alert.kind === "manual" ? (
                           <Button
                             type="button"
@@ -909,6 +888,80 @@ export default function AlertsPage() {
                           </Button>
                         ) : null}
                       </div>
+                      <InlineDetails expanded={detailsExpanded} className="mx-auto w-full max-w-[23rem] bg-[#fff0f1]/75 px-4 text-[#8f1739] ring-1 ring-[#e6c8ce]/70">
+                        {alert.expandedDetail ?? alert.detail}
+                      </InlineDetails>
+                      {mealReviewAction || customCareReviewAction ? (
+                        <div className={`mt-3 items-center justify-end gap-2 ${showLogTime ? "ml-auto grid w-fit max-w-full grid-cols-[7.75rem_auto_auto]" : "flex"}`} onKeyDown={(event) => event.stopPropagation()}>
+                          {showLogTime ? (
+                            <label className="min-w-0">
+                              <span className="sr-only">Log time</span>
+                              <input
+                                type="time"
+                                value={reviewMealTimeValue(alert.id, reviewPlannedTime)}
+                                onClick={(event) => event.stopPropagation()}
+                                onChange={(event) => updateReviewMealTime(alert.id, event.target.value)}
+                                className="h-10 w-full min-w-0 rounded-full border border-[#8f1739] bg-white px-3 text-sm font-semibold text-[#8f1739] outline-none transition focus:ring-4 focus:ring-[#e6c8ce]/55"
+                              />
+                            </label>
+                          ) : null}
+                          {!showLogTime ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (mealReviewAction) {
+                                  void resolveReviewMeal(alert.id, mealReviewAction.mealId, "skipped");
+                                  return;
+                                }
+
+                                if (customCareReviewAction) {
+                                  void resolveReviewCustomCare(alert.id, customCareReviewAction, "skipped");
+                                }
+                              }}
+                              className={`${reviewActionButtonClass} border-[#e6c8ce] text-[#d91f56] hover:bg-[#fff0f1]`}
+                            >
+                              Skip
+                            </Button>
+                          ) : null}
+                          {showLogTime ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setActiveReviewLogId((current) => (current === alert.id ? null : current));
+                              }}
+                              className={`${reviewActionButtonClass} border-[#e6c8ce] text-[#d91f56] hover:bg-[#fff0f1]`}
+                            >
+                              Cancel
+                            </Button>
+                          ) : null}
+                          <Button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (!showLogTime) {
+                                openReviewLogTime(alert.id, reviewPlannedTime);
+                                return;
+                              }
+
+                              if (mealReviewAction) {
+                                void resolveReviewMeal(alert.id, mealReviewAction.mealId, "done");
+                                return;
+                              }
+
+                              if (customCareReviewAction) {
+                                void resolveReviewCustomCare(alert.id, customCareReviewAction, "done");
+                              }
+                            }}
+                            className={`${reviewActionButtonClass} bg-[#8f1739] text-white hover:bg-[#7c1431]`}
+                          >
+                            {showLogTime ? "Done" : "Log"}
+                          </Button>
+                        </div>
+                      ) : null}
                     </article>
                   );
                 })}
@@ -918,13 +971,18 @@ export default function AlertsPage() {
             {savedManualAlerts.length ? (
               <div className="space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-3">
                 <h3 className="text-sm font-semibold text-[#8f1739]/80">Saved Alerts</h3>
-                {savedManualAlerts.map((alert) => (
-                <article
-                  key={alert.id}
-                  className="rounded-2xl bg-white/75 p-4 ring-1 ring-[#e6c8ce]/70"
-                >
-                  {editingAlertId === alert.id ? (
-                    <div className="space-y-3">
+                {savedManualAlerts.map((alert) => {
+                  const detailKey = `saved-alert-${alert.id}`;
+                  const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
+                  const savedAlertMessage = alert.message.trim();
+
+                  return (
+                    <article
+                      key={alert.id}
+                      className="rounded-2xl bg-white/75 p-4 ring-1 ring-[#e6c8ce]/70"
+                    >
+                      {editingAlertId === alert.id ? (
+                        <div className="space-y-3">
                       <input
                         value={editingTitleValue}
                         onChange={(event) => setEditingTitleValue(clampText(event.target.value, TEXT_LIMITS.shortName))}
@@ -1004,28 +1062,48 @@ export default function AlertsPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="block min-w-0 text-left font-medium text-[#8f1739]">
-                          {alert.title}
-                        </p>
-                        <p className="mt-1 text-sm text-[#b71f48]/70">
-                          {alertScopeLabel(alert)}{alert.time ? ` ${formatReminderTime(alert.time)}` : ""}
-                        </p>
-                        <ExpandableNoteText className="mt-1 text-sm text-[#b71f48]/65">{alert.message}</ExpandableNoteText>
+                    <div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="block min-w-0 text-left font-medium text-[#8f1739]">
+                            {alert.title}
+                          </p>
+                          <p className="mt-1 text-sm text-[#b71f48]/70">
+                            {alertScopeLabel(alert)}{alert.time ? ` ${formatReminderTime(alert.time)}` : ""}
+                          </p>
+                          {savedAlertMessage ? <p className="mt-1 truncate text-sm text-[#b71f48]/65">{savedAlertMessage}</p> : null}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {savedAlertMessage ? (
+                            <ExpandDetailsButton
+                              expanded={detailsExpanded}
+                              className="text-[#8f1739] hover:text-[#7c1431]"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
+                              }}
+                            />
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => startEditingAlert(alert)}
+                            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/75 text-[#d91f56]/60 ring-1 ring-[#e6c8ce]/70 transition hover:bg-white hover:text-[#d91f56]"
+                            aria-label={`Edit ${alert.title}`}
+                          >
+                            <Ellipsis className="size-3.5" />
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => startEditingAlert(alert)}
-                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/75 text-[#d91f56]/60 ring-1 ring-[#e6c8ce]/70 transition hover:bg-white hover:text-[#d91f56]"
-                        aria-label={`Edit ${alert.title}`}
-                      >
-                        <Ellipsis className="size-3.5" />
-                      </button>
+                      {savedAlertMessage ? (
+                        <InlineDetails expanded={detailsExpanded} className="mx-auto w-full max-w-[23rem] bg-[#fff0f1]/75 px-4 text-[#8f1739] ring-1 ring-[#e6c8ce]/70">
+                          {savedAlertMessage}
+                        </InlineDetails>
+                      ) : null}
                     </div>
                   )}
-                </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             ) : null}
           </div>

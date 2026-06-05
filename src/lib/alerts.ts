@@ -8,6 +8,7 @@ export type ResolvedAlert = {
   kind: "manual" | "reminder" | "review";
   title: string;
   detail: string;
+  expandedDetail?: string;
   severity: "info" | "warning";
   reviewAction?:
     | { type: "meal"; mealId: number; plannedTime: string }
@@ -323,6 +324,22 @@ function manualAlertCreatedAfterScheduledTime(alert: ManualAlert, todayKey: stri
   return createdAt.getHours() * 60 + createdAt.getMinutes() > alertMinutes;
 }
 
+function mealExpandedDetail(meal: MealTemplate, templates: MealTemplate[], todayKey: string, careTemplates: CareItemTemplate[]) {
+  const supplements = careTemplates
+    .filter((item) => item.kind === "supplement" && careItemOccursWithMeal(item, meal, templates, todayKey))
+    .map((item) => {
+      const dose = item.dose.trim();
+      const notes = item.notes.trim();
+      return [item.name, dose, notes].filter(Boolean).join(" - ");
+    });
+
+  return [
+    meal.food.trim() ? `Food: ${meal.food.trim()}` : null,
+    meal.notes.trim() ? `Notes: ${meal.notes.trim()}` : null,
+    supplements.length ? `Supplements: ${supplements.join("; ")}` : null,
+  ].filter(Boolean).join("\n");
+}
+
 export function resolveAlerts(
   templates: MealTemplate[],
   dailyMealState: DailyMealState[],
@@ -388,6 +405,7 @@ export function resolveAlerts(
         kind: needsReview ? "review" : "reminder",
         title: needsReview ? `${meal.name} missing` : `${meal.name} is overdue`,
         detail: `Planned for ${meal.plannedTime}.`,
+        expandedDetail: mealExpandedDetail(meal, templates, todayKey, careTemplates) || `Planned for ${meal.plannedTime}.`,
         severity: needsReview ? "warning" : "info",
         reviewAction: needsReview ? { type: "meal", mealId: meal.id, plannedTime: meal.plannedTime } : undefined,
       });

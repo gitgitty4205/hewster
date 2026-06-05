@@ -13,6 +13,8 @@ type Props = {
   title?: React.ReactNode;
   iconOnly?: boolean;
   accentBackground?: boolean;
+  onHeaderClick?: () => void;
+  headerClickLabel?: string;
   children?: React.ReactNode;
 };
 
@@ -96,7 +98,7 @@ const quickTileDepth =
 const quickIconDepth =
   "shadow-[0_6px_10px_rgba(39,54,45,0.16),0_1px_3px_rgba(255,255,255,0.9)_inset,0_-2px_5px_rgba(39,54,45,0.1)_inset] ring-1 ring-white/80 drop-shadow-[0_2px_2px_rgba(39,54,45,0.18)]";
 
-export function QuickLogCard({ activityState, onQuickLog, includeOther = true, visibleTypes, title = "Log", iconOnly = false, accentBackground = false, children }: Props) {
+export function QuickLogCard({ activityState, onQuickLog, includeOther = true, visibleTypes, title = "Log", iconOnly = false, accentBackground = false, onHeaderClick, headerClickLabel, children }: Props) {
   const visibleActions = quickActions.filter((action) => {
     if (visibleTypes) return visibleTypes.includes(action.type);
     return includeOther || action.type !== "other";
@@ -106,20 +108,42 @@ export function QuickLogCard({ activityState, onQuickLog, includeOther = true, v
   return (
     <section className={`mb-4 rounded-3xl p-5 shadow-sm ring-1 ${useAccentBackground ? "bg-[var(--hewie-accent,#64748b)] ring-[var(--hewie-accent,#64748b)]/35" : "bg-white ring-zinc-200"}`}>
       {title || activityState !== "idle" ? (
-        <div className={`mb-4 flex items-center ${useAccentBackground ? "justify-center text-center" : "justify-between"}`}>
-          <div>{title ? <h2 className={`text-lg font-semibold ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]" : ""}`}>{title}</h2> : null}</div>
-          <div className={`text-right text-xs ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]/75" : "text-zinc-500"}`}>
-            <div className={`flex items-center justify-end gap-1.5 ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]" : "text-emerald-600"}`}>
-              {activityState === "saving"
-                ? "Saving Event..."
-                : activityState === "saved"
-                  ? "Event Logged"
-                  : activityState === "error"
-                    ? "Saved In Browser Only"
-                    : ""}
+        onHeaderClick ? (
+          <button
+            type="button"
+            onClick={onHeaderClick}
+            className={`mb-4 flex w-full items-center rounded-2xl transition active:translate-y-px ${useAccentBackground ? "justify-center text-center text-[var(--hewie-accent-text,#ffffff)] hover:bg-white/5" : "justify-between hover:bg-zinc-50"}`}
+            aria-label={headerClickLabel}
+          >
+            <div>{title ? <h2 className="text-lg font-semibold">{title}</h2> : null}</div>
+            <div className={`text-right text-xs ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]/75" : "text-zinc-500"}`}>
+              <div className={`flex items-center justify-end gap-1.5 ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]" : "text-emerald-600"}`}>
+                {activityState === "saving"
+                  ? "Saving Event..."
+                  : activityState === "saved"
+                    ? "Event Logged"
+                    : activityState === "error"
+                      ? "Saved In Browser Only"
+                      : ""}
+              </div>
+            </div>
+          </button>
+        ) : (
+          <div className={`mb-4 flex items-center ${useAccentBackground ? "justify-center text-center" : "justify-between"}`}>
+            <div>{title ? <h2 className={`text-lg font-semibold ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]" : ""}`}>{title}</h2> : null}</div>
+            <div className={`text-right text-xs ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]/75" : "text-zinc-500"}`}>
+              <div className={`flex items-center justify-end gap-1.5 ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]" : "text-emerald-600"}`}>
+                {activityState === "saving"
+                  ? "Saving Event..."
+                  : activityState === "saved"
+                    ? "Event Logged"
+                    : activityState === "error"
+                      ? "Saved In Browser Only"
+                      : ""}
+              </div>
             </div>
           </div>
-        </div>
+        )
       ) : null}
 
       <div className={iconOnly ? "-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : `grid gap-3 ${visibleActions.length > 2 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"}`}>

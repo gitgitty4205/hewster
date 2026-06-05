@@ -4,16 +4,16 @@ import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import {
   Image as ImageIcon,
   Bell,
+  ChevronDown,
   StickyNote,
   Tablets,
   TriangleAlert,
 } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ActivityDetailForm } from "@/components/activity-detail-form";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useAuth } from "@/components/auth-provider";
-import { ExpandableNoteText } from "@/components/expandable-note-text";
 import { PottyDetailBadges } from "@/components/potty-detail-badges";
 import { BottomNav } from "@/components/bottom-nav";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
@@ -130,6 +130,46 @@ function userDisplayName(user: ReturnType<typeof useAuth>["user"]) {
 function currentAlertMinuteKey() {
   const now = new Date();
   return `${currentTodayKey()}-${now.getHours()}:${now.getMinutes()}`;
+}
+
+function ExpandDetailsButton({
+  expanded,
+  onClick,
+  className,
+}: {
+  expanded: boolean;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+  className: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={expanded ? "Hide details" : "Show details"}
+      aria-expanded={expanded}
+      onClick={onClick}
+      className={`inline-flex size-7 shrink-0 items-center justify-center transition active:translate-y-px ${className}`}
+    >
+      <ChevronDown className={`size-5 transition-transform ${expanded ? "rotate-180" : ""}`} strokeWidth={2.8} />
+    </button>
+  );
+}
+
+function InlineDetails({
+  expanded,
+  children,
+  className,
+}: {
+  expanded: boolean;
+  children: ReactNode;
+  className: string;
+}) {
+  if (!expanded) return null;
+
+  return (
+    <div className={`mt-2 whitespace-pre-line rounded-2xl px-3 py-2 text-xs leading-4 ${className}`}>
+      {children}
+    </div>
+  );
 }
 
 const DUE_ACTION_WINDOW_MS = 60 * 60 * 1000;
@@ -308,6 +348,18 @@ function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: Me
       isLastDose: Boolean(doseNumber && totalDoses && doseNumber === totalDoses),
     };
   });
+}
+
+function mealExpandedDetailText(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
+  const supplements = mealCareItemsWithDoseBadges(careTemplates, meal, meals, dayKey)
+    .filter((item) => item.kind === "supplement")
+    .map((item) => [item.name, item.dose.trim(), item.notes.trim()].filter(Boolean).join(" - "));
+
+  return [
+    meal.food.trim() ? `Food: ${meal.food.trim()}` : null,
+    meal.notes.trim() ? `Notes: ${meal.notes.trim()}` : null,
+    supplements.length ? `Supplements: ${supplements.join("; ")}` : null,
+  ].filter(Boolean).join("\n");
 }
 
 function loggedCareItemsForMeal(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string, skippedCareItemIds: string[] = []) {
@@ -853,6 +905,7 @@ export default function HomeApp() {
       noteBox: string;
     };
   } | null>(null);
+  const [expandedAlertDetails, setExpandedAlertDetails] = useState<Record<string, boolean>>({});
   const [petRemembered, setPetRemembered] = useState(false);
   const [canDeleteEntries, setCanDeleteEntries] = useState(true);
   const [notebookDataUnavailable, setNotebookDataUnavailable] = useState(false);
@@ -2131,33 +2184,49 @@ export default function HomeApp() {
         {todayAlertCards.length ? (
           <section className="mb-3 space-y-2">
             {todayAlertCards.slice(0, 3).map((alert) => {
+              const detailKey = `today-alert-${alert.id}`;
+              const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
+
               return (
                 <div
                   key={alert.id}
-                  className="flex min-h-12 items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#fff0f1] to-[#fcebed] px-3.5 py-2 text-[#d91f56] shadow-[0_8px_18px_rgba(255,27,90,0.10)] ring-1 ring-[#e6c8ce]/80"
+                  className="rounded-2xl bg-gradient-to-r from-[#fff0f1] to-[#fcebed] px-3.5 py-2 text-[#d91f56] shadow-[0_8px_18px_rgba(255,27,90,0.10)] ring-1 ring-[#e6c8ce]/80"
                 >
-                  <div className="flex min-w-0 flex-1 items-start gap-2 text-left">
-                    <TriangleAlert className="size-4 shrink-0 self-center text-[#8f1739]" />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold leading-4 text-[#8f1739]">{alert.title}</p>
-                      <ExpandableNoteText className="text-xs leading-4 text-[#b71f48]/65" collapsedLines={1}>
-                        {alert.detail}
-                      </ExpandableNoteText>
+                  <div className="flex min-h-8 items-center justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 items-start gap-2 text-left">
+                      <TriangleAlert className="size-4 shrink-0 self-center text-[#8f1739]" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold leading-4 text-[#8f1739]">{alert.title}</p>
+                        <p className="truncate text-xs leading-4 text-[#b71f48]/65">{alert.detail}</p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <ExpandDetailsButton
+                        expanded={detailsExpanded}
+                        className="text-[#8f1739] hover:text-[#7c1431]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
+                        }}
+                      />
+                      {alert.kind === "manual" ? (
+                        <button
+                          type="button"
+                          onKeyDown={(event) => event.stopPropagation()}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void resolveManualAlert(alert.id);
+                          }}
+                          className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-[11px] font-semibold text-[var(--hewie-accent-text,#ffffff)] shadow-sm shadow-slate-400/20 ring-1 ring-white/30 transition hover:opacity-90 active:translate-y-px"
+                        >
+                          Done
+                        </button>
+                      ) : null}
                     </div>
                   </div>
-                  {alert.kind === "manual" ? (
-                    <button
-                      type="button"
-                      onKeyDown={(event) => event.stopPropagation()}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void resolveManualAlert(alert.id);
-                      }}
-                      className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-[11px] font-semibold text-[var(--hewie-accent-text,#ffffff)] shadow-sm shadow-slate-400/20 ring-1 ring-white/30 transition hover:opacity-90 active:translate-y-px"
-                    >
-                      Done
-                    </button>
-                  ) : null}
+                  <InlineDetails expanded={detailsExpanded} className="bg-white/55 text-[#8f1739] ring-1 ring-[#e6c8ce]/70">
+                    {alert.expandedDetail ?? alert.detail}
+                  </InlineDetails>
                 </div>
               );
             })}
@@ -2168,59 +2237,77 @@ export default function HomeApp() {
           <section className="mb-3 space-y-2">
             {overdueActionCards.slice(0, 4).map((card) => {
               const title = card.type === "meal" ? `${card.meal.name} due ${card.meal.plannedTime}` : `${card.occurrence.item.name} due ${card.occurrence.timeLabel}`;
-              const detail = "";
+              const detail = card.type === "meal" ? card.meal.food.trim() : customCareGiveText(card.occurrence.item);
+              const expandedDetail = card.type === "meal"
+                ? mealExpandedDetailText(careTemplates, card.meal, dailyMeals, todayKey || currentTodayKey()) || detail || title
+                : detail || title;
               const careKind = card.type === "custom-care" ? card.occurrence.item.kind : null;
+              const detailKey = `overdue-${card.sortKey}`;
+              const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
 
               return (
                 <div
                   key={`overdue-${card.sortKey}`}
-                  className="flex min-h-12 items-center gap-2 rounded-2xl bg-gradient-to-r from-white/85 to-[var(--hewie-active-bg,#f1f5f9)]/80 px-3 py-2 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/75"
+                  className="rounded-2xl bg-gradient-to-r from-white/85 to-[var(--hewie-active-bg,#f1f5f9)]/80 px-3 py-2 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/75"
                 >
-                  {card.type === "meal" ? (
-                    <Bell className="size-4 shrink-0 text-[var(--hewie-active-text,#334155)]" />
-                  ) : careKind === "supplement" ? (
-                    <Tablets className="size-4 shrink-0 text-[#1f3d5c]" />
-                  ) : (
-                    <MedicationPillIcon className="size-4 shrink-0 text-sky-600" />
-                  )}
-                  <div className="min-w-0 flex-1 text-left">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="truncate text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{title}</p>
-                      {card.type === "custom-care" && card.occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
+                  <div className="flex min-h-8 items-center gap-2">
+                    {card.type === "meal" ? (
+                      <Bell className="size-4 shrink-0 text-[var(--hewie-active-text,#334155)]" />
+                    ) : careKind === "supplement" ? (
+                      <Tablets className="size-4 shrink-0 text-[#1f3d5c]" />
+                    ) : (
+                      <MedicationPillIcon className="size-4 shrink-0 text-sky-600" />
+                    )}
+                    <div className="min-w-0 flex-1 text-left">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="truncate text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{title}</p>
+                        {card.type === "custom-care" && card.occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
+                      </div>
+                      {detail ? <p className="truncate text-xs leading-4 text-[var(--hewie-active-text,#334155)]/60">{detail}</p> : null}
                     </div>
-                    {detail ? <p className="truncate text-xs leading-4 text-[var(--hewie-active-text,#334155)]/60">{detail}</p> : null}
+                    <div className="flex shrink-0 gap-1" onKeyDown={(event) => event.stopPropagation()}>
+                      <ExpandDetailsButton
+                        expanded={detailsExpanded}
+                        className="text-[var(--hewie-active-text,#334155)]/70 hover:text-[var(--hewie-active-text,#334155)]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-7 rounded-full border-0 bg-white/65 px-2.5 text-[11px] font-semibold text-[var(--hewie-active-text,#334155)]/70 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 hover:bg-white/85"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (card.type === "meal") {
+                            void markMealSkipped(card.meal.id);
+                          } else {
+                            void markCustomCareSkipped(card.occurrence);
+                          }
+                        }}
+                      >
+                        Skip
+                      </Button>
+                      <Button
+                        type="button"
+                        className="h-7 rounded-full bg-[var(--hewie-accent,#64748b)] px-2.5 text-[11px] font-semibold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (card.type === "meal") {
+                            void markMealFed(card.meal.id);
+                          } else {
+                            void markCustomCareGiven(card.occurrence);
+                          }
+                        }}
+                      >
+                        Done
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex shrink-0 gap-1" onKeyDown={(event) => event.stopPropagation()}>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-7 rounded-full border-0 bg-white/65 px-2.5 text-[11px] font-semibold text-[var(--hewie-active-text,#334155)]/70 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 hover:bg-white/85"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (card.type === "meal") {
-                          void markMealSkipped(card.meal.id);
-                        } else {
-                          void markCustomCareSkipped(card.occurrence);
-                        }
-                      }}
-                    >
-                      Skip
-                    </Button>
-                    <Button
-                      type="button"
-                      className="h-7 rounded-full bg-[var(--hewie-accent,#64748b)] px-2.5 text-[11px] font-semibold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (card.type === "meal") {
-                          void markMealFed(card.meal.id);
-                        } else {
-                          void markCustomCareGiven(card.occurrence);
-                        }
-                      }}
-                    >
-                      Done
-                    </Button>
-                  </div>
+                  <InlineDetails expanded={detailsExpanded} className="bg-white/55 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/65">
+                    {expandedDetail}
+                  </InlineDetails>
                 </div>
               );
             })}
@@ -2232,6 +2319,8 @@ export default function HomeApp() {
             {reminderCards.slice(0, 3).map((reminder) => {
               const reminderMealId = reminder.id.startsWith("meal-") ? Number(reminder.id.replace("meal-", "")) : null;
               const hasMealActions = reminderMealId !== null && Number.isFinite(reminderMealId);
+              const detailKey = `reminder-${reminder.id}`;
+              const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
 
               return (
                 <div
@@ -2242,9 +2331,20 @@ export default function HomeApp() {
                     <Bell className="mt-0.5 size-4 shrink-0 text-[var(--hewie-active-text,#334155)]" />
                     <div className="min-w-0 flex-1 text-left">
                       <p className="text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{reminder.title}</p>
-                      <p className="mt-0.5 text-xs leading-4 text-[var(--hewie-active-text,#334155)]/60">{reminder.detail}</p>
+                      <p className="mt-0.5 truncate text-xs leading-4 text-[var(--hewie-active-text,#334155)]/60">{reminder.detail}</p>
                     </div>
+                    <ExpandDetailsButton
+                      expanded={detailsExpanded}
+                      className="text-[var(--hewie-active-text,#334155)]/70 hover:text-[var(--hewie-active-text,#334155)]"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
+                      }}
+                    />
                   </div>
+                  <InlineDetails expanded={detailsExpanded} className="ml-7 bg-white/55 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/65">
+                    {reminder.detail}
+                  </InlineDetails>
                   {hasMealActions ? (
                     <div className="mt-2 grid grid-cols-2 gap-2 pl-7" onKeyDown={(event) => event.stopPropagation()}>
                       <Button

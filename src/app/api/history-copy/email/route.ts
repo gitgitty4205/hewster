@@ -24,6 +24,21 @@ type ReportProfile = {
   themeId: ThemeId;
 };
 
+type ReportImageReference = {
+  id: string;
+  activityId: string;
+  fileName: string;
+  filePath: string;
+  contentType: string;
+};
+
+type ReportImage = ReportImageReference & {
+  bytes: Buffer;
+  width: number | null;
+  height: number | null;
+  pdfName: string;
+};
+
 function normalizeText(value: unknown, fallback = "") {
   return typeof value === "string" ? value.trim() : fallback;
 }
@@ -49,6 +64,34 @@ function normalizeReportProfile(value: unknown): ReportProfile {
     notebookOwnerId: normalizeText(profile.notebookOwnerId),
     themeId: normalizeThemeId(profile.themeId),
   };
+}
+
+function normalizeReportImages(value: unknown): ReportImageReference[] {
+  if (!Array.isArray(value)) return [];
+  const images = new Map<string, ReportImageReference>();
+
+  value.forEach((item) => {
+    if (!item || typeof item !== "object") return;
+    const record = item as Record<string, unknown>;
+    const id = normalizeText(record.id);
+    const activityId = normalizeText(record.activityId);
+    const fileName = normalizeText(record.fileName, "poop-photo.jpg") || "poop-photo.jpg";
+    const filePath = normalizeText(record.filePath);
+    const contentType = normalizeText(record.contentType);
+
+    if (!id || !activityId || !filePath) return;
+    if (contentType && !contentType.toLowerCase().startsWith("image/")) return;
+
+    images.set(id, {
+      id,
+      activityId,
+      fileName,
+      filePath,
+      contentType: contentType || "image/jpeg",
+    });
+  });
+
+  return [...images.values()];
 }
 
 function normalizeThemeId(value: unknown): ThemeId {
@@ -237,6 +280,42 @@ function pdfReportHeader(petName: string, theme = pdfReportTheme("slate")) {
   ];
 }
 
+function jpegDimensions(bytes: Buffer) {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+
+  let offset = 2;
+  while (offset + 9 < bytes.length) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+
+    const marker = bytes[offset + 1];
+    if (marker >= 0xc0 && marker <= 0xc3) {
+      return {
+        height: bytes.readUInt16BE(offset + 5),
+        width: bytes.readUInt16BE(offset + 7),
+      };
+    }
+
+    if (marker === 0xd9 || marker === 0xda) break;
+    const segmentLength = bytes.readUInt16BE(offset + 2);
+    if (!segmentLength) break;
+    offset += 2 + segmentLength;
+  }
+
+  return null;
+}
+
+function isJpegContentType(value: string) {
+  const normalized = value.toLowerCase();
+  return normalized === "image/jpeg" || normalized === "image/jpg";
+}
+
+function pdfImageDraw(name: string, x: number, y: number, width: number, height: number) {
+  return `q ${width} 0 0 ${height} ${x} ${y} cm /${name} Do Q`;
+}
+
 function buildHistoryPdf(text: string, options: {
   petName: string;
   reportProfile: ReportProfile;
@@ -245,6 +324,7 @@ function buildHistoryPdf(text: string, options: {
   dateRange: string;
   generatedDate: string;
   matchingDays: number;
+  reportImages?: ReportImage[];
 }) {
   const historyEntries = (text.split("\nHistory\n").pop() ?? text.split("\nFiltered History\n").pop() ?? text.split("\nHistory Entries\n").pop())?.trim() || "No records match this filter.";
   const reportTheme = pdfReportTheme(options.reportProfile.themeId);
@@ -259,6 +339,22 @@ function buildHistoryPdf(text: string, options: {
   const pagesObjectId = addObject("");
   const fontObjectId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
   const boldFontObjectId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+  const reportImages = options.reportImages ?? [];
+  const reportImagesByActivityId = new Map<string, ReportImage[]>();
+  const pdfImageObjects = new Map<string, number>();
+
+  reportImages.forEach((image) => {
+    const current = reportImagesByActivityId.get(image.activityId) ?? [];
+    reportImagesByActivityId.set(image.activityId, [...current, image]);
+
+    if (!image.width || !image.height || !isJpegContentType(image.contentType)) return;
+    const hexData = `${image.bytes.toString("hex")}>`;
+    const imageObjectId = addObject(`<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [ /ASCIIHexDecode /DCTDecode ] /Length ${hexData.length} >>
+stream
+${hexData}
+endstream`);
+    pdfImageObjects.set(image.id, imageObjectId);
+  });
   const pageStreams: string[] = [];
   const pageObjectIds: number[] = [];
 
@@ -333,6 +429,39 @@ function buildHistoryPdf(text: string, options: {
   };
 
   historyEntries.split("\n").forEach((rawLine) => {
+    const reportImageMatch = rawLine.match(/^__REPORT_IMAGES__:(.+)$/);
+    if (reportImageMatch) {
+      const images = reportImagesByActivityId.get(reportImageMatch[1]) ?? [];
+      const embeddedImages = images.filter((image) => pdfImageObjects.has(image.id));
+      if (!embeddedImages.length) return;
+
+      const thumbnailWidth = 98;
+      const gap = 10;
+      const rows = Math.ceil(embeddedImages.length / 4);
+      const blockHeight = rows * 86 + 10;
+
+      if (y - blockHeight < 54) finishPage();
+
+      embeddedImages.forEach((image, index) => {
+        const objectId = pdfImageObjects.get(image.id);
+        if (!objectId || !image.width || !image.height) return;
+
+        const column = index % 4;
+        const row = Math.floor(index / 4);
+        const aspect = image.width / image.height;
+        const drawWidth = aspect >= 1 ? thumbnailWidth : Math.min(thumbnailWidth, 74 * aspect);
+        const drawHeight = aspect >= 1 ? Math.min(74, thumbnailWidth / aspect) : 74;
+        const x = 74 + column * (thumbnailWidth + gap) + (thumbnailWidth - drawWidth) / 2;
+        const imageTop = y - row * 86;
+        const imageY = imageTop - drawHeight;
+
+        pageCommands.push(pdfImageDraw(image.pdfName, x, imageY, drawWidth, drawHeight));
+      });
+
+      y -= blockHeight;
+      return;
+    }
+
     const isDateLine = /^[A-Z][a-z]{2},/.test(rawLine);
     const wrappedLines = wrapPdfLine(rawLine, isDateLine ? 70 : 86);
     const lineHeight = isDateLine ? 16 : 13;
@@ -363,7 +492,13 @@ function buildHistoryPdf(text: string, options: {
 stream
 ${streamWithFooter}
 endstream`);
-    const pageObjectId = addObject(`<< /Type /Page /Parent ${pagesObjectId} 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${fontObjectId} 0 R /F2 ${boldFontObjectId} 0 R >> >> /Contents ${streamObjectId} 0 R >>`);
+    const xObjectResources = pdfImageObjects.size
+      ? ` /XObject << ${[...pdfImageObjects.entries()].map(([imageId, objectId]) => {
+          const image = reportImages.find((entry) => entry.id === imageId);
+          return image ? `/${image.pdfName} ${objectId} 0 R` : "";
+        }).filter(Boolean).join(" ")} >>`
+      : "";
+    const pageObjectId = addObject(`<< /Type /Page /Parent ${pagesObjectId} 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${fontObjectId} 0 R /F2 ${boldFontObjectId} 0 R >>${xObjectResources} >> /Contents ${streamObjectId} 0 R >>`);
     pageObjectIds.push(pageObjectId);
   });
 
@@ -393,6 +528,30 @@ function entityRefId(userId: string) {
   return `pet-notebook-history-${Buffer.from(input, "utf8").toString("base64url")}`;
 }
 
+async function fetchReportImages(supabase: SupabaseClient, references: ReportImageReference[]) {
+  const images: ReportImage[] = [];
+
+  for (const [index, reference] of references.entries()) {
+    const { data, error } = await supabase.storage.from("pet-attachments").download(reference.filePath);
+    if (error || !data) continue;
+
+    const bytes = Buffer.from(await data.arrayBuffer());
+    const contentType = (data.type || reference.contentType || "image/jpeg").toLowerCase();
+    const dimensions = jpegDimensions(bytes);
+
+    images.push({
+      ...reference,
+      contentType,
+      bytes,
+      width: dimensions?.width ?? null,
+      height: dimensions?.height ?? null,
+      pdfName: `Im${index + 1}`,
+    });
+  }
+
+  return images;
+}
+
 export async function POST(request: Request) {
   const { url, anonKey } = getSupabaseEnv();
   const authorization = request.headers.get("authorization");
@@ -408,6 +567,7 @@ export async function POST(request: Request) {
     generatedDate?: unknown;
     matchingDays?: unknown;
     profile?: unknown;
+    reportImages?: unknown;
   } | null;
   const historyText = normalizeText(body?.text);
   const filterLabel = normalizeText(body?.filterLabel, "All");
@@ -415,6 +575,7 @@ export async function POST(request: Request) {
   const generatedDate = formatGeneratedDate(normalizeText(body?.generatedDate));
   const matchingDays = typeof body?.matchingDays === "number" ? body.matchingDays : 0;
   const reportProfile = normalizeReportProfile(body?.profile);
+  const reportImageReferences = normalizeReportImages(body?.reportImages);
 
   if (!historyText) {
     return NextResponse.json({ sent: false, error: "There is no history report to send." }, { status: 400 });
@@ -438,8 +599,9 @@ export async function POST(request: Request) {
 
   const petName = normalizeWhitespace(reportProfile.petName || "Pet");
   const ownerName = await resolveReportOwnerName(supabase, user, reportProfile);
+  const reportImages = await fetchReportImages(supabase, reportImageReferences);
 
-  const pdf = buildHistoryPdf(historyText, { petName, reportProfile, ownerName, filterLabel, dateRange, generatedDate, matchingDays });
+  const pdf = buildHistoryPdf(historyText, { petName, reportProfile, ownerName, filterLabel, dateRange, generatedDate, matchingDays, reportImages });
   const filenamePetName = petName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "pet";
   const filename = `${filenamePetName}-history-report-${new Date().toISOString().slice(0, 10)}.pdf`;
   const safePossessivePetName = escapeHtml(possessiveName(petName));
@@ -482,6 +644,11 @@ export async function POST(request: Request) {
           filename,
           content: pdf.toString("base64"),
         },
+        ...reportImages.map((image, index) => ({
+          filename: image.fileName || `poop-photo-${index + 1}.jpg`,
+          content: image.bytes.toString("base64"),
+          content_type: image.contentType,
+        })),
       ],
       headers: {
         "Auto-Submitted": "auto-generated",

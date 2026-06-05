@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Ellipsis, Heart, MailPlus, ShieldCheck } from "lucide-react";
+import { CircleHelp, Ellipsis, Heart, MailPlus, ShieldCheck } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
 
@@ -164,6 +164,7 @@ export default function ProfilePage() {
   const [pendingMemberAccess, setPendingMemberAccess] = useState<Record<string, Exclude<NotebookAccessRole, "owner"> | "remove">>({});
   const [accessStatus, setAccessStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [accessMessage, setAccessMessage] = useState("");
+  const [accessRoleHelp, setAccessRoleHelp] = useState<Exclude<NotebookAccessRole, "owner"> | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [missingPetInfoFields, setMissingPetInfoFields] = useState<Set<RequiredPetInfoField>>(new Set());
   const [profileValidationMessage, setProfileValidationMessage] = useState("");
@@ -841,26 +842,69 @@ export default function ProfilePage() {
                     className="mt-2 w-full rounded-2xl border-0 bg-white px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-[var(--hewie-ring,#cbd5e1)] placeholder:text-zinc-400"
                   />
                 </label>
-                <label className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
-                  Role
-                  <select
-                    value={accessRole}
-                    onChange={(event) => setAccessRole(event.target.value as Exclude<NotebookAccessRole, "owner">)}
-                    className="mt-2 w-full rounded-2xl border-0 bg-white px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-[var(--hewie-ring,#cbd5e1)]"
-                  >
-                    {notebookInviteRoles.map((role) => (
-                      <option key={role} value={role}>{notebookRoleLabel(role)}</option>
-                    ))}
-                  </select>
-                </label>
-                <p className="rounded-2xl bg-white/65 p-3 text-xs leading-5 text-[var(--hewie-active-text,#334155)]/65 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
-                  {notebookAccessRoleDescriptions[accessRole]}
-                </p>
+                <fieldset>
+                  <legend className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Role</legend>
+                  <div className="mt-2 grid gap-2">
+                    {notebookInviteRoles.map((role) => {
+                      const selected = accessRole === role;
+                      const helpOpen = accessRoleHelp === role;
+
+                      return (
+                        <div key={role}>
+                          <div
+                            role="radio"
+                            aria-checked={selected}
+                            tabIndex={0}
+                            onClick={() => setAccessRole(role as Exclude<NotebookAccessRole, "owner">)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setAccessRole(role as Exclude<NotebookAccessRole, "owner">);
+                              }
+                            }}
+                            className="flex w-full cursor-pointer items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-zinc-800 ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition"
+                          >
+                            <div className="flex min-w-0 items-start gap-0.5">
+                              <span className="min-w-0 text-left">
+                                {notebookRoleLabel(role)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setAccessRoleHelp((current) => current === role ? null : role as Exclude<NotebookAccessRole, "owner">);
+                                }}
+                                aria-expanded={helpOpen}
+                                aria-label={`Show ${notebookRoleLabel(role)} details`}
+                                className="mt-[-4px] flex size-5 shrink-0 items-center justify-center text-[var(--hewie-active-text,#334155)]/55"
+                              >
+                                <CircleHelp className="size-3.5" />
+                              </button>
+                            </div>
+                            <span
+                              aria-hidden="true"
+                              className={`size-3 shrink-0 rounded-full ring-2 ${
+                                selected
+                                  ? "bg-[var(--hewie-accent,#64748b)] ring-[var(--hewie-accent,#64748b)]/60"
+                                  : "bg-transparent ring-[var(--hewie-ring,#cbd5e1)]"
+                              }`}
+                            />
+                          </div>
+                          {helpOpen ? (
+                            <p className="mt-2 rounded-2xl bg-white/65 p-3 text-xs leading-5 text-[var(--hewie-active-text,#334155)]/65 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+                              {notebookAccessRoleDescriptions[role]}
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </fieldset>
               </div>
               <Button
                 type="button"
                 onClick={() => void handleInvitePerson()}
-                className="mt-3 w-full rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60"
+                className="mt-3 h-11 w-full rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60"
                 disabled={!user || accessStatus === "saving"}
               >
                 <MailPlus className="size-4" />

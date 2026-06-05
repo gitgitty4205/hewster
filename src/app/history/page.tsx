@@ -21,6 +21,7 @@ import Link from "next/link";
 import {
 
   type ActivityLog,
+  type ActivityAttachment,
   type DailyMealState,
 
   type ManualAlert,
@@ -412,6 +413,34 @@ function filterHistoryDays(historyDays: HistoryDay[], filter: HistoryFilter, sta
 
 function reportActivityIds(days: HistoryDay[]) {
   return days.flatMap((day) => day.activities.map((activity) => activity.id));
+}
+
+type ReportImage = Pick<ActivityAttachment, "id" | "activityId" | "fileName" | "filePath" | "contentType">;
+
+function isReportImageActivity(activity: ActivityLog) {
+  return ["pee", "poop", "potty"].includes(activity.activityType) && Boolean(activity.attachments?.length);
+}
+
+function reportImagesForDays(days: HistoryDay[]) {
+  const imagesById = new Map<string, ReportImage>();
+
+  days.forEach((day) => {
+    day.activities.forEach((activity) => {
+      if (!isReportImageActivity(activity)) return;
+
+      activity.attachments?.forEach((attachment) => {
+        imagesById.set(attachment.id, {
+          id: attachment.id,
+          activityId: attachment.activityId,
+          fileName: attachment.fileName,
+          filePath: attachment.filePath,
+          contentType: attachment.contentType,
+        });
+      });
+    });
+  });
+
+  return [...imagesById.values()];
 }
 
 function withReportActivityAuditInfo(days: HistoryDay[], auditInfoById: Map<string, ActivityLog["auditInfo"]>) {
@@ -2114,6 +2143,9 @@ export default function HistoryPage() {
         const detail = renderActivityDetail(activity);
         const notes = activity.notes ? ` | Notes: ${activity.notes.replace(/\n/g, " ")}` : "";
         lines.push(`- ${formatActivityTime(activity.happenedAt)} ${displayActivityLabel(activity)}${detail ? ` - ${detail}` : ""}${notes}`);
+        if (isReportImageActivity(activity)) {
+          lines.push(`__REPORT_IMAGES__:${activity.id}`);
+        }
 
         if (withLogDetails) {
           const audit = activity.auditInfo;
@@ -2176,6 +2208,7 @@ export default function HistoryPage() {
         ? withReportActivityAuditInfo(filteredHistoryDays, await loadActivityAuditInfoForReport(reportActivityIds(filteredHistoryDays)))
         : filteredHistoryDays;
       const text = buildHistoryCopyText(reportDays, activeFilter, dateRange, profile, ownerName, generatedDate, includeLogDetailsInReport);
+      const reportImages = reportImagesForDays(reportDays);
 
       const response = await fetch("/api/history-copy/email", {
         method: "POST",
@@ -2204,6 +2237,7 @@ export default function HistoryPage() {
             notebookOwnerId,
             themeId: profile.themeId,
           },
+          reportImages,
         }),
       });
       const result = await response.json().catch(() => null) as { sent?: boolean; email?: string; error?: string } | null;
