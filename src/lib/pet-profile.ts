@@ -1,6 +1,9 @@
 ﻿export type ThemeId = "slate" | "violet" | "sky" | "rose" | "emerald" | "amber";
 
-import { getStoredSupabaseSession } from "@/lib/supabase";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+
+import { resolveActiveNotebookAccess } from "@/lib/notebook-access";
+import { getStoredSupabaseSession, HEWSTER_PROFILE_SLUG } from "@/lib/supabase";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 export type PetProfile = {
@@ -31,7 +34,28 @@ export type PetProfile = {
 export const PET_PROFILE_STORAGE_KEY = "hewster.petProfile";
 export const USER_THEME_STORAGE_KEY = "hewster.userTheme";
 export const PET_THEME_UPDATED_EVENT = "pet-theme-updated";
+export const PET_PROFILE_UPDATED_EVENT = "pet-profile-updated";
 export const DEFAULT_PET_PHOTO_URL = "/paw-print.svg";
+
+type PetProfileRow = {
+  profile: unknown;
+};
+
+function canSyncSharedPetProfile(role: string) {
+  return role === "owner" || role === "co-owner";
+}
+
+async function upsertSharedPetProfile(supabase: SupabaseClient, ownerId: string, profile: PetProfile) {
+  return supabase.from("pet_profiles").upsert(
+    {
+      owner_id: ownerId,
+      profile_slug: HEWSTER_PROFILE_SLUG,
+      profile,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "owner_id,profile_slug" },
+  );
+}
 
 export const defaultPetProfile: PetProfile = {
   petName: "Hewster",
@@ -206,14 +230,57 @@ export function loadPetProfile() {
   }
 }
 
-export function savePetProfile(profile: PetProfile) {
+export function savePetProfile(profile: PetProfile, options: { notify?: boolean } = {}) {
   try {
     window.localStorage.setItem(PET_PROFILE_STORAGE_KEY, JSON.stringify(profile));
-    window.dispatchEvent(new Event("pet-profile-updated"));
+    if (options.notify !== false) {
+      window.dispatchEvent(new Event(PET_PROFILE_UPDATED_EVENT));
+    }
     return true;
   } catch {
     return false;
   }
+}
+
+export async function loadSharedPetProfile(supabase: SupabaseClient, user: User) {
+  const access = await resolveActiveNotebookAccess(supabase, user);
+  const localProfile = loadPetProfile();
+  const { data, error } = await supabase
+    .from("pet_profiles")
+    .select("profile")
+    .eq("owner_id", access.notebookOwnerId)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (canSyncSharedPetProfile(access.role) && localProfile.photoUrl) {
+      await upsertSharedPetProfile(supabase, access.notebookOwnerId, localProfile);
+    }
+    return localProfile;
+  }
+
+  const profile = normalizePetProfile((data as PetProfileRow).profile);
+  if (!profile.photoUrl && localProfile.photoUrl && canSyncSharedPetProfile(access.role)) {
+    const repairedProfile = { ...profile, photoUrl: localProfile.photoUrl };
+    await upsertSharedPetProfile(supabase, access.notebookOwnerId, repairedProfile);
+    savePetProfile(repairedProfile, { notify: false });
+    return repairedProfile;
+  }
+
+  savePetProfile(profile, { notify: false });
+  return profile;
+}
+
+export async function saveSharedPetProfile(supabase: SupabaseClient, user: User, profile: PetProfile) {
+  const access = await resolveActiveNotebookAccess(supabase, user);
+  if (access.role !== "owner" && access.role !== "co-owner") {
+    throw new Error("Only owners and co-owners can edit the pet profile.");
+  }
+
+  const { error } = await upsertSharedPetProfile(supabase, access.notebookOwnerId, profile);
+
+  if (error) throw new Error(error.message || "Could not save pet profile.");
+  savePetProfile(profile);
 }
 
 function userThemeStorageKey(userId?: string | null) {

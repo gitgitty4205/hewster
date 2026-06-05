@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Ellipsis, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -285,39 +285,39 @@ export default function WeightPage() {
     }
   };
 
-  const renderWeightEntry = (entry: WeightLog) => (
-    <article
-      key={entry.id}
-      className="relative rounded-2xl bg-white/70 p-4 pr-10 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.045)]"
-    >
-      {canEditEntries ? (
-        <button
-          type="button"
-          onClick={() => editWeight(entry)}
-          className="absolute right-2.5 top-2.5 flex size-7 items-center justify-center rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/55 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/45 transition hover:bg-white hover:text-[var(--hewie-active-text,#334155)]"
-          aria-label={`Edit weight from ${formatWeightDate(entry.date)}`}
-        >
-          <Ellipsis className="size-3.5" />
-        </button>
-      ) : null}
-      {canDeleteEntries ? (
-        <button
-          type="button"
-          onClick={() => deleteWeight(entry)}
-          className="absolute right-10 top-2.5 flex size-7 items-center justify-center rounded-full bg-white/75 text-rose-500 ring-1 ring-rose-200/60 transition hover:bg-rose-50 hover:text-rose-600"
-          aria-label={`Delete weight from ${formatWeightDate(entry.date)}`}
-        >
-          <Trash2 className="size-3.5" />
-        </button>
-      ) : null}
+  const renderWeightEntry = (entry: WeightLog) => {
+    const isEditing = editingWeightId === entry.id;
+    const summary = (
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="font-medium">{formatWeightDate(entry.date)}</p>
           {entry.note ? <ExpandableNoteText className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/75">{entry.note}</ExpandableNoteText> : null}
         </div>
-        <p className="mr-14 shrink-0 text-sm font-semibold">{formatWeightWithUnit(entry.weight, profile.weightUnit)}</p>
+        <p className="shrink-0 text-sm font-semibold">{formatWeightWithUnit(entry.weight, profile.weightUnit)}</p>
       </div>
-      {editingWeightId === entry.id ? (
+    );
+
+    if (!isEditing) {
+      return (
+        <button
+          key={entry.id}
+          type="button"
+          onClick={canEditEntries ? () => editWeight(entry) : undefined}
+          disabled={!canEditEntries}
+          className="w-full rounded-2xl bg-white/70 p-4 text-left text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.045)] transition enabled:hover:bg-white/85 disabled:cursor-default"
+          aria-label={`Edit weight from ${formatWeightDate(entry.date)}`}
+        >
+          {summary}
+        </button>
+      );
+    }
+
+    return (
+      <article
+        key={entry.id}
+        className="relative rounded-2xl bg-white/70 p-4 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.045)]"
+      >
+      {summary}
         <div className="mt-4 space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-4">
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Date</span>
@@ -384,9 +384,9 @@ export default function WeightPage() {
             ) : null}
           </div>
         </div>
-      ) : null}
     </article>
-  );
+    );
+  };
 
   if (!hydrated) {
     return (

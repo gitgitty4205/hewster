@@ -4,7 +4,7 @@
 
 import { Check, Clock3, Tablets } from "lucide-react";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 
 
@@ -47,6 +47,7 @@ import {
   loadNotebookEntryPermissions,
   mealTemplatesForHistoryDay,
   persistDailyMealStateLocally,
+  activityAttachmentFileNamesForSave,
 
   saveCompletedMealToSupabase,
   saveMealLogToSupabase,
@@ -158,7 +159,7 @@ function mergeDayWithTime(dayKey: string, timeValue: string) {
 }
 
 function attachmentDocumentTypesForActivity(activityType: ActivityType) {
-  return activityType === "poop" || activityType === "potty" ? ["Poop Photo"] : ["Medical Attachment"];
+  return activityType === "poop" || activityType === "potty" ? ["Potty Image"] : ["Medical Attachment"];
 }
 
 
@@ -617,6 +618,7 @@ export default function LogPage() {
   const [happenedAtValue, setHappenedAtValue] = useState(nowForTimeInput());
 
   const [hydrated, setHydrated] = useState(false);
+  const [autoOpenedHistoryEditor, setAutoOpenedHistoryEditor] = useState(false);
   const [canEditEntries, setCanEditEntries] = useState(true);
   const [canDeleteEntries, setCanDeleteEntries] = useState(true);
 
@@ -799,13 +801,14 @@ export default function LogPage() {
     window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextMealLogs));
   };
 
-  const openMealTimeEditor = (mealId: number, actualTime: string | null) => {
+  const openMealTimeEditor = useCallback((mealId: number, actualTime: string | null) => {
     const mealState = dailyMealState.find((entry) => entry.mealId === mealId && (entry.dayKey ?? currentTodayKey()) === logDayKey);
+    const mealLog = mealLogs.find((entry) => entry.dayKey === logDayKey && entry.mealId === mealId && !isMissedMealLog(entry)) ?? mealLogs.find((entry) => entry.dayKey === logDayKey && entry.mealId === mealId);
     setEditingMealTimeId(mealId);
-    setEditingMealTimeValue(actualTime ?? nowForTimeInput());
-    setEditingMealNoteValue(mealState?.fedNotes ?? "");
-    setEditingSkippedCareItemIds(mealState?.skippedCareItemIds ?? []);
-  };
+    setEditingMealTimeValue(actualTime ?? mealLog?.actualTime ?? mealState?.actualTime ?? nowForTimeInput());
+    setEditingMealNoteValue(mealLog?.fedNotes ?? mealState?.fedNotes ?? "");
+    setEditingSkippedCareItemIds(mealLog?.skippedCareItemIds ?? mealState?.skippedCareItemIds ?? []);
+  }, [dailyMealState, logDayKey, mealLogs]);
 
   const cancelMealTimeEditor = () => {
     setEditingMealTimeId(null);
@@ -1008,6 +1011,30 @@ export default function LogPage() {
 
   };
 
+  useEffect(() => {
+    if (!hydrated || autoOpenedHistoryEditor) return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const requestedDay = searchParams.get("date");
+    if (requestedDay && isValidDayKey(requestedDay) && requestedDay !== logDayKey) return;
+
+    const editActivityId = searchParams.get("editActivity");
+    if (editActivityId) {
+      const activity = activityLogs.find((entry) => entry.id === editActivityId);
+      if (!activity) return;
+      openEditorForActivity(activity);
+      setAutoOpenedHistoryEditor(true);
+      return;
+    }
+
+    const editMealId = Number(searchParams.get("editMeal"));
+    if (Number.isFinite(editMealId) && editMealId > 0) {
+      const mealLog = mealLogs.find((entry) => entry.dayKey === logDayKey && entry.mealId === editMealId && !isMissedMealLog(entry)) ?? mealLogs.find((entry) => entry.dayKey === logDayKey && entry.mealId === editMealId);
+      openMealTimeEditor(editMealId, mealLog?.actualTime ?? null);
+      setAutoOpenedHistoryEditor(true);
+    }
+  }, [activityLogs, autoOpenedHistoryEditor, hydrated, logDayKey, mealLogs, openMealTimeEditor]);
+
 
 
   const saveActivity = async (activity: ActivityLog, mode: "create" | "update") => {
@@ -1118,11 +1145,25 @@ export default function LogPage() {
 
 
 
-    const attachmentNote = attachmentFiles.length ? `Attachments: ${attachmentFiles.map((file) => file.name).join(", ")}` : "";
-
     const recordTagNote = "";
 
     const existingActivity = editingActivityId ? activityLogs.find((entry) => entry.id === editingActivityId) : null;
+
+    const trimmedDetail = detailValue.trim();
+
+    const resolvedActivityType = resolveActivityTypeForSave(detailActivityType, trimmedDetail);
+
+    const happenedAt = mergeDayWithTime(logDayKey, happenedAtValue);
+
+    const attachmentDocumentTypes = attachmentDocumentTypesForActivity(resolvedActivityType);
+
+    const attachmentNames = activityAttachmentFileNamesForSave(
+      { id: editingActivityId ?? "", profileSlug: HEWSTER_PROFILE_SLUG, activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
+      attachmentFiles,
+      attachmentDocumentTypes
+    );
+
+    const attachmentNote = attachmentNames.length ? `Attachments: ${attachmentNames.join(", ")}` : "";
 
     const resolvedNotes =
 
@@ -1136,10 +1177,6 @@ export default function LogPage() {
 
           : [notesValue.trim(), recordTagNote, attachmentNote].filter(Boolean).join("\n") || null;
 
-    const trimmedDetail = detailValue.trim();
-
-    const resolvedActivityType = resolveActivityTypeForSave(detailActivityType, trimmedDetail);
-
     const activity: ActivityLog = {
 
       id: editingActivityId ?? `${resolvedActivityType}-${Date.now()}`,
@@ -1148,7 +1185,7 @@ export default function LogPage() {
 
       activityType: resolvedActivityType,
 
-      happenedAt: mergeDayWithTime(logDayKey, happenedAtValue),
+      happenedAt,
 
       detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : isCareActivityType(detailActivityType) ? careDetailForSave(existingActivity?.detail ?? null, trimmedDetail || "Given") : trimmedDetail || null,
 
@@ -1163,7 +1200,7 @@ export default function LogPage() {
     await saveActivity(activity, editingActivityId ? "update" : "create");
 
     if (attachmentFiles.length) {
-      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypesForActivity(activity.activityType));
+      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypes);
 
       if (savedAttachments.length) {
         setActivityLogs((current) => {

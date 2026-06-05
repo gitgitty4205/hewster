@@ -1644,9 +1644,12 @@ export async function saveActivityAttachmentsToSupabase(activity: ActivityLog, f
     throw clearExisting.error;
   }
 
-  for (const file of files) {
+  const savedFileNames = activityAttachmentFileNamesForSave(activity, files, documentTypes);
+
+  for (const [index, file] of files.entries()) {
     const attachmentId = crypto.randomUUID();
-    const filePath = activityAttachmentStoragePath(userId, activity.id, attachmentId, file.name);
+    const fileName = savedFileNames[index] ?? file.name;
+    const filePath = activityAttachmentStoragePath(userId, activity.id, attachmentId, fileName);
     const uploadResult = await supabase.storage
       .from("pet-attachments")
       .upload(filePath, file, {
@@ -1669,7 +1672,7 @@ export async function saveActivityAttachmentsToSupabase(activity: ActivityLog, f
       owner_id: userId,
       profile_slug: HEWSTER_PROFILE_SLUG,
       activity_log_id: activity.id,
-      file_name: file.name,
+      file_name: fileName,
       file_path: filePath,
       content_type: file.type || null,
       size_bytes: file.size,
@@ -1715,6 +1718,45 @@ export async function deleteActivityLogInSupabase(activityId: string) {
   if (error) {
     throw error;
   }
+}
+
+export function activityAttachmentFileNamesForSave(activity: ActivityLog, files: File[], documentTypes: string[]) {
+  const isPottyImage =
+    documentTypes.includes("Potty Image") ||
+    documentTypes.includes("Poop Photo") ||
+    activity.activityType === "poop" ||
+    activity.activityType === "potty";
+  const isHealthAttachment = documentTypes.includes("Medical Attachment");
+
+  if (!isPottyImage && !isHealthAttachment) return files.map((file) => file.name);
+
+  const date = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(activity.happenedAt));
+
+  return files.map((file, index) => {
+    const extension = fileExtensionFromName(file.name) || extensionFromContentType(file.type) || "jpg";
+    const suffix = files.length > 1 ? ` ${index + 1}` : "";
+    if (isPottyImage) return `Potty Image ${date}${suffix}.${extension}`;
+    if (file.type.startsWith("image/")) return `Health Image ${date}${suffix}.${extension}`;
+    return file.name;
+  });
+}
+
+function fileExtensionFromName(fileName: string) {
+  const trimmed = fileName.trim();
+  const extension = trimmed.split(".").pop()?.toLowerCase() ?? "";
+  return extension && extension !== trimmed.toLowerCase() && /^[a-z0-9]{1,8}$/.test(extension) ? extension : "";
+}
+
+function extensionFromContentType(contentType: string) {
+  if (contentType === "image/png") return "png";
+  if (contentType === "image/webp") return "webp";
+  if (contentType === "image/gif") return "gif";
+  if (contentType === "image/heic" || contentType === "image/heif") return "heic";
+  return "";
 }
 
 function safeStorageFileName(fileName: string) {

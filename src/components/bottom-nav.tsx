@@ -23,7 +23,8 @@ import {
 } from "@/lib/alerts";
 import { loadCareTemplates } from "@/lib/care-settings";
 import { loadAppState } from "@/lib/hewster-data";
-import { DEFAULT_PET_PHOTO_URL, PET_THEME_UPDATED_EVENT, applyPetTheme, loadPetProfile, loadUserTheme } from "@/lib/pet-profile";
+import { DEFAULT_PET_PHOTO_URL, PET_THEME_UPDATED_EVENT, applyPetTheme, loadPetProfile, loadSharedPetProfile, loadUserTheme } from "@/lib/pet-profile";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 type Props = {
   alertsCount?: number;
@@ -229,6 +230,14 @@ export function BottomNav({ alertsCount }: Props) {
 
   useEffect(() => {
     const refreshProfilePhoto = () => {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase && user) {
+        void loadSharedPetProfile(supabase, user)
+          .then((profile) => setProfilePhotoUrl(profile.photoUrl || DEFAULT_PET_PHOTO_URL))
+          .catch(() => setProfilePhotoUrl(loadPetProfile().photoUrl || DEFAULT_PET_PHOTO_URL));
+        return;
+      }
+
       setProfilePhotoUrl(loadPetProfile().photoUrl || DEFAULT_PET_PHOTO_URL);
     };
 
@@ -239,7 +248,7 @@ export function BottomNav({ alertsCount }: Props) {
       window.removeEventListener("pet-profile-updated", refreshProfilePhoto);
       window.removeEventListener("storage", refreshProfilePhoto);
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const refreshTheme = () => applyPetTheme(loadUserTheme(user?.id));

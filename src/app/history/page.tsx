@@ -2,7 +2,7 @@
 
 
 
-import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, ImageIcon, Paperclip, SlidersHorizontal, Tablets, TriangleAlert } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, ImageIcon, Lock, LockOpen, Paperclip, SlidersHorizontal, Tablets, TriangleAlert } from "lucide-react";
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
@@ -17,6 +17,7 @@ import { useAuth } from "@/components/auth-provider";
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
 
@@ -509,7 +510,7 @@ function TimelineStatusBadge({ status }: { status: "Skipped" | "Missed" | null }
 }
 
 function TimelineDetailText({ detail, status, className = "mt-1 text-sm text-zinc-500" }: { detail: string; status: "Skipped" | "Missed" | null; className?: string }) {
-  const cleanDetail = cleanTimelineDetail(detail, status);
+  const cleanDetail = displayMedicalDetail(cleanTimelineDetail(detail, status)) ?? "";
 
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
@@ -679,7 +680,7 @@ function PottyDetailBadges({ detail, notes, inset = true }: { detail: string | n
 
           <span className="inline-flex min-w-0 flex-nowrap items-center gap-1.5">
 
-            <span className={pottyBadgeClasses(bristol ?? "Poop")}>
+            <span className={`${pottyBadgeClasses(bristol ?? "Poop")} shrink-0 whitespace-nowrap`}>
 
               <span className="mr-1">{"\u{1F4A9}"}</span>
 
@@ -713,6 +714,10 @@ function displayActivityLabel(activity: ActivityLog) {
 
   return ["pee", "poop", "potty"].includes(activity.activityType) ? "Potty" : formatActivityLabel(activity.activityType);
 
+}
+
+function displayMedicalDetail(detail: string | null) {
+  return detail?.replace(/^Other Vet\/Medical\b/, "Other Vet / Medical").replace(/^Other Medical\b/, "Other Vet / Medical") ?? null;
 }
 
 
@@ -975,7 +980,7 @@ function ActivityDetailAndNotes({ activity, careTemplates = [] }: { activity: Ac
 
     <div className="mt-2 space-y-1 text-sm text-zinc-600">
 
-      {activity.detail ? <p>{activity.detail}</p> : null}
+      {activity.detail ? <p>{displayMedicalDetail(activity.detail)}</p> : null}
 
       {notesText ? <ExpandableNoteText>Notes: {notesText}</ExpandableNoteText> : null}
 
@@ -1290,7 +1295,7 @@ const recordFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
 
 const historyFilterLabels = new Map([...eventFilterOptions, ...recordFilterOptions].map((option) => [option.id, option.label]));
 
-const medicalWellnessDetails = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Vaccine / Injection", "Medication", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", "Other Medical"];
+const medicalWellnessDetails = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Vaccine / Injection", "Medication", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", "Other Vet / Medical", "Other Vet/Medical", "Other Medical"];
 
 function isMedicalWellnessDetail(detail: string | null) {
   const normalized = detail ?? "";
@@ -1403,6 +1408,8 @@ function timelineItemMatchesHistoryFilter(item: HistoryDay["timelineItems"][numb
 
 export default function HistoryPage() {
 
+  const router = useRouter();
+
   const { loading: authLoading } = useAuth();
 
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
@@ -1449,6 +1456,7 @@ export default function HistoryPage() {
   const [sendCopyStatus, setSendCopyStatus] = useState("");
   const [isSendingCopy, setIsSendingCopy] = useState(false);
   const [includeLogDetails, setIncludeLogDetails] = useState(false);
+  const [historyEditUnlocked, setHistoryEditUnlocked] = useState(false);
   const [activeNotebookRole, setActiveNotebookRole] = useState<NotebookAccessRole | null>(null);
   const [profile, setProfile] = useState<PetProfile>(() => loadPetProfile());
   const supabaseReady = isSupabaseConfigured();
@@ -2140,7 +2148,7 @@ export default function HistoryPage() {
       });
 
       day.activities.forEach((activity) => {
-        const detail = renderActivityDetail(activity);
+        const detail = displayMedicalDetail(renderActivityDetail(activity));
         const notes = activity.notes ? ` | Notes: ${activity.notes.replace(/\n/g, " ")}` : "";
         lines.push(`- ${formatActivityTime(activity.happenedAt)} ${displayActivityLabel(activity)}${detail ? ` - ${detail}` : ""}${notes}`);
         if (isReportImageActivity(activity)) {
@@ -2320,6 +2328,34 @@ export default function HistoryPage() {
   const showWeights = selectedHistoryDay && activeFilter === "all";
 
   const showAlerts = selectedHistoryDay && activeFilter === "all";
+
+  const historyEditModeButton = (label: string, colorClassName = "text-zinc-500 hover:text-zinc-700") => {
+    const Icon = historyEditUnlocked ? LockOpen : Lock;
+
+    return (
+      <button
+        type="button"
+        onClick={() => setHistoryEditUnlocked((current) => !current)}
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full bg-white/80 ring-1 ring-zinc-200 transition ${colorClassName}`}
+        aria-label={`${historyEditUnlocked ? "Lock" : "Unlock"} ${label} history editing`}
+        title={historyEditUnlocked ? "Editing unlocked" : "Unlock editing"}
+      >
+        <Icon className="size-4" />
+      </button>
+    );
+  };
+
+  const openHistoryMealEditor = (dayKey: string, mealId: number) => {
+    if (!historyEditUnlocked) return;
+    router.push(`/hewie/log?date=${dayKey}&editMeal=${mealId}`);
+  };
+
+  const openHistoryActivityEditor = (dayKey: string, activityId: string) => {
+    if (!historyEditUnlocked) return;
+    router.push(`/hewie/log?date=${dayKey}&editActivity=${encodeURIComponent(activityId)}`);
+  };
+
+  const editableHistoryCardClassName = historyEditUnlocked ? "cursor-pointer transition hover:brightness-[0.98] active:scale-[0.99]" : "";
 
 
 
@@ -3061,7 +3097,10 @@ export default function HistoryPage() {
 
                 <div>
 
-                  <h3 className="mb-2 text-sm font-semibold text-[#6b3f22]">Meals</h3>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-[#6b3f22]">Meals</h3>
+                    {historyEditModeButton("meals", "text-[#6b3f22]/55 hover:text-[#6b3f22]")}
+                  </div>
 
                   <div className="space-y-2">
 
@@ -3072,7 +3111,18 @@ export default function HistoryPage() {
 
                       return (
 
-                      <article key={`${selectedHistoryDay.day}-meal-${meal.id}-${meal.actualTime}`} className="rounded-2xl bg-[#f4eadf]/90 p-4 ring-1 ring-[#d8b895]">
+                      <article
+                        key={`${selectedHistoryDay.day}-meal-${meal.id}-${meal.actualTime}`}
+                        role={historyEditUnlocked ? "button" : undefined}
+                        tabIndex={historyEditUnlocked ? 0 : undefined}
+                        onClick={() => openHistoryMealEditor(selectedHistoryDay.day, meal.id)}
+                        onKeyDown={(event) => {
+                          if (!historyEditUnlocked || (event.key !== "Enter" && event.key !== " ")) return;
+                          event.preventDefault();
+                          openHistoryMealEditor(selectedHistoryDay.day, meal.id);
+                        }}
+                        className={`rounded-2xl bg-[#f4eadf]/90 p-4 ring-1 ring-[#d8b895] ${editableHistoryCardClassName}`}
+                      >
 
                         <div className="flex items-center justify-between gap-3">
 
@@ -3125,7 +3175,10 @@ export default function HistoryPage() {
 
                 <div>
 
-                  <h3 className="mb-2 text-sm font-semibold text-zinc-700">Events</h3>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-zinc-700">Events</h3>
+                    {historyEditModeButton("events")}
+                  </div>
 
                   <div className="space-y-2">
 
@@ -3143,7 +3196,18 @@ export default function HistoryPage() {
 
                         return (
 
-                          <article key={activity.id} className={`rounded-2xl p-4 ring-1 ${style.card}`}>
+                          <article
+                            key={activity.id}
+                            role={historyEditUnlocked ? "button" : undefined}
+                            tabIndex={historyEditUnlocked ? 0 : undefined}
+                            onClick={() => openHistoryActivityEditor(selectedHistoryDay.day, activity.id)}
+                            onKeyDown={(event) => {
+                              if (!historyEditUnlocked || (event.key !== "Enter" && event.key !== " ")) return;
+                              event.preventDefault();
+                              openHistoryActivityEditor(selectedHistoryDay.day, activity.id);
+                            }}
+                            className={`rounded-2xl p-4 ring-1 ${style.card} ${editableHistoryCardClassName}`}
+                          >
 
                             <div className="flex items-start justify-between gap-3">
 
@@ -3185,7 +3249,18 @@ export default function HistoryPage() {
 
                       return (
 
-                        <article key={activity.id} className={`rounded-2xl p-4 ring-1 ${style.card}`}>
+                        <article
+                          key={activity.id}
+                          role={historyEditUnlocked ? "button" : undefined}
+                          tabIndex={historyEditUnlocked ? 0 : undefined}
+                          onClick={() => openHistoryActivityEditor(selectedHistoryDay.day, activity.id)}
+                          onKeyDown={(event) => {
+                            if (!historyEditUnlocked || (event.key !== "Enter" && event.key !== " ")) return;
+                            event.preventDefault();
+                            openHistoryActivityEditor(selectedHistoryDay.day, activity.id);
+                          }}
+                          className={`rounded-2xl p-4 ring-1 ${style.card} ${editableHistoryCardClassName}`}
+                        >
 
                           <div className="flex items-center justify-between gap-3">
 

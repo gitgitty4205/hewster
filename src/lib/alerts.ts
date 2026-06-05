@@ -410,7 +410,6 @@ export function resolveAlerts(
         reviewAction: needsReview ? { type: "meal", mealId: meal.id, plannedTime: meal.plannedTime } : undefined,
       });
 
-      if (needsReview) pushMealLinkedCareReviewAlerts(meal, plannedAt);
       return;
     }
 
@@ -505,6 +504,7 @@ export function resolveAlerts(
         kind: "manual",
         title: alert.title,
         detail: [alert.time ? formatReminderTime(alert.time) : null, alert.message].filter(Boolean).join(" • "),
+        expandedDetail: alert.message.trim() || undefined,
         severity: "info",
       });
     });

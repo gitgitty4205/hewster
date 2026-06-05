@@ -13,7 +13,7 @@ import {
   type NotebookAccessRole,
   type NotebookMember,
 } from "@/lib/notebook-access";
-import { DEFAULT_PET_PHOTO_URL, defaultPetProfile, loadPetProfile, savePetProfile, type PetProfile } from "@/lib/pet-profile";
+import { DEFAULT_PET_PHOTO_URL, defaultPetProfile, loadPetProfile, loadSharedPetProfile, savePetProfile, type PetProfile } from "@/lib/pet-profile";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 import { cn } from "@/lib/utils";
@@ -114,16 +114,26 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      setProfile(loadPetProfile());
+      const supabase = getSupabaseBrowserClient();
+      if (supabase && user) {
+        void loadSharedPetProfile(supabase, user).then(setProfile).catch(() => setProfile(loadPetProfile()));
+      } else {
+        setProfile(loadPetProfile());
+      }
       setPets(readRoster(user?.id));
     }, 0);
 
     return () => window.clearTimeout(id);
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
     const refreshProfile = () => {
-      setProfile(loadPetProfile());
+      const supabase = getSupabaseBrowserClient();
+      if (supabase && user) {
+        void loadSharedPetProfile(supabase, user).then(setProfile).catch(() => setProfile(loadPetProfile()));
+      } else {
+        setProfile(loadPetProfile());
+      }
       setPets(readRoster(user?.id));
     };
 
@@ -134,7 +144,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
       window.removeEventListener("pet-profile-updated", refreshProfile);
       window.removeEventListener("storage", refreshProfile);
     };
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();

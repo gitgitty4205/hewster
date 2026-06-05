@@ -411,7 +411,9 @@ const spayNeuterDetails = ["Spay", "Neuter"];
 
 const sickSymptomOptions = ["Digestive", "Respiratory", "Skin", "Ear", "Eye", "Urinary", "Mobility / Pain", "Neurological", "Behavior", "Other"];
 
-const sickMedicalOptions = ["Vet Visit", "Medication", "Injection", "Other Medical"];
+const otherVetMedicalDetail = "Other Vet / Medical";
+const legacyOtherMedicalDetail = "Other Medical";
+const sickMedicalOptions = ["Vet Visit", "Medication", "Injection", otherVetMedicalDetail];
 
 type SickLogMode = "symptom" | "medical" | "";
 
@@ -419,7 +421,7 @@ function sickLogModeFromDetail(detail: string): SickLogMode {
   if (!detail) return "";
   if (sickSymptomOptions.includes(detail)) return "symptom";
   if (sickMedicalOptions.some((option) => detail === option || detail.startsWith(`${option}: `))) return "medical";
-  if (["Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", "Other Medical"].some((option) => detail.includes(option))) return "medical";
+  if (["Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", otherVetMedicalDetail, legacyOtherMedicalDetail].some((option) => detail.includes(option))) return "medical";
   return "symptom";
 }
 
@@ -553,9 +555,9 @@ function isPresetSelected(activityType: ActivityType, preset: string, detail: st
 
   }
 
-  if (activityType === "sick" && preset === "Other Medical") {
+  if (activityType === "sick" && preset === otherVetMedicalDetail) {
 
-    return detail === preset || detail.startsWith(`${preset}: `);
+    return isOtherMedicalDetail(detail);
 
   }
 
@@ -583,7 +585,7 @@ function nextDetailValue(activityType: ActivityType, preset: string, detail: str
 
   if (activityType === "sick" && preset === "Other") return "Other";
 
-  if (activityType === "sick" && preset === "Other Medical") return "Other Medical";
+  if (activityType === "sick" && preset === otherVetMedicalDetail) return otherVetMedicalDetail;
 
   if (activityType === "wellness") return preset;
 
@@ -699,7 +701,7 @@ function sickSymptomFromDetail(detail: string) {
 
 function isOtherMedicalDetail(detail: string) {
 
-  return detail === "Other Medical" || detail.startsWith("Other Medical: ");
+  return detail === otherVetMedicalDetail || detail.startsWith(`${otherVetMedicalDetail}: `) || detail === legacyOtherMedicalDetail || detail.startsWith(`${legacyOtherMedicalDetail}: `);
 
 }
 
@@ -707,7 +709,7 @@ function isOtherMedicalDetail(detail: string) {
 
 function displayDetailValue(detail: string) {
 
-  if (isOtherMedicalDetail(detail)) return detail.replace(/^Other Medical:?\s*/, "");
+  if (isOtherMedicalDetail(detail)) return detail.replace(/^(?:Other Vet \/ Medical|Other Vet\/Medical|Other Medical):?\s*/, "");
 
   return detail;
 
@@ -1047,7 +1049,7 @@ export function ActivityDetailForm({
                     className={presetButtonClasses(activityType, preset, isPresetSelected(activityType, preset, detail))}
                     onClick={() => onDetailChange(nextDetailValue(activityType, preset, detail))}
                   >
-                    {preset === "Other Medical" ? "Other" : preset}
+                    {preset === otherVetMedicalDetail ? "Other" : preset}
                   </button>
 
                 ))}
@@ -1485,7 +1487,7 @@ export function ActivityDetailForm({
 
             onChange={(event) => {
               const nextValue = clampText(event.target.value, MAX_EVENT_TITLE_LENGTH);
-              onDetailChange(isOtherMedicalDetail(detail) ? nextValue ? `Other Medical: ${nextValue}` : "Other Medical" : nextValue);
+              onDetailChange(isOtherMedicalDetail(detail) ? nextValue ? `${otherVetMedicalDetail}: ${nextValue}` : otherVetMedicalDetail : nextValue);
             }}
 
             placeholder={activityType === "other" ? "What would you like to log?" : "Add a title"}

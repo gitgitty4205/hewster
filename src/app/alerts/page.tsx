@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronDown, Ellipsis, TriangleAlert } from "lucide-react";
+import { Bell, ChevronDown, TriangleAlert } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { type MouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 
@@ -853,6 +853,8 @@ export default function AlertsPage() {
                   const reviewActionButtonClass = "h-8 min-w-14 rounded-full px-2.5 text-xs font-semibold";
                   const detailKey = `unresolved-${alert.id}`;
                   const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
+                  const expandedDetail = alert.expandedDetail?.trim();
+                  const hasExpandedDetail = Boolean(expandedDetail && expandedDetail !== alert.detail.trim());
 
                   return (
                     <article
@@ -867,14 +869,16 @@ export default function AlertsPage() {
                           </p>
                           <p className="mt-1 truncate text-sm leading-5 text-[#b71f48]/70">{alert.detail}</p>
                         </div>
-                        <ExpandDetailsButton
-                          expanded={detailsExpanded}
-                          className="text-[#8f1739] hover:text-[#7c1431]"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
-                          }}
-                        />
+                        {hasExpandedDetail ? (
+                          <ExpandDetailsButton
+                            expanded={detailsExpanded}
+                            className="text-[#8f1739] hover:text-[#7c1431]"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
+                            }}
+                          />
+                        ) : null}
                         {alert.kind === "manual" ? (
                           <Button
                             type="button"
@@ -888,9 +892,11 @@ export default function AlertsPage() {
                           </Button>
                         ) : null}
                       </div>
-                      <InlineDetails expanded={detailsExpanded} className="mx-auto w-full max-w-[23rem] bg-[#fff0f1]/75 px-4 text-[#8f1739] ring-1 ring-[#e6c8ce]/70">
-                        {alert.expandedDetail ?? alert.detail}
-                      </InlineDetails>
+                      {hasExpandedDetail ? (
+                        <InlineDetails expanded={detailsExpanded} className="mx-auto w-full max-w-[23rem] bg-[#fff0f1]/75 px-4 text-[#8f1739] ring-1 ring-[#e6c8ce]/70">
+                          {expandedDetail}
+                        </InlineDetails>
+                      ) : null}
                       {mealReviewAction || customCareReviewAction ? (
                         <div className={`mt-3 items-center justify-end gap-2 ${showLogTime ? "ml-auto grid w-fit max-w-full grid-cols-[7.75rem_auto_auto]" : "flex"}`} onKeyDown={(event) => event.stopPropagation()}>
                           {showLogTime ? (
@@ -979,7 +985,21 @@ export default function AlertsPage() {
                   return (
                     <article
                       key={alert.id}
-                      className="rounded-2xl bg-white/75 p-4 ring-1 ring-[#e6c8ce]/70"
+                      role={editingAlertId === alert.id ? undefined : "button"}
+                      tabIndex={editingAlertId === alert.id ? undefined : 0}
+                      onClick={editingAlertId === alert.id ? undefined : () => startEditingAlert(alert)}
+                      onKeyDown={
+                        editingAlertId === alert.id
+                          ? undefined
+                          : (event) => {
+                              if (event.key !== "Enter" && event.key !== " ") return;
+                              event.preventDefault();
+                              startEditingAlert(alert);
+                            }
+                      }
+                      className={`rounded-2xl bg-white/75 p-4 ring-1 ring-[#e6c8ce]/70 ${
+                        editingAlertId === alert.id ? "" : "cursor-pointer transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#d91f56]/35"
+                      }`}
                     >
                       {editingAlertId === alert.id ? (
                         <div className="space-y-3">
@@ -1054,11 +1074,10 @@ export default function AlertsPage() {
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                       />
                       {editingAlertError ? <p className="text-sm font-medium text-[#8f1739]">{editingAlertError}</p> : null}
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <Button disabled={Boolean(editingAlertError)} className="rounded-full bg-[#8f1739] px-2 text-white hover:bg-[#7c1431] disabled:opacity-45" onClick={saveEditedAlert}>Save</Button>
                         <Button variant="outline" className="rounded-full border-[#e6c8ce] px-2 text-[#d91f56] hover:bg-[#fff0f1]" onClick={cancelEditingAlert}>Cancel</Button>
                         <Button variant="outline" className="rounded-full border-[#e6c8ce] px-2 text-[#d91f56] hover:bg-[#fff0f1]" onClick={() => deleteManualAlert(alert.id)}>Delete</Button>
-                        <Button variant="outline" className="rounded-full border-[#ff1b5a] px-2 text-[#d91f56] hover:bg-[#fff0f1]" onClick={() => resolveManualAlert(alert.id)}>Done</Button>
                       </div>
                     </div>
                   ) : (
@@ -1073,26 +1092,16 @@ export default function AlertsPage() {
                           </p>
                           {savedAlertMessage ? <p className="mt-1 truncate text-sm text-[#b71f48]/65">{savedAlertMessage}</p> : null}
                         </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          {savedAlertMessage ? (
-                            <ExpandDetailsButton
-                              expanded={detailsExpanded}
-                              className="text-[#8f1739] hover:text-[#7c1431]"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
-                              }}
-                            />
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => startEditingAlert(alert)}
-                            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/75 text-[#d91f56]/60 ring-1 ring-[#e6c8ce]/70 transition hover:bg-white hover:text-[#d91f56]"
-                            aria-label={`Edit ${alert.title}`}
-                          >
-                            <Ellipsis className="size-3.5" />
-                          </button>
-                        </div>
+                        {savedAlertMessage ? (
+                          <ExpandDetailsButton
+                            expanded={detailsExpanded}
+                            className="shrink-0 text-[#8f1739] hover:text-[#7c1431]"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
+                            }}
+                          />
+                        ) : null}
                       </div>
                       {savedAlertMessage ? (
                         <InlineDetails expanded={detailsExpanded} className="mx-auto w-full max-w-[23rem] bg-[#fff0f1]/75 px-4 text-[#8f1739] ring-1 ring-[#e6c8ce]/70">
@@ -1154,7 +1163,23 @@ export default function AlertsPage() {
                 {reminderRules.map((rule) => (
                   <article
                     key={rule.id}
-                    className="rounded-2xl bg-white/70 p-4 ring-1 ring-[var(--hewie-ring,#cbd5e1)]"
+                    role={editingReminderRuleId === rule.id ? undefined : "button"}
+                    tabIndex={editingReminderRuleId === rule.id ? undefined : 0}
+                    onClick={editingReminderRuleId === rule.id ? undefined : () => startEditingReminderRule(rule)}
+                    onKeyDown={
+                      editingReminderRuleId === rule.id
+                        ? undefined
+                        : (event) => {
+                            if (event.key !== "Enter" && event.key !== " ") return;
+                            event.preventDefault();
+                            startEditingReminderRule(rule);
+                          }
+                    }
+                    className={`rounded-2xl bg-white/70 p-4 ring-1 ring-[var(--hewie-ring,#cbd5e1)] ${
+                      editingReminderRuleId === rule.id
+                        ? ""
+                        : "cursor-pointer transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hewie-active-text,#334155)]/25"
+                    }`}
                   >
                     {editingReminderRuleId === rule.id ? (
                       <div className="space-y-3">
@@ -1176,28 +1201,20 @@ export default function AlertsPage() {
                             className="w-28 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                           />
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button className="rounded-full bg-[var(--hewie-active-text,#334155)] text-white hover:opacity-90" onClick={saveEditedReminderRule}>Save</Button>
-                          <Button variant="outline" className="rounded-full" onClick={cancelEditingReminderRule}>Cancel</Button>
-                          <Button variant="outline" className="rounded-full border-[var(--hewie-ring,#cbd5e1)] text-[var(--hewie-active-text,#334155)] hover:bg-[var(--hewie-active-bg,#f1f5f9)]" onClick={() => deleteReminderRule(rule.id)}>Delete</Button>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button className="rounded-full bg-[var(--hewie-active-text,#334155)] px-2 text-white hover:opacity-90" onClick={saveEditedReminderRule}>Save</Button>
+                          <Button variant="outline" className="rounded-full px-2" onClick={cancelEditingReminderRule}>Cancel</Button>
+                          <Button variant="outline" className="rounded-full border-[var(--hewie-ring,#cbd5e1)] px-2 text-[var(--hewie-active-text,#334155)] hover:bg-[var(--hewie-active-bg,#f1f5f9)]" onClick={() => deleteReminderRule(rule.id)}>Delete</Button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-start justify-between gap-3">
+                      <div>
                         <div>
                           <p className="font-medium text-[var(--hewie-active-text,#334155)]">
                             {reminderEventLabel(rule.eventType)} by {formatReminderTime(rule.time)}
                           </p>
                           <p className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/65">Every Day</p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => startEditingReminderRule(rule)}
-                          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/55 ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white hover:text-[var(--hewie-active-text,#334155)]"
-                          aria-label={`Edit ${reminderEventLabel(rule.eventType)} reminder`}
-                        >
-                          <Ellipsis className="size-3.5" />
-                        </button>
                       </div>
                     )}
                   </article>

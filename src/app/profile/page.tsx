@@ -28,8 +28,10 @@ import {
   defaultPetProfile,
   displayPetAge,
   loadPetProfile,
+  loadSharedPetProfile,
   loadUserTheme,
   savePetProfile,
+  saveSharedPetProfile,
   saveUserTheme,
   type PetProfile,
   type ThemeId,
@@ -173,12 +175,15 @@ export default function ProfilePage() {
   const [showMemorialSettings, setShowMemorialSettings] = useState(false);
 
   useEffect(() => {
-    void Promise.resolve().then(() => {
-      const storedProfile = loadPetProfile();
+    void Promise.resolve().then(async () => {
+      const supabase = getSupabaseBrowserClient();
+      const storedProfile = supabase && user
+        ? await loadSharedPetProfile(supabase, user)
+        : loadPetProfile();
       setProfile(storedProfile);
       setThemeId(loadUserTheme(user?.id));
     });
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
     applyPetTheme(themeId);
@@ -297,6 +302,12 @@ export default function ProfilePage() {
       setProfilePhotoMessage("Could not save this change because browser storage is full.");
       return;
     }
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && user) {
+      void saveSharedPetProfile(supabase, user, updated).catch(() => {
+        setProfilePhotoMessage("Saved on this device, but could not sync the shared profile.");
+      });
+    }
     if (profileValidationMessage) {
       const missing = missingRequiredPetInfoFields(updated);
       setMissingPetInfoFields(new Set(missing));
@@ -385,7 +396,7 @@ export default function ProfilePage() {
                   <Heart className="size-4 fill-current" />
                 </button>
               </div>
-              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">This Saves Locally For Now.</p>
+              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">Shared with everyone who has notebook access.</p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
               <p className="min-h-4 text-xs font-semibold text-emerald-600">{saveState === "saved" ? "Saved" : ""}</p>

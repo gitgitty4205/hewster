@@ -34,6 +34,7 @@ import {
   loadAppState,
   loadFreshAppState,
   loadNotebookEntryPermissions,
+  activityAttachmentFileNamesForSave,
   persistLocalState,
   saveActivityLogToSupabase,
   saveActivityAttachmentsToSupabase,
@@ -491,7 +492,7 @@ function sortMsForClockTime(dayKey: string, time: string) {
 }
 
 function attachmentDocumentTypesForActivity(activityType: ActivityType) {
-  return activityType === "poop" || activityType === "potty" ? ["Poop Photo"] : ["Medical Attachment"];
+  return activityType === "poop" || activityType === "potty" ? ["Potty Image"] : ["Medical Attachment"];
 }
 
 async function openPoopRecordAttachment(filePath: string) {
@@ -2052,19 +2053,26 @@ export default function HomeApp() {
   const saveDetailedActivity = async () => {
     if (!detailActivityType) return;
 
-    const attachmentNote = attachmentFiles.length ? `Attachments: ${attachmentFiles.map((file) => file.name).join(", ")}` : "";
     const recordTagNote = "";
+    const trimmedDetail = detailValue.trim();
+    const resolvedActivityType = resolveActivityTypeForSave(detailActivityType, trimmedDetail);
+    const happenedAt = mergeTodayWithTime(happenedAtValue);
+    const attachmentDocumentTypes = attachmentDocumentTypesForActivity(resolvedActivityType);
+    const attachmentNames = activityAttachmentFileNamesForSave(
+      { id: editingActivityId ?? "", profileSlug: HEWSTER_PROFILE_SLUG, activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
+      attachmentFiles,
+      attachmentDocumentTypes
+    );
+    const attachmentNote = attachmentNames.length ? `Attachments: ${attachmentNames.join(", ")}` : "";
     const resolvedNotes =
       detailActivityType === "treat" || detailActivityType === "food"
         ? [notesValue.trim(), extraNotesValue.trim() ? `Notes: ${extraNotesValue.trim()}` : ""].filter(Boolean).join(" ") || null
         : [notesValue.trim(), recordTagNote, attachmentNote].filter(Boolean).join("\n") || null;
-    const trimmedDetail = detailValue.trim();
-    const resolvedActivityType = resolveActivityTypeForSave(detailActivityType, trimmedDetail);
     const activity: ActivityLog = {
       id: editingActivityId ?? `${resolvedActivityType}-${Date.now()}`,
       profileSlug: HEWSTER_PROFILE_SLUG,
       activityType: resolvedActivityType,
-      happenedAt: mergeTodayWithTime(happenedAtValue),
+      happenedAt,
       detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : trimmedDetail || null,
       notes: resolvedNotes,
       createdAt: editingActivityId ? activityLogs.find((entry) => entry.id === editingActivityId)?.createdAt : new Date().toISOString(),
@@ -2072,7 +2080,7 @@ export default function HomeApp() {
 
     await saveActivity(activity, editingActivityId ? "update" : "create");
     if (attachmentFiles.length) {
-      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypesForActivity(activity.activityType));
+      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypes);
 
       if (savedAttachments.length) {
         setActivityLogs((current) => {
@@ -2186,6 +2194,8 @@ export default function HomeApp() {
             {todayAlertCards.slice(0, 3).map((alert) => {
               const detailKey = `today-alert-${alert.id}`;
               const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
+              const expandedDetail = alert.expandedDetail?.trim();
+              const hasExpandedDetail = Boolean(expandedDetail && expandedDetail !== alert.detail.trim());
 
               return (
                 <div
@@ -2201,14 +2211,16 @@ export default function HomeApp() {
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
-                      <ExpandDetailsButton
-                        expanded={detailsExpanded}
-                        className="text-[#8f1739] hover:text-[#7c1431]"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
-                        }}
-                      />
+                      {hasExpandedDetail ? (
+                        <ExpandDetailsButton
+                          expanded={detailsExpanded}
+                          className="text-[#8f1739] hover:text-[#7c1431]"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
+                          }}
+                        />
+                      ) : null}
                       {alert.kind === "manual" ? (
                         <button
                           type="button"
@@ -2224,9 +2236,11 @@ export default function HomeApp() {
                       ) : null}
                     </div>
                   </div>
-                  <InlineDetails expanded={detailsExpanded} className="bg-white/55 text-[#8f1739] ring-1 ring-[#e6c8ce]/70">
-                    {alert.expandedDetail ?? alert.detail}
-                  </InlineDetails>
+                  {hasExpandedDetail ? (
+                    <InlineDetails expanded={detailsExpanded} className="bg-white/55 text-[#8f1739] ring-1 ring-[#e6c8ce]/70">
+                      {expandedDetail}
+                    </InlineDetails>
+                  ) : null}
                 </div>
               );
             })}
