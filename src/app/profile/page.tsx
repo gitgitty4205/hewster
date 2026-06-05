@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { CircleHelp, Ellipsis, Heart, MailPlus, ShieldCheck } from "lucide-react";
+import { CircleHelp, Ellipsis, Heart, ShieldCheck } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
 
@@ -842,7 +842,7 @@ export default function ProfilePage() {
                     className="mt-2 w-full rounded-2xl border-0 bg-white px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-[var(--hewie-ring,#cbd5e1)] placeholder:text-zinc-400"
                   />
                 </label>
-                <fieldset>
+                <fieldset className="mt-2">
                   <legend className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Role</legend>
                   <div className="mt-2 grid gap-2">
                     {notebookInviteRoles.map((role) => {
@@ -907,7 +907,6 @@ export default function ProfilePage() {
                 className="mt-3 h-11 w-full rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60"
                 disabled={!user || accessStatus === "saving"}
               >
-                <MailPlus className="size-4" />
                 {accessStatus === "saving" ? "Sending..." : "Invite"}
               </Button>
             </>
@@ -918,7 +917,8 @@ export default function ProfilePage() {
             </p>
           ) : null}
 
-          <div className="mt-4 space-y-2">
+          <div className="mt-5 space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Current users</h3>
             {members.filter((member) => member.status !== "revoked").map((member) => {
               const pendingAccess = pendingMemberAccess[member.id] ?? member.role;
               const hasPendingChange = member.role !== "owner" && pendingAccess !== member.role;
