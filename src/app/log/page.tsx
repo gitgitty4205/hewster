@@ -2,7 +2,7 @@
 
 
 
-import { Check, Clock3, Ellipsis, Tablets } from "lucide-react";
+import { Check, Clock3, Tablets } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -20,7 +20,6 @@ import { MealTimeForm } from "@/components/meal-time-form";
 
 import { QuickLogCard } from "@/components/quick-log-card";
 
-import { Button } from "@/components/ui/button";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
 
 import {
@@ -447,7 +446,7 @@ function TodayMealPlanCard({
   return (
     <section className="mb-4 rounded-3xl bg-[#f4eadf]/90 p-5 text-[#6b3f22] shadow-sm ring-1 ring-[#d8b895]/65">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-[#5f3a22]">Meal Plan</h2>
+        <h2 className="text-lg font-semibold text-[#5f3a22]">Today&apos;s Meal Plan</h2>
         <p className="text-sm text-[#6b3f22]/62">{isToday ? "Today's meals, checked off as they're logged." : "Meals for this day, checked off as they're logged."}</p>
       </div>
 
@@ -473,8 +472,23 @@ function TodayMealPlanCard({
           const displayMealFood = mealLog?.food || meal.food;
           const displayMealNotes = mealLog?.defaultNotes ?? meal.notes;
 
+          const openMealEditor = () => onOpenMealEditor(meal.id, actualTime);
+
           return (
-            <article key={meal.id} className="rounded-2xl bg-white/72 p-4 shadow-sm ring-1 ring-[#d8b895]/55">
+            <article
+              key={meal.id}
+              className="cursor-pointer rounded-2xl bg-white/72 p-4 shadow-sm ring-1 ring-[#d8b895]/55 transition hover:bg-white/82 active:scale-[0.995]"
+              role="button"
+              tabIndex={0}
+              onClick={openMealEditor}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openMealEditor();
+                }
+              }}
+              aria-label={`Edit ${displayMealName}`}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -495,14 +509,6 @@ function TodayMealPlanCard({
                   </div>
                   <p className="mt-2 text-sm text-[#6b3f22]/72">{displayMealFood}</p>
                 </div>
-                <Button
-                  variant={checked ? "secondary" : "outline"}
-                  className="size-7 rounded-full border-0 bg-white/75 p-0 text-[#6b3f22]/65 ring-1 ring-[#d8b895]/55 hover:bg-white hover:text-[#6b3f22]"
-                  onClick={() => onOpenMealEditor(meal.id, actualTime)}
-                  aria-label={`Edit ${displayMealName}`}
-                >
-                  <Ellipsis className="size-3.5" />
-                </Button>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#6b3f22]/58">
                 <p className="flex min-w-0 items-center gap-1.5">
@@ -522,7 +528,7 @@ function TodayMealPlanCard({
               ) : null}
 
               {editingMealTimeId === meal.id ? (
-                <div className="mt-3">
+                <div className="mt-3" onClick={(event) => event.stopPropagation()}>
                   <MealTimeForm
                     mealName={displayMealName}
                     actualTime={editingMealTimeValue}
@@ -530,7 +536,7 @@ function TodayMealPlanCard({
                     fedNote={editingMealNoteValue}
                     onFedNoteChange={onFedNoteChange}
                     onSave={onSaveMeal}
-                    saveLabel={actualTime ? "Save Meal" : "Mark Fed"}
+                    saveLabel={actualTime ? "Save" : "Mark Fed"}
                     onCancel={onCancelMealEdit}
                     onUndo={actualTime && canUndoMeal ? () => onUndoMeal(meal.id) : undefined}
                     careItems={mealCareItems}

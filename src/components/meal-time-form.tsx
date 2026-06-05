@@ -47,11 +47,11 @@ function fromTimeInputValue(value: string) {
   return `${hours}:${String(rawMinutes).padStart(2, "0")} ${suffix}`;
 }
 
-export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote, onFedNoteChange, onSave, onCancel, onUndo, saveLabel = "Save Meal", careItems = [], skippedCareItemIds = [], onToggleCareItem }: Props) {
+export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote, onFedNoteChange, onSave, onCancel, onUndo, saveLabel = "Save", careItems = [], skippedCareItemIds = [], onToggleCareItem }: Props) {
   return (
     <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold">Edit Meal</h2>
+        <h2 className="text-lg font-semibold">Edit {mealName}</h2>
         <p className="text-sm text-zinc-500">Update the logged time, notes, and what was given with {mealName}.</p>
       </div>
 
@@ -107,7 +107,7 @@ export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote
         <Button type="button" variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
         {onUndo ? (
           <Button type="button" variant="outline" onClick={onUndo} className="rounded-full text-rose-600">
-            Undo Marked Fed
+            Mark as Not Logged
           </Button>
         ) : null}
       </div>
