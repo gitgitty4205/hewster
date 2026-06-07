@@ -914,6 +914,7 @@ export default function MedicalRecordsPage() {
                         happenedAt={happenedAtValue}
                         isEditing
                         embedded
+                        compactEmbedded
                         saveLabel="Save"
                         onDetailChange={setDetailValue}
                         onNotesChange={setNotesValue}

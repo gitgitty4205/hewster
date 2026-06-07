@@ -43,6 +43,8 @@ type Props = {
 
   embedded?: boolean;
 
+  compactEmbedded?: boolean;
+
   saveLabel?: string;
 
   onDetailChange: (value: string) => void;
@@ -766,6 +768,8 @@ export function ActivityDetailForm({
 
   embedded = false,
 
+  compactEmbedded = false,
+
   saveLabel = "Save Details",
 
   onDetailChange,
@@ -923,13 +927,17 @@ export function ActivityDetailForm({
 
 
 
+  const compactEmbeddedClasses = compactEmbedded
+    ? "[&_button]:!text-xs [&_button]:!leading-4 [&_input]:!text-sm [&_label]:!text-xs [&_p]:!text-xs [&_select]:!text-sm [&_span]:!text-xs [&_textarea]:!text-sm"
+    : "";
+
   return (
 
-    <section className={embedded ? "mt-3 rounded-[1.5rem] border border-zinc-200 bg-white/85 p-4 shadow-sm" : "rounded-[1.5rem] border border-zinc-200 bg-white/80 p-4"}>
+    <section className={embedded ? `mt-3 rounded-[1.5rem] border border-zinc-200 bg-white/85 ${compactEmbedded ? "p-3" : "p-4"} shadow-sm ${compactEmbeddedClasses}` : "rounded-[1.5rem] border border-zinc-200 bg-white/80 p-4"}>
 
       <div className="mb-4">
 
-        <h2 className="text-lg font-semibold">
+        <h2 className={`${compactEmbedded ? "text-base" : "text-lg"} font-semibold`}>
           {isEditing ? "Edit" : "Log"} {activityType === "other" ? "Other Event" : formatActivityLabel(activityType)}
         </h2>
 
