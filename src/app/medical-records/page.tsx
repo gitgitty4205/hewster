@@ -863,23 +863,21 @@ export default function MedicalRecordsPage() {
               return (
                 <div key={activity.id} className="space-y-2">
                   <article
+                    role={canEditEntries && editingActivityId !== activity.id ? "button" : undefined}
+                    tabIndex={canEditEntries && editingActivityId !== activity.id ? 0 : undefined}
+                    onClick={canEditEntries && editingActivityId !== activity.id ? () => openEditorForActivity(activity) : undefined}
+                    onKeyDown={(event) => {
+                      if (!canEditEntries || editingActivityId === activity.id || (event.key !== "Enter" && event.key !== " ")) return;
+                      event.preventDefault();
+                      openEditorForActivity(activity);
+                    }}
                     className={`rounded-2xl bg-sky-50/80 p-4 ring-1 transition ${
                       editingActivityId === activity.id
                         ? "ring-sky-400"
                         : "ring-sky-200"
-                    } ${canEditEntries ? "hover:bg-sky-50" : ""}`}
+                    } ${canEditEntries && editingActivityId !== activity.id ? "cursor-pointer hover:bg-sky-50" : ""}`}
                   >
-                    <div
-                      role={canEditEntries ? "button" : undefined}
-                      tabIndex={canEditEntries ? 0 : undefined}
-                      onClick={() => openEditorForActivity(activity)}
-                      onKeyDown={(event) => {
-                        if (!canEditEntries || (event.key !== "Enter" && event.key !== " ")) return;
-                        event.preventDefault();
-                        openEditorForActivity(activity);
-                      }}
-                      className={`${canEditEntries ? "cursor-pointer" : ""} flex items-start gap-3`}
-                    >
+                    <div className="flex items-start gap-3">
                       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
                         {recordIcon}
                       </span>
@@ -914,7 +912,6 @@ export default function MedicalRecordsPage() {
                         happenedAt={happenedAtValue}
                         isEditing
                         embedded
-                        compactEmbedded
                         saveLabel="Save"
                         onDetailChange={setDetailValue}
                         onNotesChange={setNotesValue}
