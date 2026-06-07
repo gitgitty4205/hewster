@@ -93,13 +93,6 @@ body {
   overflow-x: hidden;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
 time {
   font-variant-numeric: tabular-nums;
 }
