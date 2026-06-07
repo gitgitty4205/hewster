@@ -88,6 +88,7 @@ export type MealLog = {
   skippedCareItemIds?: string[];
   loggedCareItems?: Array<CareItemTemplate & { skipped?: boolean; isLastDose?: boolean }>;
   actualTime: string;
+  auditInfo?: NotebookEntryAuditInfo;
   createdAt?: string;
 };
 
@@ -893,7 +894,7 @@ function actorDisplayName(actorUserId: string | null | undefined, memberNames: M
   return memberNames.get(actorUserId) ?? "Shared account";
 }
 
-function auditRowActivityId(row: AppAuditLogRow) {
+function auditRowEntryId(row: AppAuditLogRow) {
   const rowPkId = row.row_pk?.id;
   if (typeof rowPkId === "string") return rowPkId;
 
@@ -904,18 +905,18 @@ function auditRowActivityId(row: AppAuditLogRow) {
   return typeof oldRowId === "string" ? oldRowId : null;
 }
 
-function activityAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[]) {
+function notebookEntryAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[], tableName: string) {
   const memberNames = memberDisplayNames(members);
-  const byActivityId = new Map<string, NotebookEntryAuditInfo>();
+  const byEntryId = new Map<string, NotebookEntryAuditInfo>();
 
   auditRows
-    .filter((row) => row.table_name === "activity_logs" && row.action !== "DELETE")
+    .filter((row) => row.table_name === tableName && row.action !== "DELETE")
     .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at))
     .forEach((row) => {
-      const activityId = auditRowActivityId(row);
-      if (!activityId) return;
+      const entryId = auditRowEntryId(row);
+      if (!entryId) return;
 
-      const existing = byActivityId.get(activityId) ?? {
+      const existing = byEntryId.get(entryId) ?? {
         loggedBy: null,
         loggedAt: null,
         lastEditedBy: null,
@@ -933,10 +934,18 @@ function activityAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMem
         existing.lastEditedAt = row.occurred_at;
       }
 
-      byActivityId.set(activityId, existing);
+      byEntryId.set(entryId, existing);
     });
 
-  return byActivityId;
+  return byEntryId;
+}
+
+function activityAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[]) {
+  return notebookEntryAuditInfoById(auditRows, members, "activity_logs");
+}
+
+function mealAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[]) {
+  return notebookEntryAuditInfoById(auditRows, members, "meal_logs");
 }
 
 function isGeneratedCareActivityId(id: string) {
@@ -987,6 +996,36 @@ export async function loadActivityAuditInfoForReport(activityIds: string[]) {
   }
 
   return activityAuditInfoById((data ?? []) as AppAuditLogRow[], members);
+}
+
+export async function loadMealAuditInfoForReport(mealLogIds: string[]) {
+  const signedInSupabase = await getSignedInSupabase();
+  const uniqueMealLogIds = [...new Set(mealLogIds)].filter(Boolean);
+  if (!signedInSupabase || !uniqueMealLogIds.length) return new Map<string, NotebookEntryAuditInfo>();
+
+  const { supabase, userId, members } = signedInSupabase;
+  const { data, error } = await supabase
+    .from("app_audit_log")
+    .select("id, table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
+    .eq("owner_id", userId)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("table_name", "meal_logs")
+    .order("occurred_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(ACTIVITY_AUDIT_DETAILS_LIMIT);
+
+  if (error) {
+    console.warn("Meal log audit log unavailable, meal log details will be limited", error);
+    return new Map<string, NotebookEntryAuditInfo>();
+  }
+
+  const mealLogIdSet = new Set(uniqueMealLogIds);
+  const matchingRows = ((data ?? []) as AppAuditLogRow[]).filter((row) => {
+    const entryId = auditRowEntryId(row);
+    return entryId ? mealLogIdSet.has(entryId) : false;
+  });
+
+  return mealAuditInfoById(matchingRows, members);
 }
 
 function mapTemplateToRow(template: MealTemplate, index: number, ownerId: string): MealTemplateRow {
@@ -1504,6 +1543,11 @@ export async function loadFreshAppState(): Promise<HewsterAppState> {
   appStateCache = null;
   appStateLoadPromise = null;
   return loadAppState();
+}
+
+export function invalidateAppStateCache() {
+  appStateCache = null;
+  appStateLoadPromise = null;
 }
 
 export async function saveTemplatesToSupabase(templates: MealTemplate[]) {

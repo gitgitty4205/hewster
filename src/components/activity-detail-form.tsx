@@ -409,9 +409,10 @@ const dentalProcedureDetails = ["No Extraction", "Extraction"];
 
 const spayNeuterDetails = ["Spay", "Neuter"];
 
-const sickSymptomOptions = ["Digestive", "Respiratory", "Skin", "Ear", "Eye", "Urinary", "Mobility / Pain", "Neurological", "Behavior", "Other"];
+const sickSymptomOptions = ["Digestive", "Respiratory", "Skin", "Ear", "Eye", "Urinary", "Mobility / Pain", "Neurological", "Behavior", "Other Symptoms"];
 
-const otherVetMedicalDetail = "Other Vet / Medical";
+const otherVetMedicalDetail = "Other Health";
+const legacyOtherVetMedicalDetail = "Other Vet / Medical";
 const legacyOtherMedicalDetail = "Other Medical";
 const sickMedicalOptions = ["Vet Visit", "Medication", "Injection", otherVetMedicalDetail];
 
@@ -421,7 +422,7 @@ function sickLogModeFromDetail(detail: string): SickLogMode {
   if (!detail) return "";
   if (sickSymptomOptions.includes(detail)) return "symptom";
   if (sickMedicalOptions.some((option) => detail === option || detail.startsWith(`${option}: `))) return "medical";
-  if (["Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", otherVetMedicalDetail, legacyOtherMedicalDetail].some((option) => detail.includes(option))) return "medical";
+  if (["Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", otherVetMedicalDetail, legacyOtherVetMedicalDetail, legacyOtherMedicalDetail].some((option) => detail.includes(option))) return "medical";
   return "symptom";
 }
 
@@ -583,8 +584,6 @@ function nextDetailValue(activityType: ActivityType, preset: string, detail: str
 
   void detail;
 
-  if (activityType === "sick" && preset === "Other") return "Other";
-
   if (activityType === "sick" && preset === otherVetMedicalDetail) return otherVetMedicalDetail;
 
   if (activityType === "wellness") return preset;
@@ -701,7 +700,7 @@ function sickSymptomFromDetail(detail: string) {
 
 function isOtherMedicalDetail(detail: string) {
 
-  return detail === otherVetMedicalDetail || detail.startsWith(`${otherVetMedicalDetail}: `) || detail === legacyOtherMedicalDetail || detail.startsWith(`${legacyOtherMedicalDetail}: `);
+  return detail === otherVetMedicalDetail || detail.startsWith(`${otherVetMedicalDetail}: `) || detail === legacyOtherVetMedicalDetail || detail.startsWith(`${legacyOtherVetMedicalDetail}: `) || detail === legacyOtherMedicalDetail || detail.startsWith(`${legacyOtherMedicalDetail}: `);
 
 }
 
@@ -709,7 +708,7 @@ function isOtherMedicalDetail(detail: string) {
 
 function displayDetailValue(detail: string) {
 
-  if (isOtherMedicalDetail(detail)) return detail.replace(/^(?:Other Vet \/ Medical|Other Vet\/Medical|Other Medical):?\s*/, "");
+  if (isOtherMedicalDetail(detail)) return detail.replace(/^(?:Other Health|Other Vet \/ Medical|Other Vet\/Medical|Other Medical):?\s*/, "");
 
   return detail;
 
@@ -1049,7 +1048,7 @@ export function ActivityDetailForm({
                     className={presetButtonClasses(activityType, preset, isPresetSelected(activityType, preset, detail))}
                     onClick={() => onDetailChange(nextDetailValue(activityType, preset, detail))}
                   >
-                    {preset === otherVetMedicalDetail ? "Other" : preset}
+                    {preset}
                   </button>
 
                 ))}
@@ -1625,7 +1624,7 @@ export function ActivityDetailForm({
           style={{ backgroundColor: theme.activeText }}
         >
 
-          {saving ? "Saving..." : isEditing ? "Save Changes" : saveLabel}
+          {saving ? "Saving..." : isEditing ? "Save" : saveLabel}
 
         </Button>
 

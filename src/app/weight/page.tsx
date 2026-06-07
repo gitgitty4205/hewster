@@ -290,7 +290,7 @@ export default function WeightPage() {
     const summary = (
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="font-medium">{formatWeightDate(entry.date)}</p>
+          <p className="text-sm font-semibold text-zinc-600">{formatWeightDate(entry.date)}</p>
           {entry.note ? <ExpandableNoteText className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/75">{entry.note}</ExpandableNoteText> : null}
         </div>
         <p className="shrink-0 text-sm font-semibold">{formatWeightWithUnit(entry.weight, profile.weightUnit)}</p>

@@ -50,7 +50,6 @@ import {
   activityAttachmentFileNamesForSave,
 
   saveCompletedMealToSupabase,
-  saveMealLogToSupabase,
 
   saveActivityLogToSupabase,
   saveActivityAttachmentsToSupabase,
@@ -801,6 +800,11 @@ export default function LogPage() {
     window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextMealLogs));
   };
 
+  const persistHistoricalMealState = (nextMealState: DailyMealState[], nextMealLogs: MealLog[]) => {
+    persistDailyMealStateLocally(nextMealState, logDayKey);
+    window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextMealLogs));
+  };
+
   const openMealTimeEditor = useCallback((mealId: number, actualTime: string | null) => {
     const mealState = dailyMealState.find((entry) => entry.mealId === mealId && (entry.dayKey ?? currentTodayKey()) === logDayKey);
     const mealLog = mealLogs.find((entry) => entry.dayKey === logDayKey && entry.mealId === mealId && !isMissedMealLog(entry)) ?? mealLogs.find((entry) => entry.dayKey === logDayKey && entry.mealId === mealId);
@@ -857,11 +861,7 @@ export default function LogPage() {
       nextMealLogs = [mealLog, ...mealLogs.filter((entry) => entry.id !== mealLogId && entry.id !== missedMealLogId(logDayKey, editingMealTimeId))];
       if (supabaseReady) {
         try {
-          if (isTodayLog) {
-            await saveCompletedMealToSupabase(mealLog, nextMealState, missedMealLogId(logDayKey, editingMealTimeId));
-          } else {
-            await saveMealLogToSupabase(mealLog);
-          }
+          await saveCompletedMealToSupabase(mealLog, nextMealState, missedMealLogId(logDayKey, editingMealTimeId));
         } catch {
           // local fallback already captured
         }
@@ -872,7 +872,7 @@ export default function LogPage() {
       setDailyMealState(nextMealState);
       persistMealState(nextMealState, nextMealLogs);
     } else {
-      window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextMealLogs));
+      persistHistoricalMealState(nextMealState, nextMealLogs);
     }
     setMealLogs(nextMealLogs);
     cancelMealTimeEditor();

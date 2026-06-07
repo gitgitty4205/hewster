@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { CircleHelp, Ellipsis, Heart, ShieldCheck } from "lucide-react";
+import { CircleHelp, Heart, Pencil, ShieldCheck } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
 
@@ -25,7 +25,6 @@ import {
   appThemes,
   applyPetTheme,
   DEFAULT_PET_PHOTO_URL,
-  defaultPetProfile,
   displayPetAge,
   loadPetProfile,
   loadSharedPetProfile,
@@ -155,8 +154,8 @@ async function prepareProfilePhoto(file: File) {
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<PetProfile>(defaultPetProfile);
-  const [themeId, setThemeId] = useState<ThemeId>(defaultPetProfile.themeId);
+  const [profile, setProfile] = useState<PetProfile>(() => loadPetProfile());
+  const [themeId, setThemeId] = useState<ThemeId>(() => loadUserTheme());
   const [saveState, setSaveState] = useState<"idle" | "saved">("idle");
   const [accessEmail, setAccessEmail] = useState("");
   const [accessRole, setAccessRole] = useState<Exclude<NotebookAccessRole, "owner">>("caretaker");
@@ -168,6 +167,7 @@ export default function ProfilePage() {
   const [accessMessage, setAccessMessage] = useState("");
   const [accessRoleHelp, setAccessRoleHelp] = useState<Exclude<NotebookAccessRole, "owner"> | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingAbout, setIsEditingAbout] = useState(false);
   const [missingPetInfoFields, setMissingPetInfoFields] = useState<Set<RequiredPetInfoField>>(new Set());
   const [profileValidationMessage, setProfileValidationMessage] = useState("");
   const [profilePhotoMessage, setProfilePhotoMessage] = useState("");
@@ -358,6 +358,7 @@ export default function ProfilePage() {
   const canEditProfile = !user || (notebookRoleLoaded && (activeNotebookRole === "owner" || activeNotebookRole === "co-owner"));
   const canManageProfilePhoto = !user || (notebookRoleLoaded && activeNotebookRole === "owner" && activeNotebookOwnerId === user.id);
   const profileDetailsLocked = !canEditProfile || !isEditingProfile;
+  const aboutDetailsLocked = !canEditProfile || !isEditingAbout;
   const calculatedAge = displayPetAge(profile);
   const petFirstName = profile.petFirstName.trim() || profile.petName.split(/\s+/)[0] || "Pet";
   const rememberedDateLabel = formatRememberedDate(profile.passedAwayDate);
@@ -407,7 +408,7 @@ export default function ProfilePage() {
                     onClick={handleDoneEditingProfile}
                     className="inline-flex items-center rounded-full bg-white/75 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/75 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white"
                   >
-                    Done
+                    Save
                   </button>
                 ) : (
                   <Button
@@ -418,7 +419,7 @@ export default function ProfilePage() {
                     className="size-9 shrink-0 rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/70 ring-[var(--hewie-ring,#cbd5e1)] hover:bg-white"
                     aria-label="Edit pet profile"
                   >
-                    <Ellipsis className="size-4" />
+                    <Pencil className="size-4" />
                   </Button>
                 )
               ) : (
@@ -704,18 +705,49 @@ export default function ProfilePage() {
         ) : null}
 
         <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold">About {petFirstName}</h2>
-            <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">Helpful notes for anyone caring for this pet.</p>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">About {petFirstName}</h2>
+              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">Helpful notes for anyone caring for this pet.</p>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <p className="min-h-4 text-xs font-semibold text-emerald-600">{saveState === "saved" ? "Saved" : ""}</p>
+              {canEditProfile ? (
+                isEditingAbout ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingAbout(false)}
+                    className="inline-flex items-center rounded-full bg-white/75 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/75 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white"
+                  >
+                    Save
+                  </button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsEditingAbout(true)}
+                    className="size-9 shrink-0 rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/70 ring-[var(--hewie-ring,#cbd5e1)] hover:bg-white"
+                    aria-label={`Edit about ${petFirstName}`}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                )
+              ) : (
+                <span className="rounded-full bg-white/65 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/55 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+                  View Only
+                </span>
+              )}
+            </div>
           </div>
 
-          <fieldset disabled={profileDetailsLocked} className="space-y-3 disabled:opacity-80">
+          <fieldset disabled={aboutDetailsLocked} className="space-y-3 disabled:opacity-80">
             {canManageProfilePhoto ? (
               <div className="block text-sm">
                 <span className="mb-2 block font-medium text-[var(--hewie-active-text,#334155)]/85">Profile Photo</span>
                 <label
                   className={`relative flex size-16 overflow-hidden rounded-[1.05rem] bg-white/55 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 ${
-                    canEditProfile ? "cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]" : ""
+                    !aboutDetailsLocked ? "cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]" : ""
                   }`}
                   aria-label={`Change ${petFirstName}'s profile photo`}
                 >
@@ -729,7 +761,7 @@ export default function ProfilePage() {
                   <input
                     type="file"
                     accept="image/*"
-                    disabled={!canEditProfile}
+                    disabled={aboutDetailsLocked}
                     onChange={(event) => {
                       void handleProfilePhotoFile(event.target.files?.[0]);
                       event.currentTarget.value = "";

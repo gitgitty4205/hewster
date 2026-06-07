@@ -33,6 +33,7 @@ import {
 
   currentTodayKey,
   loadActivityAuditInfoForReport,
+  loadMealAuditInfoForReport,
 
   loadAppState,
   loadFreshAppState,
@@ -72,6 +73,8 @@ type HistoryDay = {
     actualTime: string;
 
     plannedTime: string;
+
+    auditInfo?: MealLog["auditInfo"];
 
     createdAt?: string;
 
@@ -416,6 +419,10 @@ function reportActivityIds(days: HistoryDay[]) {
   return days.flatMap((day) => day.activities.map((activity) => activity.id));
 }
 
+function reportMealLogIds(days: HistoryDay[]) {
+  return days.flatMap((day) => day.meals.map((meal) => `${day.day}-${meal.id}`));
+}
+
 type ReportImage = Pick<ActivityAttachment, "id" | "activityId" | "fileName" | "filePath" | "contentType">;
 
 function isReportImageActivity(activity: ActivityLog) {
@@ -716,8 +723,20 @@ function displayActivityLabel(activity: ActivityLog) {
 
 }
 
+function withReportMealAuditInfo(days: HistoryDay[], auditInfoById: Map<string, MealLog["auditInfo"]>) {
+  if (!auditInfoById.size) return days;
+
+  return days.map((day) => ({
+    ...day,
+    meals: day.meals.map((meal) => {
+      const auditInfo = auditInfoById.get(`${day.day}-${meal.id}`);
+      return auditInfo ? { ...meal, auditInfo } : meal;
+    }),
+  }));
+}
+
 function displayMedicalDetail(detail: string | null) {
-  return detail?.replace(/^Other Vet\/Medical\b/, "Other Vet / Medical").replace(/^Other Medical\b/, "Other Vet / Medical") ?? null;
+  return detail?.replace(/^Other Vet\/Medical\b/, "Other Health").replace(/^Other Vet \/ Medical\b/, "Other Health").replace(/^Other Medical\b/, "Other Health") ?? null;
 }
 
 
@@ -801,6 +820,12 @@ function PottyActivityMeta({ activity }: { activity: ActivityLog }) {
 }
 
 function renderTimelineActivityDetail(activity: ActivityLog) {
+
+  if (["pee", "poop", "potty"].includes(activity.activityType)) {
+
+    return renderActivityDetail({ ...activity, notes: null });
+
+  }
 
   if (!activity.attachments?.length) return renderActivityDetail(activity);
 
@@ -1295,7 +1320,7 @@ const recordFilterOptions: Array<{ id: HistoryFilter; label: string }> = [
 
 const historyFilterLabels = new Map([...eventFilterOptions, ...recordFilterOptions].map((option) => [option.id, option.label]));
 
-const medicalWellnessDetails = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Vaccine / Injection", "Medication", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", "Other Vet / Medical", "Other Vet/Medical", "Other Medical"];
+const medicalWellnessDetails = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Vaccine / Injection", "Medication", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", "Other Health", "Other Vet / Medical", "Other Vet/Medical", "Other Medical"];
 
 function isMedicalWellnessDetail(detail: string | null) {
   const normalized = detail ?? "";
@@ -1692,6 +1717,8 @@ export default function HistoryPage() {
         actualTime: displayTime,
 
         plannedTime: mealTemplate.plannedTime,
+
+        auditInfo: meal.auditInfo,
 
         createdAt: meal.createdAt,
 
@@ -2145,6 +2172,18 @@ export default function HistoryPage() {
         meal.careItems.forEach((item) => {
           lines.push(`  - ${careKindLabel(item.kind)}: ${item.name}${item.dose ? `, ${item.dose}` : ""}${item.skipped ? " (Skipped)" : ""}`);
         });
+
+        if (withLogDetails) {
+          const audit = meal.auditInfo;
+          const auditParts = [
+            `Logged by: ${audit?.loggedBy ?? "Not recorded"}`,
+            `Logged time: ${formatReportDateTime(audit?.loggedAt ?? meal.createdAt)}`,
+            audit?.lastEditedAt ? `Updated by: ${audit.lastEditedBy ?? "Not recorded"}` : null,
+            audit?.lastEditedAt ? `Updated: ${formatReportDateTime(audit.lastEditedAt)}` : null,
+          ].filter(Boolean);
+
+          lines.push(`  - Log details: ${auditParts.join(" | ")}`);
+        }
       });
 
       day.activities.forEach((activity) => {
@@ -2213,7 +2252,12 @@ export default function HistoryPage() {
       const ownerName = notebookOwnerId === session.user.id ? signedInOwnerName : "";
       const includeLogDetailsInReport = includeLogDetails && Boolean(activeNotebookAccess?.role && canExportNotebook(activeNotebookAccess.role));
       const reportDays = includeLogDetailsInReport
-        ? withReportActivityAuditInfo(filteredHistoryDays, await loadActivityAuditInfoForReport(reportActivityIds(filteredHistoryDays)))
+        ? await Promise.all([
+            loadActivityAuditInfoForReport(reportActivityIds(filteredHistoryDays)),
+            loadMealAuditInfoForReport(reportMealLogIds(filteredHistoryDays)),
+          ]).then(([activityAuditInfo, mealAuditInfo]) =>
+            withReportMealAuditInfo(withReportActivityAuditInfo(filteredHistoryDays, activityAuditInfo), mealAuditInfo)
+          )
         : filteredHistoryDays;
       const text = buildHistoryCopyText(reportDays, activeFilter, dateRange, profile, ownerName, generatedDate, includeLogDetailsInReport);
       const reportImages = reportImagesForDays(reportDays);
@@ -2331,16 +2375,19 @@ export default function HistoryPage() {
 
   const historyEditModeButton = (label: string, colorClassName = "text-zinc-500 hover:text-zinc-700") => {
     const Icon = historyEditUnlocked ? LockOpen : Lock;
+    const stateClassName = historyEditUnlocked
+      ? "bg-[#f6d978] text-[#4f2f1b] shadow-sm shadow-[#4f2f1b]/20 ring-[#4f2f1b]/25 hover:bg-[#f1cc61]"
+      : `bg-white/80 ring-zinc-200 ${colorClassName}`;
 
     return (
       <button
         type="button"
         onClick={() => setHistoryEditUnlocked((current) => !current)}
-        className={`flex size-8 shrink-0 items-center justify-center rounded-full bg-white/80 ring-1 ring-zinc-200 transition ${colorClassName}`}
+        className={`flex size-6 shrink-0 items-center justify-center rounded-full ring-1 transition ${stateClassName}`}
         aria-label={`${historyEditUnlocked ? "Lock" : "Unlock"} ${label} history editing`}
         title={historyEditUnlocked ? "Editing unlocked" : "Unlock editing"}
       >
-        <Icon className="size-4" />
+        <Icon className="size-3" />
       </button>
     );
   };

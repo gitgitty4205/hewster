@@ -114,11 +114,16 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
 
   useEffect(() => {
     const id = window.setTimeout(() => {
+      const localProfile = loadPetProfile();
+      if (localProfile.photoUrl) {
+        setProfile(localProfile);
+      }
+
       const supabase = getSupabaseBrowserClient();
       if (supabase && user) {
         void loadSharedPetProfile(supabase, user).then(setProfile).catch(() => setProfile(loadPetProfile()));
       } else {
-        setProfile(loadPetProfile());
+        setProfile(localProfile);
       }
       setPets(readRoster(user?.id));
     }, 0);
@@ -128,11 +133,16 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
 
   useEffect(() => {
     const refreshProfile = () => {
+      const localProfile = loadPetProfile();
+      if (localProfile.photoUrl) {
+        setProfile(localProfile);
+      }
+
       const supabase = getSupabaseBrowserClient();
       if (supabase && user) {
         void loadSharedPetProfile(supabase, user).then(setProfile).catch(() => setProfile(loadPetProfile()));
       } else {
-        setProfile(loadPetProfile());
+        setProfile(localProfile);
       }
       setPets(readRoster(user?.id));
     };

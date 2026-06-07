@@ -191,6 +191,14 @@ function isActualPoopRecord(activity: ActivityLog) {
   return detail === "Poop" || detail === "Pee & Poop" || detail.includes("• Type ") || detail.startsWith("Type ");
 }
 
+function isPottyTimelineActivity(activityType: ActivityType) {
+  return ["pee", "poop", "potty"].includes(activityType);
+}
+
+function formatPottyTimelineDetail(detail: string | null) {
+  return detail?.replace(/\s+•\s+/, "\n") ?? "";
+}
+
 function careKindLabel(kind: CareItemKind) {
   return kind === "supplement" ? "Supplement" : "Medication";
 }
@@ -352,14 +360,27 @@ function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: Me
 }
 
 function mealExpandedDetailText(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
-  const supplements = mealCareItemsWithDoseBadges(careTemplates, meal, meals, dayKey)
-    .filter((item) => item.kind === "supplement")
-    .map((item) => [item.name, item.dose.trim(), item.notes.trim()].filter(Boolean).join(" - "));
+  const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, meals, dayKey)
+    .map((item) => [item.name, mealPlanCareDetailText(item).trim(), item.notes.trim()].filter(Boolean).join(" - "));
 
   return [
     meal.food.trim() ? `Food: ${meal.food.trim()}` : null,
     meal.notes.trim() ? `Notes: ${meal.notes.trim()}` : null,
-    supplements.length ? `Supplements: ${supplements.join("; ")}` : null,
+    mealCareItems.length ? `Meal Plan Care: ${mealCareItems.join("; ")}` : null,
+  ].filter(Boolean).join("\n");
+}
+
+function customCareExpandedDetailText(occurrence: CustomCareOccurrence) {
+  const timingLabel = customCareTimingLabel(occurrence.item);
+  const notes = occurrence.item.notes.trim();
+
+  return [
+    `Scheduled for ${occurrence.timeLabel}`,
+    customCareGiveText(occurrence.item),
+    timingLabel,
+    occurrence.frequencyText,
+    occurrence.isLastDose ? "Last Dose" : null,
+    notes ? `Notes: ${notes}` : null,
   ].filter(Boolean).join("\n");
 }
 
@@ -1681,10 +1702,11 @@ export default function HomeApp() {
 
     const activityTimeline = todayActivityLogs.map((activity) => {
       const happenedAt = customCareDisplayDate(activity);
+      const isPottyActivity = isPottyTimelineActivity(activity.activityType);
       return {
         time: formatActivityTime(happenedAt.toISOString()),
-        label: formatActivityLabel(activity.activityType),
-        detail: ["pee", "poop", "potty"].includes(activity.activityType) ? activity.detail ?? "" : renderActivityDetail(activity),
+        label: isPottyActivity ? "Potty" : formatActivityLabel(activity.activityType),
+        detail: isPottyActivity ? formatPottyTimelineDetail(activity.detail) : renderActivityDetail(activity),
         activity,
         activityType: activity.activityType,
         sortMinutes: happenedAt.getHours() * 60 + happenedAt.getMinutes(),
@@ -2251,10 +2273,10 @@ export default function HomeApp() {
           <section className="mb-3 space-y-2">
             {overdueActionCards.slice(0, 4).map((card) => {
               const title = card.type === "meal" ? `${card.meal.name} due ${card.meal.plannedTime}` : `${card.occurrence.item.name} due ${card.occurrence.timeLabel}`;
-              const detail = card.type === "meal" ? card.meal.food.trim() : customCareGiveText(card.occurrence.item);
               const expandedDetail = card.type === "meal"
-                ? mealExpandedDetailText(careTemplates, card.meal, dailyMeals, todayKey || currentTodayKey()) || detail || title
-                : detail || title;
+                ? mealExpandedDetailText(careTemplates, card.meal, dailyMeals, todayKey || currentTodayKey())
+                : customCareExpandedDetailText(card.occurrence);
+              const hasExpandedDetail = Boolean(expandedDetail.trim());
               const careKind = card.type === "custom-care" ? card.occurrence.item.kind : null;
               const detailKey = `overdue-${card.sortKey}`;
               const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
@@ -2277,17 +2299,18 @@ export default function HomeApp() {
                         <p className="truncate text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{title}</p>
                         {card.type === "custom-care" && card.occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
                       </div>
-                      {detail ? <p className="truncate text-xs leading-4 text-[var(--hewie-active-text,#334155)]/60">{detail}</p> : null}
                     </div>
                     <div className="flex shrink-0 gap-1" onKeyDown={(event) => event.stopPropagation()}>
-                      <ExpandDetailsButton
-                        expanded={detailsExpanded}
-                        className="text-[var(--hewie-active-text,#334155)]/70 hover:text-[var(--hewie-active-text,#334155)]"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
-                        }}
-                      />
+                      {hasExpandedDetail ? (
+                        <ExpandDetailsButton
+                          expanded={detailsExpanded}
+                          className="text-[var(--hewie-active-text,#334155)]/70 hover:text-[var(--hewie-active-text,#334155)]"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
+                          }}
+                        />
+                      ) : null}
                       <Button
                         type="button"
                         variant="outline"
@@ -2319,9 +2342,11 @@ export default function HomeApp() {
                       </Button>
                     </div>
                   </div>
-                  <InlineDetails expanded={detailsExpanded} className="bg-white/55 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/65">
-                    {expandedDetail}
-                  </InlineDetails>
+                  {hasExpandedDetail ? (
+                    <InlineDetails expanded={detailsExpanded} className="bg-white/55 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/65">
+                      {expandedDetail}
+                    </InlineDetails>
+                  ) : null}
                 </div>
               );
             })}

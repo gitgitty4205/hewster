@@ -22,7 +22,7 @@ import {
   resolveAlerts,
 } from "@/lib/alerts";
 import { loadCareTemplates } from "@/lib/care-settings";
-import { loadAppState } from "@/lib/hewster-data";
+import { invalidateAppStateCache, loadAppState } from "@/lib/hewster-data";
 import { DEFAULT_PET_PHOTO_URL, PET_THEME_UPDATED_EVENT, applyPetTheme, loadPetProfile, loadSharedPetProfile, loadUserTheme } from "@/lib/pet-profile";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
@@ -230,6 +230,11 @@ export function BottomNav({ alertsCount }: Props) {
 
   useEffect(() => {
     const refreshProfilePhoto = () => {
+      const localPhotoUrl = loadPetProfile().photoUrl;
+      if (localPhotoUrl) {
+        setProfilePhotoUrl(localPhotoUrl);
+      }
+
       const supabase = getSupabaseBrowserClient();
       if (supabase && user) {
         void loadSharedPetProfile(supabase, user)
@@ -428,7 +433,10 @@ export function BottomNav({ alertsCount }: Props) {
                     <Link
                       key={item.label}
                       href={item.href}
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        invalidateAppStateCache();
+                        setOpen(false);
+                      }}
                       className="group relative text-center"
                       aria-label={item.label}
                     >

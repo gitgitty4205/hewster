@@ -24,23 +24,37 @@ import { MedicationPillIcon } from "@/components/medication-pill-icon";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { HEWSTER_PROFILE_SLUG, getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 
-const filters = ["All", "Symptoms", "Vet Visits", "Medication", "Vaccine / Injection", "Lab / Test", "Procedures", "Prevention", "Other Vet / Medical", "Attachments"];
+const filters = ["All", "Symptoms", "Vet Visit", "Medication", "Injection", "Other Health", "Attachments"];
 const dateFilters = ["All Time", "Date Range"] as const;
 type DateFilter = (typeof dateFilters)[number];
+type MedicationStatus = "given" | "skipped" | "missed";
+type MedicationCourseRecord = {
+  kind: "medication-course";
+  id: string;
+  title: string;
+  dose: string | null;
+  frequency: string | null;
+  timing: string | null;
+  route: string | null;
+  notes: string | null;
+  startedAt: string;
+  latestAt: string;
+  activities: ActivityLog[];
+  counts: Record<MedicationStatus, number>;
+};
+type MedicalRecordItem = { kind: "activity"; activity: ActivityLog } | MedicationCourseRecord;
 
 const vetVisitKeywords = ["Vet Visit", "Wellness Exam", "Sick Consult"];
 const medicationKeywords = ["Medication"];
-const vaccineInjectionKeywords = ["Vaccine", "Injection", "Vaccine / Injection"];
-const labTestKeywords = ["Lab / Test", "Lab", "Test"];
-const procedureKeywords = ["Procedure"];
-const preventionKeywords = ["Flea & Tick", "Deworming", "Prevention"];
-const otherVetMedicalKeywords = ["Other Vet / Medical", "Other Vet/Medical", "Other Medical"];
-const medicalSickKeywords = ["Vet Visit", "Medication", "Injection", "Vaccine", "Lab / Test", "Procedure", "Flea & Tick", "Deworming", "Other Vet / Medical", "Other Vet/Medical", "Other Medical"];
-const medicalWellnessKeywords = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Vaccine / Injection", "Medication", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", "Other Vet / Medical", "Other Vet/Medical", "Other Medical"];
+const injectionKeywords = ["Injection", "Vaccine", "Vaccine / Injection"];
+const otherVetMedicalKeywords = ["Other Health", "Other Vet / Medical", "Other Vet/Medical", "Other Medical"];
+const medicalSickKeywords = ["Vet Visit", "Medication", "Injection", "Vaccine", "Lab / Test", "Procedure", "Flea & Tick", "Deworming", "Other Health", "Other Vet / Medical", "Other Vet/Medical", "Other Medical"];
+const medicalWellnessKeywords = ["Vet Visit", "Wellness Exam", "Sick Consult", "Vaccine", "Injection", "Vaccine / Injection", "Medication", "Flea & Tick", "Deworming", "Lab / Test", "Procedure", "Other Health", "Other Vet / Medical", "Other Vet/Medical", "Other Medical"];
 const pottyActivityTypes = new Set(["pee", "poop", "potty"]);
+const generatedMedicationNoteValues = new Set(["With Food", "Empty Stomach", "Oral", "Topical", "Injection", "Other", "Last Dose", "Missed", "Skipped"]);
 
 function displayMedicalDetail(detail: string | null) {
-  return detail?.replace(/^Other Vet\/Medical\b/, "Other Vet / Medical").replace(/^Other Medical\b/, "Other Vet / Medical") ?? null;
+  return detail?.replace(/^Other Vet\/Medical\b/, "Other Health").replace(/^Other Vet \/ Medical\b/, "Other Health").replace(/^Other Medical\b/, "Other Health") ?? null;
 }
 
 function medicalRecordHeading(activity: ActivityLog) {
@@ -53,10 +67,10 @@ function medicalRecordHeading(activity: ActivityLog) {
     };
   }
 
-  if (detail === "Other Vet / Medical" || detail.startsWith("Other Vet / Medical: ")) {
+  if (detail === "Other Health" || detail.startsWith("Other Health: ")) {
     return {
-      title: "Other Vet / Medical",
-      subtitle: detail.replace(/^Other Vet \/ Medical:?\s*/, "") || null,
+      title: "Other Health",
+      subtitle: detail.replace(/^Other Health:?\s*/, "") || null,
     };
   }
 
@@ -91,20 +105,8 @@ function isMedicationRecord(activity: ActivityLog) {
   return activity.activityType === "medication" || hasDetailKeyword(activity, medicationKeywords);
 }
 
-function isVaccineInjectionRecord(activity: ActivityLog) {
-  return hasDetailKeyword(activity, vaccineInjectionKeywords);
-}
-
-function isLabTestRecord(activity: ActivityLog) {
-  return hasDetailKeyword(activity, labTestKeywords);
-}
-
-function isProcedureRecord(activity: ActivityLog) {
-  return hasDetailKeyword(activity, procedureKeywords);
-}
-
-function isPreventionRecord(activity: ActivityLog) {
-  return hasDetailKeyword(activity, preventionKeywords);
+function isInjectionRecord(activity: ActivityLog) {
+  return hasDetailKeyword(activity, injectionKeywords);
 }
 
 function isOtherVetMedicalRecord(activity: ActivityLog) {
@@ -141,6 +143,8 @@ function attachmentLine(activity: ActivityLog) {
 }
 
 function isMedicalRecord(activity: ActivityLog) {
+  if (activity.activityType === "supplement") return false;
+
   return (
     isSymptomRecord(activity) ||
     isMedicalSickRecord(activity) ||
@@ -153,6 +157,8 @@ function isMedicalRecord(activity: ActivityLog) {
 
 function medicalRecordIcon(activity: ActivityLog): ReactNode {
   const detail = activity.detail ?? "";
+
+  if (activity.activityType === "medication") return <MedicationPillIcon className="size-5" />;
 
   if (activity.activityType === "sick" || isVetVisitDetail(detail) || detail.includes("Injection")) {
     return <span className="text-lg leading-none">{"\u{1FA7A}"}</span>;
@@ -170,25 +176,158 @@ function regularNotes(activity: ActivityLog) {
     .join("\n");
 }
 
+function scheduledMedicationCourseId(activity: ActivityLog) {
+  const match = activity.activityType === "medication" ? activity.id.match(/^medication-(\d+)-schedule-/) : null;
+  return match ? `medication-course-${match[1]}` : null;
+}
+
+function medicationStatus(activity: ActivityLog): MedicationStatus {
+  const detail = activity.detail ?? "";
+  const lines = noteLines(activity.notes);
+
+  if (/\bMissed\b/i.test(detail) || lines.includes("Missed")) return "missed";
+  if (/\bSkipped\b/i.test(detail) || lines.some((line) => line.startsWith("Skip Note: "))) return "skipped";
+  return "given";
+}
+
+function medicationName(activity: ActivityLog) {
+  return (activity.detail ?? "Medication")
+    .replace(/\s*(?:[•·-]\s*)?(?:Given|Skipped|Missed)\b/i, "")
+    .split("•")[0]
+    .trim() || "Medication";
+}
+
+function medicationDose(activity: ActivityLog) {
+  const giveLine = noteLines(activity.notes).find((line) => line.startsWith("Give "));
+  if (giveLine) return giveLine.replace(/^Give\s+/i, "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+
+  const detailDose = (activity.detail ?? "").split("•")[1]?.replace(/\b(?:Skipped|Missed)\b/i, "").trim();
+  return detailDose || null;
+}
+
+function medicationTiming(activity: ActivityLog) {
+  return noteLines(activity.notes).find((line) => line === "With Food" || line === "Empty Stomach") ?? null;
+}
+
+function medicationFrequency(activity: ActivityLog) {
+  return noteLines(activity.notes).find((line) => line.startsWith("Every "))?.replace(/\s*•\s*/g, ", ") ?? null;
+}
+
+function medicationRoute(activity: ActivityLog) {
+  return noteLines(activity.notes).find((line) => line === "Oral" || line === "Topical" || line === "Injection" || line === "Other") ?? null;
+}
+
+function medicationNotes(activity: ActivityLog) {
+  return noteLines(activity.notes)
+    .filter((line) => line.startsWith("Notes: "))
+    .map((line) => line.replace(/^Notes:\s*/i, "").trim())
+    .filter(Boolean);
+}
+
+function medicationCourseNotes(activities: ActivityLog[]) {
+  const notes = activities.flatMap(medicationNotes);
+  return [...new Set(notes)].join("\n") || null;
+}
+
+function medicationDoseAddedNotes(activity: ActivityLog, courseNotes: string | null) {
+  const courseNoteValues = new Set(noteLines(courseNotes));
+
+  return noteLines(activity.notes)
+    .map((line) => {
+      if (line.startsWith("Skip Note: ")) return line.replace(/^Skip Note:\s*/i, "").trim();
+      if (line.startsWith("Notes: ")) return line.replace(/^Notes:\s*/i, "").trim();
+      return line;
+    })
+    .filter((line) => {
+      if (!line) return false;
+      if (courseNoteValues.has(line)) return false;
+      if (line.startsWith("Give ")) return false;
+      if (line.startsWith("Every ") || line.endsWith("Schedules")) return false;
+      if (generatedMedicationNoteValues.has(line)) return false;
+      if (line.startsWith("Record Tags: ") || line.startsWith("Attachments: ")) return false;
+      return true;
+    })
+    .join("\n") || null;
+}
+
+function medicationCourseDateRange(course: MedicationCourseRecord) {
+  const start = medicalRecordDateTime(course.startedAt).date;
+  const end = medicalRecordDateTime(course.latestAt).date;
+  return start === end ? start : `${start} - ${end}`;
+}
+
+function medicationCourseSummary(course: MedicationCourseRecord) {
+  return `${course.counts.given} given, ${course.counts.skipped} skipped, ${course.counts.missed} missed`;
+}
+
+function medicationCourseDosage(course: MedicationCourseRecord) {
+  const dose = course.dose ?? "As directed";
+  const route = course.route ? ` (${course.route})` : "";
+  return `${dose}${route}`;
+}
+
+function buildMedicalRecordItems(activities: ActivityLog[], sortOrder: "newest" | "oldest"): MedicalRecordItem[] {
+  const courses = new Map<string, ActivityLog[]>();
+  const items: MedicalRecordItem[] = [];
+
+  activities.forEach((activity) => {
+    const courseId = scheduledMedicationCourseId(activity);
+
+    if (!courseId) {
+      items.push({ kind: "activity", activity });
+      return;
+    }
+
+    courses.set(courseId, [...(courses.get(courseId) ?? []), activity]);
+  });
+
+  courses.forEach((courseActivities, id) => {
+    const sortedActivities = [...courseActivities].sort(compareActivitiesReverseChronological);
+    const oldestActivity = sortedActivities[sortedActivities.length - 1];
+    const latestActivity = sortedActivities[0];
+    const counts: Record<MedicationStatus, number> = { given: 0, skipped: 0, missed: 0 };
+
+    sortedActivities.forEach((activity) => {
+      counts[medicationStatus(activity)] += 1;
+    });
+
+    items.push({
+      kind: "medication-course",
+      id,
+      title: medicationName(latestActivity),
+      dose: sortedActivities.map(medicationDose).find(Boolean) ?? null,
+      frequency: sortedActivities.map(medicationFrequency).find(Boolean) ?? null,
+      timing: sortedActivities.map(medicationTiming).find(Boolean) ?? null,
+      route: sortedActivities.map(medicationRoute).find(Boolean) ?? null,
+      notes: medicationCourseNotes(sortedActivities),
+      startedAt: oldestActivity.happenedAt,
+      latestAt: latestActivity.happenedAt,
+      activities: sortedActivities,
+      counts,
+    });
+  });
+
+  return items.sort((a, b) => {
+    const aTime = new Date(a.kind === "activity" ? a.activity.happenedAt : a.startedAt).getTime();
+    const bTime = new Date(b.kind === "activity" ? b.activity.happenedAt : b.startedAt).getTime();
+    const newestFirst = bTime - aTime;
+    return sortOrder === "newest" ? newestFirst : -newestFirst;
+  });
+}
+
 function matchesFilter(activity: ActivityLog, filter: string) {
   if (filter === "All") return true;
 
   switch (filter) {
     case "Symptoms":
       return isSymptomRecord(activity);
-    case "Vet Visits":
+    case "Vet Visit":
       return isVetVisitDetail(activity.detail);
     case "Medication":
       return isMedicationRecord(activity);
-    case "Vaccine / Injection":
-      return isVaccineInjectionRecord(activity);
-    case "Lab / Test":
-      return isLabTestRecord(activity);
-    case "Procedures":
-      return isProcedureRecord(activity);
-    case "Prevention":
-      return isPreventionRecord(activity);
-    case "Other Vet / Medical":
+    case "Injection":
+      return isInjectionRecord(activity);
+    case "Other Health":
       return isOtherVetMedicalRecord(activity);
     case "Attachments":
       return Boolean(attachmentLine(activity));
@@ -340,6 +479,7 @@ export default function MedicalRecordsPage() {
   const [activityState, setActivityState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [canEditEntries, setCanEditEntries] = useState(true);
   const [canDeleteEntries, setCanDeleteEntries] = useState(true);
+  const [expandedMedicationCourses, setExpandedMedicationCourses] = useState<string[]>([]);
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
   const [detailActivityType, setDetailActivityType] = useState<ActivityType | null>(null);
   const [detailValue, setDetailValue] = useState("");
@@ -502,6 +642,15 @@ export default function MedicalRecordsPage() {
       }),
     [activityLogs, activeFilter, dateFilter, selectedMonth, sortOrder]
   );
+  const medicalRecordItems = useMemo(
+    () => buildMedicalRecordItems(medicalRecords, sortOrder),
+    [medicalRecords, sortOrder]
+  );
+  const toggleMedicationCourse = (courseId: string) => {
+    setExpandedMedicationCourses((current) =>
+      current.includes(courseId) ? current.filter((id) => id !== courseId) : [...current, courseId]
+    );
+  };
 
   return (
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
@@ -521,10 +670,10 @@ export default function MedicalRecordsPage() {
             <button
               type="button"
               onClick={() => setShowFilters((current) => !current)}
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--hewie-accent,#78608f)] px-4 py-2 text-sm font-bold text-[var(--hewie-accent-text,#ffffff)] shadow-[0_8px_18px_rgba(15,23,42,0.14)] ring-1 ring-[var(--hewie-accent,#78608f)]/20 transition hover:opacity-90"
+              aria-label={showFilters ? "Hide filters" : "Open filters"}
+              className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--hewie-accent,#78608f)] p-0 text-[var(--hewie-accent-text,#ffffff)] shadow-[0_8px_18px_rgba(15,23,42,0.14)] ring-1 ring-[var(--hewie-accent,#78608f)]/20 transition hover:opacity-90"
             >
               <SlidersHorizontal className="size-4" />
-              Filter
             </button>
           </div>
 
@@ -608,8 +757,87 @@ export default function MedicalRecordsPage() {
             <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
               <p className="text-sm text-zinc-500">Loading records...</p>
             </section>
-          ) : medicalRecords.length ? (
-            medicalRecords.map((activity) => {
+          ) : medicalRecordItems.length ? (
+            medicalRecordItems.map((item) => {
+              if (item.kind === "medication-course") {
+                const expanded = expandedMedicationCourses.includes(item.id);
+                const startedDateTime = medicalRecordDateTime(item.startedAt);
+                const courseDateRange = medicationCourseDateRange(item);
+                const courseDosage = medicationCourseDosage(item);
+
+                return (
+                  <article key={item.id} className="rounded-2xl bg-sky-50/80 p-4 ring-1 ring-sky-200">
+                    <div className="flex items-start gap-3">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
+                        <MedicationPillIcon className="size-5" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-zinc-900">{item.title}</p>
+                          </div>
+                          <time dateTime={item.startedAt} className="shrink-0 text-right leading-5">
+                            <span className="block text-sm font-semibold text-zinc-600">{startedDateTime.date}</span>
+                            <span className="block text-xs font-medium text-zinc-400">{startedDateTime.time}</span>
+                          </time>
+                        </div>
+                        <div className="mt-1 space-y-0.5 text-sm leading-5 text-zinc-600">
+                          <p className="font-semibold text-zinc-700">Medication course:</p>
+                          <p>{courseDateRange}</p>
+                        </div>
+                        <div className="mt-2 space-y-1 text-sm leading-5">
+                          <p className="text-zinc-600">
+                            <span className="font-semibold text-zinc-700">Dosage:</span> {courseDosage}
+                          </p>
+                          {item.frequency ? <p className="text-zinc-600">{item.frequency}</p> : null}
+                          {item.timing ? (
+                            <p className="text-zinc-600">{item.timing}</p>
+                          ) : null}
+                          {item.notes ? (
+                            <ExpandableNoteText className="text-zinc-600">
+                              <span className="font-semibold text-zinc-700">Notes:</span> {item.notes}
+                            </ExpandableNoteText>
+                          ) : null}
+                          <p className="font-semibold text-sky-700">{medicationCourseSummary(item)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleMedicationCourse(item.id)}
+                          className="mt-3 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-50"
+                        >
+                          {expanded ? "Hide doses" : `Show ${item.activities.length} doses`}
+                        </button>
+                        {expanded ? (
+                          <div className="mt-3 space-y-2 border-t border-sky-100 pt-3">
+                            {item.activities.map((activity) => {
+                              const status = medicationStatus(activity);
+                              const doseDateTime = medicalRecordDateTime(activity.happenedAt);
+                              const notes = medicationDoseAddedNotes(activity, item.notes);
+
+                              return (
+                                <div key={activity.id} className="rounded-2xl bg-white/70 p-3 ring-1 ring-sky-100">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-semibold text-zinc-800">{status === "given" ? "Given" : status === "skipped" ? "Skipped" : "Missed"}</p>
+                                      {notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {notes}</ExpandableNoteText> : null}
+                                    </div>
+                                    <time dateTime={activity.happenedAt} className="shrink-0 text-right leading-5">
+                                      <span className="block text-sm font-semibold text-zinc-600">{doseDateTime.date}</span>
+                                      <span className="block text-xs font-medium text-zinc-400">{doseDateTime.time}</span>
+                                    </time>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </article>
+                );
+              }
+
+              const activity = item.activity;
               const notes = regularNotes(activity);
               const attachments = activity.attachments ?? [];
               const fallbackAttachments = attachments.length ? [] : fallbackAttachmentNames(activity);
@@ -644,9 +872,9 @@ export default function MedicalRecordsPage() {
                             <p className="font-semibold text-zinc-900">{heading.title}</p>
                             {heading.subtitle ? <p className="mt-1 text-sm font-normal text-zinc-700">{heading.subtitle}</p> : null}
                           </div>
-                          <time dateTime={activity.happenedAt} className="shrink-0 text-right leading-4">
-                            <span className="block text-xs font-semibold text-zinc-600">{recordDateTime.date}</span>
-                            <span className="block text-[11px] font-medium text-zinc-400">{recordDateTime.time}</span>
+                          <time dateTime={activity.happenedAt} className="shrink-0 text-right leading-5">
+                            <span className="block text-sm font-semibold text-zinc-600">{recordDateTime.date}</span>
+                            <span className="block text-xs font-medium text-zinc-400">{recordDateTime.time}</span>
                           </time>
                         </div>
                         {notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-600">Notes: {notes}</ExpandableNoteText> : null}

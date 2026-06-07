@@ -324,19 +324,60 @@ function manualAlertCreatedAfterScheduledTime(alert: ManualAlert, todayKey: stri
   return createdAt.getHours() * 60 + createdAt.getMinutes() > alertMinutes;
 }
 
+function medicationTypeLabel(item: CareItemTemplate) {
+  if (item.kind !== "medication") return null;
+  if (item.medicationType === "topical") return "Topical";
+  if (item.medicationType === "injection") return "Injection";
+  if (item.medicationType === "other") return "Other";
+  return "Oral";
+}
+
+function careItemGiveText(item: CareItemTemplate) {
+  const route = medicationTypeLabel(item);
+  return [item.dose.trim(), route ? `(${route})` : ""].filter(Boolean).join(" ");
+}
+
+function customCareTimingLabel(item: CareItemTemplate) {
+  if (item.kind === "medication" && item.medicationType !== "oral") return null;
+  return item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food";
+}
+
+function customCareFrequencyText(item: CareItemTemplate) {
+  const steps = careScheduleSteps(item);
+  if (steps.length > 1) return `${steps.length} Schedules`;
+  if (!steps[0]) return item.ongoing ? null : "Schedule Needed";
+  if (item.ongoing) return `Every ${steps[0].everyHours} Hours • Ongoing`;
+  if (item.asNeeded) return `Every ${steps[0].everyHours} Hours • As Needed`;
+  return `Every ${steps[0].everyHours} Hours For ${steps[0].forDays} Days`;
+}
+
+function careItemExpandedDetail(item: CareItemTemplate, scheduleLine?: string) {
+  const giveText = careItemGiveText(item);
+  const timingLabel = item.scheduleKind === "custom" ? customCareTimingLabel(item) : null;
+  const frequencyText = item.scheduleKind === "custom" ? customCareFrequencyText(item) : null;
+
+  return [
+    scheduleLine ?? null,
+    giveText ? `Give: ${giveText}` : null,
+    timingLabel,
+    frequencyText,
+    item.notes.trim() ? `Notes: ${item.notes.trim()}` : null,
+  ].filter(Boolean).join("\n");
+}
+
 function mealExpandedDetail(meal: MealTemplate, templates: MealTemplate[], todayKey: string, careTemplates: CareItemTemplate[]) {
-  const supplements = careTemplates
-    .filter((item) => item.kind === "supplement" && careItemOccursWithMeal(item, meal, templates, todayKey))
+  const mealCareItems = careTemplates
+    .filter((item) => careItemOccursWithMeal(item, meal, templates, todayKey))
     .map((item) => {
-      const dose = item.dose.trim();
+      const giveText = careItemGiveText(item);
       const notes = item.notes.trim();
-      return [item.name, dose, notes].filter(Boolean).join(" - ");
+      return [item.name, giveText, notes].filter(Boolean).join(" - ");
     });
 
   return [
     meal.food.trim() ? `Food: ${meal.food.trim()}` : null,
     meal.notes.trim() ? `Notes: ${meal.notes.trim()}` : null,
-    supplements.length ? `Supplements: ${supplements.join("; ")}` : null,
+    mealCareItems.length ? `Meal Plan Care: ${mealCareItems.join("; ")}` : null,
   ].filter(Boolean).join("\n");
 }
 
@@ -380,6 +421,7 @@ export function resolveAlerts(
           kind: "review",
           title: `${item.name} missing`,
           detail: `Scheduled with ${meal.name} at ${meal.plannedTime}.`,
+          expandedDetail: careItemExpandedDetail(item, `Meal: ${meal.name} at ${meal.plannedTime}`),
           severity: "warning",
           reviewAction: {
             type: "custom-care",
@@ -434,6 +476,7 @@ export function resolveAlerts(
       kind: "review",
       title: `${occurrence.item.name} missing`,
       detail: `Scheduled for ${formatActivityTime(occurrence.scheduledAt.toISOString())}.`,
+      expandedDetail: careItemExpandedDetail(occurrence.item, `Scheduled for ${formatActivityTime(occurrence.scheduledAt.toISOString())}`),
       severity: "warning",
       reviewAction: {
         type: "custom-care",

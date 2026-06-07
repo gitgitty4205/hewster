@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
-import { Check, Ellipsis, KeyRound, UserRound } from "lucide-react";
+import { Check, KeyRound, Pencil, UserRound } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
 
@@ -527,7 +527,7 @@ export default function AccountSettingsPage() {
                 className="size-9 shrink-0 rounded-full bg-white text-zinc-600"
                 aria-label={`Edit ${accountInfoTitle.toLowerCase()}`}
               >
-                <Ellipsis className="size-4" />
+                <Pencil className="size-4" />
               </Button>
             ) : null}
           </div>
@@ -577,7 +577,7 @@ export default function AccountSettingsPage() {
                 }`}
               />
             </label>
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
+            <label className="block pt-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
               Phone Number
               <input
                 type="tel"
