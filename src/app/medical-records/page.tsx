@@ -818,7 +818,7 @@ export default function MedicalRecordsPage() {
                         <button
                           type="button"
                           onClick={() => toggleMedicationCourse(item.id)}
-                          className="mt-3 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-50"
+                          className="mt-3 rounded-full bg-white px-3 py-1.5 text-xs font-normal text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-50"
                         >
                           {expanded ? "Hide doses" : `Show ${item.activities.length} doses`}
                         </button>
