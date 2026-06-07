@@ -25,7 +25,7 @@ const introPages = [
   {
     title: "Health Records",
     href: "/hewie/medical-records",
-    description: "Keep vet visits, health notes, and medical attachments easy to find.",
+    description: "Keep vet visits, medical notes, and medical attachments easy to find.",
   },
   {
     title: "Weight",

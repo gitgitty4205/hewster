@@ -842,7 +842,7 @@ export function ActivityDetailForm({
 
   const attachmentAccept = poopPhotoDetail ? "image/*" : "image/*,.pdf,application/pdf";
 
-  const attachmentHelp = poopPhotoDetail ? "Optional photos for color, texture, or anything unusual." : "Health notes, certificates, lab results, invoices, and photos.";
+  const attachmentHelp = poopPhotoDetail ? "Optional photos for color, texture, or anything unusual." : "Medical notes, certificates, lab reports, invoices, and photos.";
 
   const showDetailField = activityType === "other" || (activityType === "sick" && (detail === "Other" || sickSymptomFromDetail(detail) === "Other" || isOtherMedicalDetail(detail)));
 
