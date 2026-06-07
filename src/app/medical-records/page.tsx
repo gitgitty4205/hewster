@@ -922,7 +922,7 @@ export default function MedicalRecordsPage() {
           )}
         </div>
 
-        <BottomNav />
+        {!editingActivityId ? <BottomNav /> : null}
       </div>
     </main>
   );

@@ -392,10 +392,13 @@ function presetButtonClasses(activityType: ActivityType, preset: string, selecte
     ? bristolScaleClasses(preset, selected)
 
     : activityPresetClasses(activityType, selected);
+  const sizeClasses = activityType === "potty" || activityType === "poop"
+    ? "px-3 py-2 text-xs leading-snug"
+    : "px-3 py-2 text-sm";
 
 
 
-  return `rounded-full px-3 py-2 text-sm font-medium transition ${selected ? "ring-2" : "ring-1"} ${classes}`;
+  return `rounded-full ${sizeClasses} font-medium transition ${selected ? "ring-2" : "ring-1"} ${classes}`;
 
 }
 
@@ -912,7 +915,7 @@ export function ActivityDetailForm({
 
   return (
 
-    <section className={embedded ? "mt-3 border-t border-zinc-200 pt-4" : "rounded-[1.5rem] border border-zinc-200 bg-white/80 p-4"}>
+    <section className={embedded ? "mt-3 rounded-[1.5rem] border border-zinc-200 bg-white/85 p-4 shadow-sm" : "rounded-[1.5rem] border border-zinc-200 bg-white/80 p-4"}>
 
       <div className="mb-4">
 
