@@ -57,6 +57,8 @@ type Props = {
 
   onAttachmentsChange?: (files: File[]) => void;
 
+  onAttachmentNameRemove?: (index: number) => void;
+
   recordTags?: string[];
 
   onRecordTagsChange?: (tags: string[]) => void;
@@ -778,6 +780,8 @@ export function ActivityDetailForm({
 
   onAttachmentsChange,
 
+  onAttachmentNameRemove,
+
   onHappenedAtChange,
 
   onSave,
@@ -825,7 +829,12 @@ export function ActivityDetailForm({
   const hasSickDetail = activityType !== "sick" || Boolean(detail.trim());
   const showCoreFields = activityType !== "sick" || hasSickDetail;
   const poopPhotoDetail = activityType === "poop" || (activityType === "potty" && /\bpoop\b/i.test(detail) && !/\bno poop\b/i.test(detail));
-  const showAttachmentField = Boolean(onAttachmentsChange && ((activityType === "sick" && detail === "Vet Visit") || poopPhotoDetail));
+  const showAttachmentField = Boolean(
+    onAttachmentsChange &&
+      ((activityType === "sick" && detail === "Vet Visit") ||
+        poopPhotoDetail ||
+        (isEditing && (attachmentNames.length > 0 || attachmentFiles.length > 0)))
+  );
 
   const isPottyLog = ["potty", "pee", "poop"].includes(activityType);
 
@@ -873,9 +882,10 @@ export function ActivityDetailForm({
 
     (!requiresPresetDetail && !requiresTitleDetail && activityType !== "pee" && !detail && !hasNotesContent);
 
-  const displayedAttachments = attachmentFiles.length
-    ? attachmentFiles.map((file) => file.name)
-    : attachmentNames;
+  const displayedAttachments = [
+    ...attachmentNames.map((name, index) => ({ name, kind: "existing" as const, index })),
+    ...attachmentFiles.map((file, index) => ({ name: file.name, kind: "new" as const, index })),
+  ];
 
   const addAttachmentFiles = (files: File[]) => {
 
@@ -884,7 +894,7 @@ export function ActivityDetailForm({
     const nextFiles = [...attachmentFiles];
     files
       .filter((file) => !poopPhotoDetail || file.type.startsWith("image/"))
-      .slice(0, Math.max(0, MAX_ATTACHMENT_FILES - nextFiles.length))
+      .slice(0, Math.max(0, MAX_ATTACHMENT_FILES - attachmentNames.length - nextFiles.length))
       .forEach((file) => {
       const alreadyAttached = nextFiles.some((attached) =>
         attached.name === file.name && attached.size === file.size && attached.lastModified === file.lastModified
@@ -909,7 +919,7 @@ export function ActivityDetailForm({
 
   };
 
-  const attachmentLimitReached = attachmentFiles.length >= MAX_ATTACHMENT_FILES;
+  const attachmentLimitReached = attachmentNames.length + attachmentFiles.length >= MAX_ATTACHMENT_FILES;
 
 
 
@@ -1593,13 +1603,20 @@ export function ActivityDetailForm({
 
             <ul className="mt-2 space-y-1 text-xs text-zinc-600">
 
-              {displayedAttachments.map((name, index) => (
-                <li key={`${name}-${index}`} className={`flex items-center justify-between gap-2 rounded-xl bg-white/70 px-2.5 py-1.5 ring-1 ${poopPhotoDetail ? "ring-[#f0d27a]/50" : "ring-sky-100"}`}>
-                  <span className="min-w-0 truncate">{name}</span>
-                  {attachmentFiles.length ? (
+              {displayedAttachments.map((attachment) => (
+                <li key={`${attachment.kind}-${attachment.name}-${attachment.index}`} className={`flex items-center justify-between gap-2 rounded-xl bg-white/70 px-2.5 py-1.5 ring-1 ${poopPhotoDetail ? "ring-[#f0d27a]/50" : "ring-sky-100"}`}>
+                  <span className="min-w-0 truncate">{attachment.name}</span>
+                  {attachment.kind === "new" || onAttachmentNameRemove ? (
                     <button
                       type="button"
-                      onClick={() => removeAttachmentFile(index)}
+                      onClick={() => {
+                        if (attachment.kind === "new") {
+                          removeAttachmentFile(attachment.index);
+                          return;
+                        }
+
+                        onAttachmentNameRemove?.(attachment.index);
+                      }}
                       className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
                     >
                       Remove

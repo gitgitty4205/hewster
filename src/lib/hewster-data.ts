@@ -228,10 +228,12 @@ function removeCachedMealLog(mealLogId: string) {
 function cacheActivityLog(activity: ActivityLog) {
   if (!appStateCache) return;
 
+  const existingActivity = appStateCache.state.activityLogs.find((entry) => entry.id === activity.id);
+
   cacheAppState({
     ...appStateCache.state,
     activityLogs: [
-      activity,
+      { ...activity, attachments: activity.attachments ?? existingActivity?.attachments },
       ...appStateCache.state.activityLogs.filter((entry) => entry.id !== activity.id),
     ].sort(compareActivitiesReverseChronological),
   });
@@ -1665,27 +1667,34 @@ export async function updateActivityLogInSupabase(activity: ActivityLog) {
   }
 }
 
-export async function saveActivityAttachmentsToSupabase(activity: ActivityLog, files: File[], documentTypes: string[]) {
+type SaveActivityAttachmentsOptions = {
+  replaceExisting?: boolean;
+};
+
+export async function saveActivityAttachmentsToSupabase(activity: ActivityLog, files: File[], documentTypes: string[], options: SaveActivityAttachmentsOptions = {}) {
   const signedInSupabase = await getSignedInSupabase();
   if (!signedInSupabase || !files.length) return [];
 
   const { supabase, userId } = signedInSupabase;
   const savedAttachments: ActivityAttachment[] = [];
+  const replaceExisting = options.replaceExisting ?? true;
 
-  const clearExisting = await supabase
-    .from("activity_attachments")
-    .delete()
-    .eq("activity_log_id", activity.id)
-    .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+  if (replaceExisting) {
+    const clearExisting = await supabase
+      .from("activity_attachments")
+      .delete()
+      .eq("activity_log_id", activity.id)
+      .eq("owner_id", userId)
+      .eq("profile_slug", HEWSTER_PROFILE_SLUG);
 
-  if (clearExisting.error) {
-    if (isAttachmentStorageSetupError(clearExisting.error)) {
-      console.warn("Attachment storage is not set up yet; saved filename notes only.", clearExisting.error);
-      return [];
+    if (clearExisting.error) {
+      if (isAttachmentStorageSetupError(clearExisting.error)) {
+        console.warn("Attachment storage is not set up yet; saved filename notes only.", clearExisting.error);
+        return [];
+      }
+
+      throw clearExisting.error;
     }
-
-    throw clearExisting.error;
   }
 
   const savedFileNames = activityAttachmentFileNamesForSave(activity, files, documentTypes);
@@ -1738,8 +1747,62 @@ export async function saveActivityAttachmentsToSupabase(activity: ActivityLog, f
     savedAttachments.push(mapActivityAttachmentRowToAttachment(row));
   }
 
-  cacheActivityAttachments(activity.id, savedAttachments);
+  if (replaceExisting) {
+    cacheActivityAttachments(activity.id, savedAttachments);
+  } else if (appStateCache) {
+    const existingAttachments =
+      appStateCache.state.activityLogs.find((entry) => entry.id === activity.id)?.attachments ?? [];
+    cacheActivityAttachments(activity.id, [...existingAttachments, ...savedAttachments]);
+  }
   return savedAttachments;
+}
+
+export async function deleteActivityAttachmentsFromSupabase(activityId: string, attachments: ActivityAttachment[]) {
+  if (!attachments.length) return;
+
+  const signedInSupabase = await getSignedInSupabase();
+  const attachmentIds = attachments.map((attachment) => attachment.id);
+
+  if (!signedInSupabase) {
+    const existingAttachments =
+      appStateCache?.state.activityLogs.find((entry) => entry.id === activityId)?.attachments ?? [];
+    cacheActivityAttachments(activityId, existingAttachments.filter((attachment) => !attachmentIds.includes(attachment.id)));
+    return;
+  }
+
+  const { supabase, userId, accessRole } = signedInSupabase;
+  requireEntryEditAccess(accessRole);
+  const filePaths = attachments.map((attachment) => attachment.filePath).filter(Boolean);
+
+  const deleteResult = await supabase
+    .from("activity_attachments")
+    .delete()
+    .in("id", attachmentIds)
+    .eq("activity_log_id", activityId)
+    .eq("owner_id", userId)
+    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+
+  if (deleteResult.error) {
+    if (isAttachmentStorageSetupError(deleteResult.error)) {
+      console.warn("Attachment metadata table is not set up yet; removed attachments locally only.", deleteResult.error);
+      const existingAttachments =
+        appStateCache?.state.activityLogs.find((entry) => entry.id === activityId)?.attachments ?? [];
+      cacheActivityAttachments(activityId, existingAttachments.filter((attachment) => !attachmentIds.includes(attachment.id)));
+      return;
+    }
+
+    throw deleteResult.error;
+  }
+
+  if (filePaths.length) {
+    await supabase.storage.from("pet-attachments").remove(filePaths).catch((error) => {
+      console.warn("Could not remove attachment files from storage", error);
+    });
+  }
+
+  const existingAttachments =
+    appStateCache?.state.activityLogs.find((entry) => entry.id === activityId)?.attachments ?? [];
+  cacheActivityAttachments(activityId, existingAttachments.filter((attachment) => !attachmentIds.includes(attachment.id)));
 }
 
 export async function deleteActivityLogInSupabase(activityId: string) {

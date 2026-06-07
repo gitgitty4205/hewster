@@ -11,6 +11,7 @@ import { compareActivitiesReverseChronological, formatActivityTime, formatActivi
 import {
   ACTIVITY_LOGS_STORAGE_KEY,
   activityAttachmentFileNamesForSave,
+  deleteActivityAttachmentsFromSupabase,
   deleteActivityLogInSupabase,
   type ActivityLog,
   type ActivityAttachment,
@@ -487,6 +488,7 @@ export default function MedicalRecordsPage() {
   const [extraNotesValue, setExtraNotesValue] = useState("");
   const [happenedAtValue, setHappenedAtValue] = useState(() => nowForTimeInput());
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
   const supabaseReady = isSupabaseConfigured();
 
   useEffect(() => {
@@ -525,6 +527,7 @@ export default function MedicalRecordsPage() {
     setExtraNotesValue("");
     setHappenedAtValue(nowForTimeInput());
     setAttachmentFiles([]);
+    setRemovedAttachmentIds([]);
   };
 
   const openEditorForActivity = (activity: ActivityLog) => {
@@ -538,6 +541,7 @@ export default function MedicalRecordsPage() {
     setExtraNotesValue("");
     setHappenedAtValue(toTimeInputValue(activity.happenedAt));
     setAttachmentFiles([]);
+    setRemovedAttachmentIds([]);
   };
 
   const saveActivity = async (activity: ActivityLog) => {
@@ -568,11 +572,14 @@ export default function MedicalRecordsPage() {
     const resolvedActivityType = resolveActivityTypeForSave(detailActivityType, trimmedDetail);
     const happenedAt = mergeDayWithTime(dayInputValue(existingActivity.happenedAt), happenedAtValue);
     const attachmentDocumentTypes = attachmentDocumentTypesForActivity(resolvedActivityType);
-    const attachmentNames = activityAttachmentFileNamesForSave(
+    const retainedAttachments = (existingActivity.attachments ?? []).filter((attachment) => !removedAttachmentIds.includes(attachment.id));
+    const removedAttachments = (existingActivity.attachments ?? []).filter((attachment) => removedAttachmentIds.includes(attachment.id));
+    const newAttachmentNames = activityAttachmentFileNamesForSave(
       { id: editingActivityId, profileSlug: HEWSTER_PROFILE_SLUG, activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
       attachmentFiles,
       attachmentDocumentTypes
     );
+    const attachmentNames = [...retainedAttachments.map((attachment) => attachment.fileName), ...newAttachmentNames];
     const attachmentNote = attachmentNames.length ? `Attachments: ${attachmentNames.join(", ")}` : existingAttachmentNote(existingActivity);
     const resolvedNotes = [notesValue.trim(), attachmentNote].filter(Boolean).join("\n") || null;
 
@@ -587,19 +594,27 @@ export default function MedicalRecordsPage() {
 
     await saveActivity(activity);
 
+    if (removedAttachments.length && supabaseReady) {
+      await deleteActivityAttachmentsFromSupabase(activity.id, removedAttachments);
+    }
+
+    let nextAttachments = retainedAttachments;
+
     if (attachmentFiles.length) {
-      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypes);
+      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypes, { replaceExisting: false });
 
       if (savedAttachments.length) {
-        setActivityLogs((current) => {
-          const nextLogs = current.map((entry) =>
-            entry.id === activity.id ? { ...entry, attachments: savedAttachments } : entry
-          );
-          window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
-          return nextLogs;
-        });
+        nextAttachments = [...retainedAttachments, ...savedAttachments];
       }
     }
+
+    setActivityLogs((current) => {
+      const nextLogs = current.map((entry) =>
+        entry.id === activity.id ? { ...entry, attachments: nextAttachments } : entry
+      );
+      window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+      return nextLogs;
+    });
 
     resetEditor();
   };
@@ -848,21 +863,23 @@ export default function MedicalRecordsPage() {
               return (
                 <div key={activity.id} className="space-y-2">
                   <article
-                    role={canEditEntries ? "button" : undefined}
-                    tabIndex={canEditEntries ? 0 : undefined}
-                    onClick={() => openEditorForActivity(activity)}
-                    onKeyDown={(event) => {
-                      if (!canEditEntries || (event.key !== "Enter" && event.key !== " ")) return;
-                      event.preventDefault();
-                      openEditorForActivity(activity);
-                    }}
                     className={`rounded-2xl bg-sky-50/80 p-4 ring-1 transition ${
                       editingActivityId === activity.id
                         ? "ring-sky-400"
                         : "ring-sky-200"
-                    } ${canEditEntries ? "cursor-pointer hover:bg-sky-50" : ""}`}
+                    } ${canEditEntries ? "hover:bg-sky-50" : ""}`}
                   >
-                    <div className="flex items-start gap-3">
+                    <div
+                      role={canEditEntries ? "button" : undefined}
+                      tabIndex={canEditEntries ? 0 : undefined}
+                      onClick={() => openEditorForActivity(activity)}
+                      onKeyDown={(event) => {
+                        if (!canEditEntries || (event.key !== "Enter" && event.key !== " ")) return;
+                        event.preventDefault();
+                        openEditorForActivity(activity);
+                      }}
+                      className={`${canEditEntries ? "cursor-pointer" : ""} flex items-start gap-3`}
+                    >
                       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
                         {recordIcon}
                       </span>
@@ -888,30 +905,45 @@ export default function MedicalRecordsPage() {
                         )}
                       </div>
                     </div>
+                    {editingActivityId === activity.id && detailActivityType ? (
+                      <ActivityDetailForm
+                        activityType={detailActivityType}
+                        detail={detailValue}
+                        notes={notesValue}
+                        extraNotes={extraNotesValue}
+                        happenedAt={happenedAtValue}
+                        isEditing
+                        embedded
+                        saveLabel="Save"
+                        onDetailChange={setDetailValue}
+                        onNotesChange={setNotesValue}
+                        onExtraNotesChange={setExtraNotesValue}
+                        attachmentFiles={attachmentFiles}
+                        attachmentNames={
+                          attachments.length
+                            ? attachments
+                                .filter((attachment) => !removedAttachmentIds.includes(attachment.id))
+                                .map((attachment) => attachment.fileName)
+                            : fallbackAttachments
+                        }
+                        onAttachmentNameRemove={
+                          attachments.length
+                            ? (index) => {
+                                const attachment = attachments.filter((item) => !removedAttachmentIds.includes(item.id))[index];
+                                if (!attachment) return;
+                                setRemovedAttachmentIds((current) => [...current, attachment.id]);
+                              }
+                            : undefined
+                        }
+                        onAttachmentsChange={setAttachmentFiles}
+                        onHappenedAtChange={setHappenedAtValue}
+                        onSave={saveDetailedActivity}
+                        onCancel={resetEditor}
+                        onDelete={canDeleteEntries ? deleteActivity : undefined}
+                        saving={activityState === "saving"}
+                      />
+                    ) : null}
                   </article>
-                  {editingActivityId === activity.id && detailActivityType ? (
-                    <ActivityDetailForm
-                      activityType={detailActivityType}
-                      detail={detailValue}
-                      notes={notesValue}
-                      extraNotes={extraNotesValue}
-                      happenedAt={happenedAtValue}
-                      isEditing
-                      embedded
-                      saveLabel="Save"
-                      onDetailChange={setDetailValue}
-                      onNotesChange={setNotesValue}
-                      onExtraNotesChange={setExtraNotesValue}
-                      attachmentFiles={attachmentFiles}
-                      attachmentNames={attachmentFiles.length ? attachmentFiles.map((file) => file.name) : activity.attachments?.map((attachment) => attachment.fileName) ?? fallbackAttachments}
-                      onAttachmentsChange={setAttachmentFiles}
-                      onHappenedAtChange={setHappenedAtValue}
-                      onSave={saveDetailedActivity}
-                      onCancel={resetEditor}
-                      onDelete={canDeleteEntries ? deleteActivity : undefined}
-                      saving={activityState === "saving"}
-                    />
-                  ) : null}
                 </div>
               );
             })
