@@ -6,9 +6,10 @@ type Props = {
   children: ReactNode;
   className?: string;
   collapsedLines?: 1 | 2 | 3;
+  stopPropagation?: boolean;
 };
 
-export function ExpandableNoteText({ children, className = "", collapsedLines = 2 }: Props) {
+export function ExpandableNoteText({ children, className = "", collapsedLines = 2, stopPropagation = true }: Props) {
   const [expanded, setExpanded] = useState(false);
   const collapsedStyle: CSSProperties | undefined = expanded
     ? undefined
@@ -24,7 +25,7 @@ export function ExpandableNoteText({ children, className = "", collapsedLines = 
       className={`pet-note-text block w-full cursor-pointer text-left ${className}`}
       aria-expanded={expanded}
       onClick={(event) => {
-        event.stopPropagation();
+        if (stopPropagation) event.stopPropagation();
         setExpanded((current) => !current);
       }}
     >

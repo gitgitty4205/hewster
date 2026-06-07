@@ -892,7 +892,7 @@ export default function MedicalRecordsPage() {
                             <span className="block text-xs font-medium text-zinc-400">{recordDateTime.time}</span>
                           </time>
                         </div>
-                        {notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-600">Notes: {notes}</ExpandableNoteText> : null}
+                        {notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-600" stopPropagation={false}>Notes: {notes}</ExpandableNoteText> : null}
                         {attachments.length ? (
                           <div className="mt-2">
                             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Attachments</p>
