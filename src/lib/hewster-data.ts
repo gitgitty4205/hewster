@@ -1,4 +1,5 @@
 import { compareActivitiesReverseChronological } from "@/lib/activity";
+import type { User } from "@supabase/supabase-js";
 import type { CareItemKind, CareItemTemplate } from "@/lib/care-settings";
 import type { MealStatus, MealTemplate } from "@/lib/meal-templates";
 import { clampMealFoodText, clampMealNameText, clampMealNoteText, initialTemplates, isInitialMealTemplatePlan, isMealTemplateArray, sortMealTemplatesByTime, STORAGE_KEY } from "@/lib/meal-templates";
@@ -357,7 +358,7 @@ async function getSignedInSupabase() {
   if (!user) return null;
 
   const access = await resolveActiveNotebookAccess(supabase, user, { forceRefresh: true });
-  return { supabase, userId: access.notebookOwnerId, accessRole: access.role, members: access.members };
+  return { supabase, user, userId: access.notebookOwnerId, accessRole: access.role, members: access.members };
 }
 
 function requireEntryEditAccess(accessRole: NotebookAccessRole) {
@@ -876,15 +877,32 @@ function displayNameFromEmail(email: string) {
     .join(" ") || email;
 }
 
-function memberDisplayNames(members: NotebookMember[]) {
+function userAccountDisplayName(user: User | null | undefined) {
+  if (!user) return "";
+
+  const metadata = user.user_metadata ?? {};
+  const firstName = typeof metadata.first_name === "string" ? metadata.first_name.trim() : "";
+  const lastName = typeof metadata.last_name === "string" ? metadata.last_name.trim() : "";
+  const fullName = typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
+  return [firstName, lastName].filter(Boolean).join(" ") || fullName || "";
+}
+
+function memberDisplayNames(members: NotebookMember[], currentUser?: User | null) {
   const names = new Map<string, string>();
+  const currentUserName = userAccountDisplayName(currentUser);
 
   members.forEach((member) => {
     if (member.memberUserId) {
-      names.set(member.memberUserId, displayNameFromEmail(member.memberEmail));
+      names.set(
+        member.memberUserId,
+        member.memberUserId === currentUser?.id && currentUserName ? currentUserName : displayNameFromEmail(member.memberEmail),
+      );
     }
     if (member.role === "owner") {
-      names.set(member.notebookOwnerId, displayNameFromEmail(member.memberEmail));
+      names.set(
+        member.notebookOwnerId,
+        member.notebookOwnerId === currentUser?.id && currentUserName ? currentUserName : displayNameFromEmail(member.memberEmail),
+      );
     }
   });
 
@@ -907,8 +925,8 @@ function auditRowEntryId(row: AppAuditLogRow) {
   return typeof oldRowId === "string" ? oldRowId : null;
 }
 
-function notebookEntryAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[], tableName: string) {
-  const memberNames = memberDisplayNames(members);
+function notebookEntryAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[], tableName: string, currentUser?: User | null) {
+  const memberNames = memberDisplayNames(members, currentUser);
   const byEntryId = new Map<string, NotebookEntryAuditInfo>();
 
   auditRows
@@ -942,12 +960,12 @@ function notebookEntryAuditInfoById(auditRows: AppAuditLogRow[], members: Notebo
   return byEntryId;
 }
 
-function activityAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[]) {
-  return notebookEntryAuditInfoById(auditRows, members, "activity_logs");
+function activityAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[], currentUser?: User | null) {
+  return notebookEntryAuditInfoById(auditRows, members, "activity_logs", currentUser);
 }
 
-function mealAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[]) {
-  return notebookEntryAuditInfoById(auditRows, members, "meal_logs");
+function mealAuditInfoById(auditRows: AppAuditLogRow[], members: NotebookMember[], currentUser?: User | null) {
+  return notebookEntryAuditInfoById(auditRows, members, "meal_logs", currentUser);
 }
 
 function isGeneratedCareActivityId(id: string) {
@@ -984,7 +1002,7 @@ export async function loadActivityAuditInfoForReport(activityIds: string[]) {
   const uniqueActivityIds = [...new Set(activityIds)].filter(Boolean);
   if (!signedInSupabase || !uniqueActivityIds.length) return new Map<string, NotebookEntryAuditInfo>();
 
-  const { supabase, userId, members } = signedInSupabase;
+  const { supabase, user, userId, members } = signedInSupabase;
   const { data, error } = await supabase.rpc("report_activity_audit_log", {
     report_owner_id: userId,
     report_profile_slug: HEWSTER_PROFILE_SLUG,
@@ -997,7 +1015,7 @@ export async function loadActivityAuditInfoForReport(activityIds: string[]) {
     return new Map<string, NotebookEntryAuditInfo>();
   }
 
-  return activityAuditInfoById((data ?? []) as AppAuditLogRow[], members);
+  return activityAuditInfoById((data ?? []) as AppAuditLogRow[], members, user);
 }
 
 export async function loadMealAuditInfoForReport(mealLogIds: string[]) {
@@ -1005,7 +1023,7 @@ export async function loadMealAuditInfoForReport(mealLogIds: string[]) {
   const uniqueMealLogIds = [...new Set(mealLogIds)].filter(Boolean);
   if (!signedInSupabase || !uniqueMealLogIds.length) return new Map<string, NotebookEntryAuditInfo>();
 
-  const { supabase, userId, members } = signedInSupabase;
+  const { supabase, user, userId, members } = signedInSupabase;
   const { data, error } = await supabase
     .from("app_audit_log")
     .select("id, table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
@@ -1027,7 +1045,7 @@ export async function loadMealAuditInfoForReport(mealLogIds: string[]) {
     return entryId ? mealLogIdSet.has(entryId) : false;
   });
 
-  return mealAuditInfoById(matchingRows, members);
+  return mealAuditInfoById(matchingRows, members, user);
 }
 
 function mapTemplateToRow(template: MealTemplate, index: number, ownerId: string): MealTemplateRow {
@@ -1205,7 +1223,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     return cacheAppState(localState);
   }
 
-  const { supabase, userId, members } = signedInSupabase;
+  const { supabase, user, userId, members } = signedInSupabase;
 
   const templatesPromise = supabase
     .from("meal_templates")
@@ -1360,7 +1378,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     mealTemplateAuditRows
   );
   const mealTemplateAuditSnapshots = mapMealTemplateAuditSnapshots(mealTemplateAuditRows);
-  const activityAuditInfo = activityAuditInfoById(activityAuditRows, members);
+  const activityAuditInfo = activityAuditInfoById(activityAuditRows, members, user);
 
   const remoteDailyMealHistory = dailyMealsResult.data?.length
     ? (dailyMealsResult.data as DailyMealRow[]).map((row) => {

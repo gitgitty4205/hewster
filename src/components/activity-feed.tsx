@@ -46,7 +46,7 @@ function initialsFromName(name?: string | null) {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
+  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 }
 
 function InitialsBadge({ name }: { name?: string | null }) {
@@ -54,7 +54,7 @@ function InitialsBadge({ name }: { name?: string | null }) {
   if (!initials) return null;
 
   return (
-    <span className="inline-flex size-[22px] shrink-0 items-center justify-center rounded-full bg-white/80 text-[10px] font-bold leading-none text-zinc-500 ring-1 ring-zinc-200/80">
+    <span className="inline-flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[#f2eadf] text-[10px] font-normal leading-none text-[#8a5a35] ring-1 ring-[#d8c3ad]/70">
       {initials}
     </span>
   );
