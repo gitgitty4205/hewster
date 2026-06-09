@@ -5,7 +5,7 @@ import { appThemes, type ThemeId } from "@/lib/pet-profile";
 import { getSupabaseEnv } from "@/lib/supabase";
 
 const resendApiKey = process.env.RESEND_API_KEY;
-const resendFromEmail = process.env.RESEND_FROM_EMAIL || "Pet Notebook <onboarding@resend.dev>";
+const resendFromEmail = process.env.RESEND_FROM_EMAIL || "PetNoteBook <onboarding@resend.dev>";
 const historyReplyToEmail = process.env.INVITE_REPLY_TO_EMAIL;
 
 type ReportProfile = {
@@ -273,7 +273,7 @@ function pdfReportHeader(petName: string, theme = pdfReportTheme("slate")) {
     `${theme.cardStroke} ${pdfRoundedRect(50, 720, 28, 28, 8, "S")}`,
     theme.accent,
     pdfText("PN", 56, 731, 10, "F2"),
-    pdfText("Pet Notebook", 92, 740, 12, "F2"),
+    pdfText("PetNoteBook", 92, 740, 12, "F2"),
     pdfText(`${petName} History Report`, 92, 720, 18, "F2"),
     `${theme.cardStroke} 50 704 m 562 704 l S`,
     theme.neutral,
@@ -612,7 +612,7 @@ export async function POST(request: Request) {
   const html = `<!doctype html>
 <html>
   <body style="font-family: Arial, sans-serif; color: #27272a; line-height: 1.5; margin: 0; padding: 24px;">
-    <p>Pet Notebook</p>
+    <p>PetNoteBook</p>
     <h1 style="font-size: 24px; line-height: 1.2; margin: 0 0 16px;">${safePossessivePetName} History Report is attached</h1>
     <div style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px;">
       <h2 style="font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .08em; color: #71717a;">Report Summary</h2>
@@ -624,7 +624,7 @@ export async function POST(request: Request) {
   </body>
 </html>`;
 
-  const text = `Pet Notebook\n\n${possessiveName(petName)} History Report is attached.\n\nReport Summary\nFilter: ${filterLabel}\nDate Range: ${dateRange}\nMatching Days: ${matchingDays}\nReport Generated: ${generatedDate}`;
+  const text = `PetNoteBook\n\n${possessiveName(petName)} History Report is attached.\n\nReport Summary\nFilter: ${filterLabel}\nDate Range: ${dateRange}\nMatching Days: ${matchingDays}\nReport Generated: ${generatedDate}`;
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",

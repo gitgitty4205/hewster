@@ -142,7 +142,7 @@ export function AuthCallbackContent({ forcePasswordRecovery = false }: { forcePa
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--hewie-bg,#999b96)] px-4 text-zinc-900">
       <section className="w-full max-w-sm rounded-[2rem] bg-white p-6 text-center shadow-sm ring-1 ring-zinc-200">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-400">Pet Notebook</p>
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-400">PetNoteBook</p>
         <h1 className="mt-2 text-xl font-bold text-zinc-800">
           {displayedError ? "Sign-in needs attention" : isPasswordRecovery ? "Opening password reset..." : "Signing you in..."}
         </h1>

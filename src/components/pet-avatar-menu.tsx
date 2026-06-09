@@ -390,7 +390,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
             />
             <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg,#f1f5f9)]/92 px-5 py-4 text-[var(--hewie-active-text,#334155)] shadow-sm backdrop-blur-[1px]">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--hewie-active-text,#334155)]/64">Pet Notebook</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--hewie-active-text,#334155)]/64">PetNoteBook</p>
                 <h2 className="text-xl font-semibold text-[var(--hewie-active-text,#334155)]">Pets</h2>
               </div>
               <button

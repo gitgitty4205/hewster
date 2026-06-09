@@ -57,14 +57,14 @@ export function LoginForm() {
             />
           </span>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-zinc-500">Pet Notebook</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-zinc-500">PetNoteBook</p>
             <h1 className="text-3xl font-semibold tracking-normal">Sign in</h1>
           </div>
         </div>
 
         <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="space-y-2">
-            <h2 className="text-lg font-semibold">Continue to Hewie&apos;s notebook</h2>
+            <h2 className="text-lg font-semibold">Continue to PetNoteBook</h2>
             <p className="text-sm leading-6 text-zinc-600">
               Use the Google account that has access to this pet profile.
             </p>

@@ -75,7 +75,7 @@ export function FitBarkActivityCard() {
           </span>
           <div>
             <h2 className="text-lg font-semibold text-zinc-900">FitBark Activity</h2>
-            <p className="text-sm text-zinc-500">Activity-only sync for Hewie.</p>
+            <p className="text-sm text-zinc-500">Activity-only sync for your pet.</p>
           </div>
         </div>
         <Button

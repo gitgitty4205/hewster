@@ -5,7 +5,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Pet Notebook",
+  title: "PetNoteBook",
   description: "A calm pet care tracker for meals, activity, alerts, and weight.",
 };
 

@@ -58,8 +58,8 @@ async function upsertSharedPetProfile(supabase: SupabaseClient, ownerId: string,
 }
 
 export const defaultPetProfile: PetProfile = {
-  petName: "Hewster",
-  petFirstName: "Hewster",
+  petName: "Pet",
+  petFirstName: "Pet",
   petLastName: "",
   species: "Dog",
   breed: "",

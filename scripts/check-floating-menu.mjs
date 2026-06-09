@@ -6,7 +6,7 @@ import { chromium } from "playwright";
 const targetUrl = process.env.CHECK_URL || "http://localhost:3000/hewie";
 const screenshotPath = process.env.CHECK_SCREENSHOT_PATH || path.join(os.tmpdir(), "petnotebook-floating-menu-check.png");
 const floatingMenuSelector = '[aria-label="Open notebook pages"]';
-const openingGateText = "Opening Hewster's Notebook";
+const openingGateText = "Opening PetNoteBook";
 const hydrationErrorText = "Hydration failed because the server rendered HTML didn't match the client";
 
 async function launchBrowser() {

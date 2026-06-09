@@ -1,4 +1,4 @@
-# Hewster
+# PetNoteBook
 
 A mobile-first shared dog care tracker built with Next.js, Tailwind CSS, and designed to be tested locally at `http://localhost:3000` and remotely at `https://lindy.b-average.com`.
 

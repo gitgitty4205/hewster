@@ -1,4 +1,4 @@
--- User-owned Pet Notebook data.
+-- User-owned PetNoteBook data.
 -- Run this after Supabase Auth is working.
 -- It adds owner_id to each existing app table and replaces public RLS with private per-user policies.
 
@@ -18,7 +18,7 @@ alter table public.meal_logs alter column owner_id set default auth.uid();
 alter table public.manual_alerts alter column owner_id set default auth.uid();
 alter table public.care_item_templates alter column owner_id set default auth.uid();
 
--- Existing shared rows are assigned to the first auth user so the current Hewie data stays visible.
+-- Existing shared rows are assigned to the first auth user so the current pet data stays visible.
 -- This project currently has the owner account created before invited accounts.
 do $$
 declare

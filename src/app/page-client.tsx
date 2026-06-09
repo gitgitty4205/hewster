@@ -1027,7 +1027,7 @@ export default function HomeApp() {
 
     const iframe = document.createElement("iframe");
     iframe.src = `${HEWSTER_BRIDGE_SOURCE}/hewie?hewsterBridge=1`;
-    iframe.title = "Hewster local data bridge";
+    iframe.title = "PetNoteBook local data bridge";
     iframe.style.display = "none";
 
     const handleBridgeResponse = (event: MessageEvent) => {

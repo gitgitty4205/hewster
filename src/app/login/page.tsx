@@ -111,8 +111,8 @@ function LoginPageContent() {
   const [resetMessage, setResetMessage] = useState("");
   const [resetCooldownSeconds, setResetCooldownSeconds] = useState(0);
 
-  const title = mode === "register" ? "Create Your Pet Notebook Account" : "Welcome Back";
-  const subtitle = mode === "register" ? "" : "Sign in to your pet notebook.";
+  const title = mode === "register" ? "Create Your PetNoteBook Account" : "Welcome Back";
+  const subtitle = mode === "register" ? "" : "Sign in to your PetNoteBook.";
 
   const redirectTo = useMemo(() => {
     if (typeof window === "undefined") return undefined;
@@ -324,7 +324,7 @@ function LoginPageContent() {
                 aria-hidden="true"
               />
             </span>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#3f4540]/65">Pet Notebook</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#3f4540]/65">PetNoteBook</p>
             <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#3f4540]">{title}</h1>
             {subtitle ? <p className="mt-2 text-sm leading-6 text-[#3f4540]/68">{subtitle}</p> : null}
           </div>
@@ -457,13 +457,13 @@ function LoginPageContent() {
             ) : null}
             {authServiceDown ? (
               <div className="rounded-2xl bg-amber-50 p-3 text-sm leading-6 text-amber-900 ring-1 ring-amber-200">
-                <p>Supabase login is not answering right now. You can still open Hewie in local mode while Auth recovers.</p>
+                <p>Supabase login is not answering right now. You can still open PetNoteBook in local mode while Auth recovers.</p>
                 <Button
                   type="button"
                   onClick={() => router.push("/hewie")}
                   className="mt-3 h-10 w-full rounded-full bg-[#3f4540] text-white shadow-sm hover:bg-[#30352f]"
                 >
-                  Open Hewie&apos;s Notebook
+                  Open PetNoteBook
                 </Button>
               </div>
             ) : null}

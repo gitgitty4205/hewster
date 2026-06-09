@@ -4,7 +4,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
-import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { NotebookAccessRevokedError, resolveActiveNotebookAccess } from "@/lib/notebook-access";
 import { checkSupabaseAuthReachable, PASSWORD_RESET_REQUIRED_STORAGE_KEY } from "@/lib/supabase";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
@@ -122,10 +121,8 @@ export default function HewieLayout({ children }: { children: React.ReactNode })
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--hewie-bg,#999b96)] px-4 text-zinc-900">
         <section className="w-full max-w-sm rounded-[2rem] bg-white p-6 text-center shadow-sm ring-1 ring-zinc-200">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-400">Pet Notebook</p>
-          <h1 className="mt-2 text-xl font-bold text-zinc-800">
-            Opening <PetNotebookTitle />...
-          </h1>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-400">PetNoteBook</p>
+          <h1 className="mt-2 text-xl font-bold text-zinc-800">Opening PetNoteBook...</h1>
           <p className="mt-2 text-sm leading-6 text-zinc-500">Getting the notebook ready.</p>
         </section>
       </main>
@@ -136,7 +133,7 @@ export default function HewieLayout({ children }: { children: React.ReactNode })
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--hewie-bg,#999b96)] px-4 text-zinc-900">
         <section className="w-full max-w-sm rounded-[2rem] bg-white p-6 text-center shadow-sm ring-1 ring-zinc-200">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-400">Pet Notebook</p>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-400">PetNoteBook</p>
           <h1 className="mt-2 text-xl font-bold text-zinc-800">Finish password reset</h1>
           <p className="mt-2 text-sm leading-6 text-zinc-500">Choose a new password before opening the notebook.</p>
         </section>
@@ -148,7 +145,7 @@ export default function HewieLayout({ children }: { children: React.ReactNode })
     return (
       <>
         <div className="sticky top-0 z-[70] bg-amber-50 px-4 py-2 text-center text-xs font-semibold leading-5 text-amber-800 shadow-sm ring-1 ring-amber-200">
-          Supabase login is down right now. Hewie is open in local mode on this device until Google sign-in answers again.
+          Supabase login is down right now. PetNoteBook is open in local mode on this device until Google sign-in answers again.
         </div>
         {children}
       </>

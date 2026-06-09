@@ -5,7 +5,7 @@ import type { NotebookAccessRole } from "@/lib/notebook-access";
 import { getSupabaseEnv } from "@/lib/supabase";
 
 const resendApiKey = process.env.RESEND_API_KEY;
-const resendFromEmail = process.env.RESEND_FROM_EMAIL || "Pet Notebook <onboarding@resend.dev>";
+const resendFromEmail = process.env.RESEND_FROM_EMAIL || "PetNoteBook <onboarding@resend.dev>";
 const inviteBaseUrl = process.env.INVITE_BASE_URL || process.env.NEXT_PUBLIC_APP_URL;
 const inviteReplyToEmail = process.env.INVITE_REPLY_TO_EMAIL;
 
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { email?: unknown; role?: unknown; notebookName?: unknown; petPhotoUrl?: unknown } | null;
   const inviteEmail = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const role = body?.role;
-  const notebookName = normalizeDisplayValue(body?.notebookName) || "a pet notebook";
+  const notebookName = normalizeDisplayValue(body?.notebookName) || "a PetNoteBook";
 
   if (!inviteEmail || !isInviteRole(role)) {
     return NextResponse.json({ sent: false, error: "Invite email and role are required." }, { status: 400 });
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
   const html = `<!doctype html>
 <html>
   <body style="font-family: Arial, sans-serif; color: #27272a; line-height: 1.5; margin: 0; padding: 24px;">
-    <p>Pet Notebook</p>
+    <p>PetNoteBook</p>
     ${petPhotoHtml}
     <h1 style="font-size: 28px; line-height: 1.2; margin: 0 0 16px;">You've been invited to ${safeNotebookName}</h1>
     <p>${safeOwnerName} invited you as a ${safeRoleLabelHtml}.</p>
@@ -139,11 +139,11 @@ export async function POST(request: Request) {
       <a href="${safeLoginUrl}" style="background: #6d5a95; border-radius: 999px; color: #ffffff; display: inline-block; font-weight: 700; padding: 13px 22px; text-decoration: none;">Open ${safeNotebookName}</a>
     </p>
     <p style="font-size: 13px; color: #71717a;">If the button does not work, open this link: <a href="${safeLoginUrl}">${safeLoginUrl}</a></p>
-    <p style="font-size: 13px; color: #71717a;">This is an account access message for Pet Notebook.</p>
+    <p style="font-size: 13px; color: #71717a;">This is an account access message for PetNoteBook.</p>
   </body>
 </html>`;
 
-  const text = `Pet Notebook\n\nYou've been invited to ${notebookName}\n\n${ownerName} invited you as a ${safeRoleLabel}.\n\nOpen ${notebookName}:\n${loginUrl}\n\nThis is an account access message for Pet Notebook.`;
+  const text = `PetNoteBook\n\nYou've been invited to ${notebookName}\n\n${ownerName} invited you as a ${safeRoleLabel}.\n\nOpen ${notebookName}:\n${loginUrl}\n\nThis is an account access message for PetNoteBook.`;
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",

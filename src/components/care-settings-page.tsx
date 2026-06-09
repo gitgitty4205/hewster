@@ -140,7 +140,7 @@ export function CareSettingsPage({
 
     const iframe = document.createElement("iframe");
     iframe.src = `${HEWSTER_BRIDGE_SOURCE}/hewie?hewsterBridge=1`;
-    iframe.title = "Hewster care settings bridge";
+    iframe.title = "PetNoteBook care settings bridge";
     iframe.style.display = "none";
 
     const handleBridgeResponse = (event: MessageEvent) => {
