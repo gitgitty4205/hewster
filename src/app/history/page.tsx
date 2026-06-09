@@ -126,6 +126,7 @@ type HistoryTimelineEntry =
 function initialsFromName(name?: string | null) {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
 }
 
@@ -374,12 +375,7 @@ function compareHistoryMeals(a: HistoryDay["meals"][number], b: HistoryDay["meal
 }
 
 function MealHistoryTime({ meal }: { meal: HistoryDay["meals"][number] }) {
-  return (
-    <div className="flex shrink-0 items-center gap-1.5">
-      <p className="text-sm text-zinc-500">{meal.actualTime}</p>
-      <InitialsBadge name={meal.auditInfo?.loggedBy} />
-    </div>
-  );
+  return <p className="shrink-0 text-sm text-zinc-500">{meal.actualTime}</p>;
 }
 
 function MealHistoryPlannedTime({ meal }: { meal: HistoryDay["meals"][number] }) {
@@ -3099,10 +3095,7 @@ export default function HistoryPage() {
 
                               <div className="shrink-0 text-right">
 
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
-                                  <InitialsBadge name={activity.auditInfo?.loggedBy} />
-                                </div>
+                                <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
 
                                 <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="mt-2 flex flex-wrap justify-end gap-2" />
 
@@ -3136,10 +3129,7 @@ export default function HistoryPage() {
 
                             </div>
 
-                            <div className="flex shrink-0 items-center gap-1.5">
-                              <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
-                              <InitialsBadge name={activity.auditInfo?.loggedBy} />
-                            </div>
+                            <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
 
                           </div>
 
@@ -3358,10 +3348,7 @@ export default function HistoryPage() {
 
                               <div className="shrink-0 text-right">
 
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
-                                  <InitialsBadge name={activity.auditInfo?.loggedBy} />
-                                </div>
+                                <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
 
                                 <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="mt-2 flex flex-wrap justify-end gap-2" />
 
@@ -3406,10 +3393,7 @@ export default function HistoryPage() {
 
                             </div>
 
-                            <div className="flex shrink-0 items-center gap-1.5">
-                              <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
-                              <InitialsBadge name={activity.auditInfo?.loggedBy} />
-                            </div>
+                            <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
 
                           </div>
 
