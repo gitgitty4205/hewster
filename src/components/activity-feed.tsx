@@ -828,10 +828,10 @@ export function ActivityFeed({
           </div>
           {!showRightPhotoControls ? (
             <div className="flex shrink-0 items-center gap-1.5">
+              <InitialsBadge name={loggedBy} />
               <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
                 {item.time}
               </span>
-              <InitialsBadge name={loggedBy} />
             </div>
           ) : null}
         </div>
@@ -875,10 +875,10 @@ export function ActivityFeed({
           {pottyAttachmentActivity ? (
             <div className="flex shrink-0 flex-col items-end gap-2">
               <div className="flex items-center gap-1.5">
+                <InitialsBadge name={loggedBy} />
                 <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
                   {item.time}
                 </span>
-                <InitialsBadge name={loggedBy} />
               </div>
               <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="flex flex-wrap justify-end gap-2" />
             </div>
