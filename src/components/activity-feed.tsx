@@ -644,9 +644,11 @@ export function ActivityFeed({
   const [textModal, setTextModal] = useState<TextModal | null>(null);
   const visibleActivityLogs = activityLogs.filter((activity) => isVisibleActivity(activity, careTemplates));
   const visibleTimelineItems = timelineItems?.filter((item) => !item.activity || isVisibleActivity(item.activity, careTemplates));
-  const shouldShowTimelineInitials = (activity?: ActivityLog) => {
-    const loggedByUserId = activity?.auditInfo?.loggedByUserId;
-    return Boolean(loggedByUserId && notebookOwnerId && loggedByUserId !== notebookOwnerId);
+  const timelineInitialsName = (activity?: ActivityLog) => {
+    const auditInfo = activity?.auditInfo;
+    const modifierUserId = auditInfo?.lastEditedByUserId ?? auditInfo?.loggedByUserId;
+    if (!modifierUserId || !notebookOwnerId || modifierUserId === notebookOwnerId) return null;
+    return auditInfo?.lastEditedByUserId ? auditInfo.lastEditedBy : auditInfo?.loggedBy ?? null;
   };
 
   if (grouped) {
@@ -819,7 +821,7 @@ export function ActivityFeed({
     const [detailSummary, detailNotes] = item.detail.split(" • Notes: ", 2);
     const status = timelineStatusFor(item);
     const showRightPhotoControls = Boolean(pottyAttachmentActivity);
-    const loggedBy = shouldShowTimelineInitials(item.activity) ? item.activity?.auditInfo?.loggedBy ?? null : null;
+    const loggedBy = timelineInitialsName(item.activity);
     const content = (
       <>
         <div className="flex items-start justify-between gap-3">

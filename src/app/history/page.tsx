@@ -2047,8 +2047,9 @@ export default function HistoryPage() {
     const status = timelineStatusFor(item);
     const showRightPhotoControls = Boolean(pottyAttachmentActivity);
     const auditInfo = item.activity?.auditInfo ?? item.auditInfo;
-    const loggedBy = auditInfo?.loggedByUserId && activeNotebookOwnerId && auditInfo.loggedByUserId !== activeNotebookOwnerId
-      ? auditInfo.loggedBy
+    const modifierUserId = auditInfo?.lastEditedByUserId ?? auditInfo?.loggedByUserId;
+    const loggedBy = modifierUserId && activeNotebookOwnerId && modifierUserId !== activeNotebookOwnerId
+      ? auditInfo?.lastEditedByUserId ? auditInfo.lastEditedBy : auditInfo?.loggedBy
       : null;
     const content = (
       <>
