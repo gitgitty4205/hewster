@@ -627,6 +627,7 @@ export default function LogPage() {
   const [autoOpenedHistoryEditor, setAutoOpenedHistoryEditor] = useState(false);
   const [canEditEntries, setCanEditEntries] = useState(true);
   const [canDeleteEntries, setCanDeleteEntries] = useState(true);
+  const [notebookOwnerId, setNotebookOwnerId] = useState<string | null>(null);
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
 
   const supabaseReady = isSupabaseConfigured();
@@ -732,6 +733,7 @@ export default function LogPage() {
         setMealTemplateAuditSnapshots(state.mealTemplateAuditSnapshots ?? []);
 
         setDailyMealState(state.dailyMealState ?? []);
+        setNotebookOwnerId(state.notebookOwnerId ?? null);
 
         const [supplements, medications] = await Promise.all([
           loadCareTemplatesFromSupabase("supplement"),
@@ -1359,6 +1361,7 @@ export default function LogPage() {
             )
           : null
       }
+      notebookOwnerId={notebookOwnerId}
     />
   );
 

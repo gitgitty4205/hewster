@@ -50,8 +50,10 @@ export type ActivityLog = {
 };
 
 export type NotebookEntryAuditInfo = {
+  loggedByUserId: string | null;
   loggedBy: string | null;
   loggedAt: string | null;
+  lastEditedByUserId: string | null;
   lastEditedBy: string | null;
   lastEditedAt: string | null;
 };
@@ -118,6 +120,7 @@ export type HewsterAppState = {
   dailyMealHistory?: DailyMealState[];
   manualAlerts: ManualAlert[];
   todayKey: string;
+  notebookOwnerId?: string | null;
   source: "supabase" | "local" | "seed";
 };
 
@@ -937,19 +940,23 @@ function notebookEntryAuditInfoById(auditRows: AppAuditLogRow[], members: Notebo
       if (!entryId) return;
 
       const existing = byEntryId.get(entryId) ?? {
+        loggedByUserId: null,
         loggedBy: null,
         loggedAt: null,
+        lastEditedByUserId: null,
         lastEditedBy: null,
         lastEditedAt: null,
       };
       const actorName = actorDisplayName(row.actor_user_id, memberNames);
 
       if (row.action === "INSERT" && !existing.loggedAt) {
+        existing.loggedByUserId = row.actor_user_id ?? null;
         existing.loggedBy = actorName;
         existing.loggedAt = row.occurred_at;
       }
 
       if (row.action === "UPDATE") {
+        existing.lastEditedByUserId = row.actor_user_id ?? null;
         existing.lastEditedBy = actorName;
         existing.lastEditedAt = row.occurred_at;
       }
@@ -1534,6 +1541,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     mealLogs,
     manualAlerts,
     todayKey: localState.todayKey,
+    notebookOwnerId: userId,
     source:
       templatesResult.data?.length ||
       dailyMealsResult.data?.length ||

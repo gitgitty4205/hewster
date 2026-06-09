@@ -940,6 +940,7 @@ export default function HomeApp() {
   const [petRemembered, setPetRemembered] = useState(false);
   const [canDeleteEntries, setCanDeleteEntries] = useState(true);
   const [notebookDataUnavailable, setNotebookDataUnavailable] = useState(false);
+  const [notebookOwnerId, setNotebookOwnerId] = useState<string | null>(null);
   const initialLoadComplete = useRef(false);
   const previousTodayKeyRef = useRef<string | null>(null);
   const missedRolloverRef = useRef<string | null>(null);
@@ -985,6 +986,7 @@ export default function HomeApp() {
       setManualAlerts([]);
       setMealLogs([]);
       setTodayKey(state.todayKey);
+      setNotebookOwnerId(state.notebookOwnerId ?? user?.id ?? null);
       return;
     }
 
@@ -1009,7 +1011,8 @@ export default function HomeApp() {
     setManualAlerts(state.manualAlerts ?? []);
     setMealLogs(state.mealLogs ?? []);
     setTodayKey(state.todayKey);
-  }, [supabaseReady]);
+    setNotebookOwnerId(state.notebookOwnerId ?? user?.id ?? null);
+  }, [supabaseReady, user?.id]);
 
   useEffect(() => {
     const handleBridgeRequest = (event: MessageEvent) => {
@@ -2831,6 +2834,7 @@ export default function HomeApp() {
           activityLogs={todayActivityLogs}
           timelineItems={dynamicTimeline}
           title="Today&apos;s Timeline"
+          notebookOwnerId={notebookOwnerId}
           careTemplates={careTemplates}
         />
 

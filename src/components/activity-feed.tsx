@@ -30,6 +30,7 @@ type Props = {
   title?: string;
   subtitle?: string;
   grouped?: boolean;
+  notebookOwnerId?: string | null;
   onSelectActivity?: (activity: ActivityLog) => void;
   renderInlineEditor?: (activity: ActivityLog) => React.ReactNode;
   careTemplates?: CareItemTemplate[];
@@ -635,6 +636,7 @@ export function ActivityFeed({
   title = "Event Feed",
   subtitle = "",
   grouped = false,
+  notebookOwnerId,
   onSelectActivity,
   renderInlineEditor,
   careTemplates = [],
@@ -642,12 +644,10 @@ export function ActivityFeed({
   const [textModal, setTextModal] = useState<TextModal | null>(null);
   const visibleActivityLogs = activityLogs.filter((activity) => isVisibleActivity(activity, careTemplates));
   const visibleTimelineItems = timelineItems?.filter((item) => !item.activity || isVisibleActivity(item.activity, careTemplates));
-  const timelineLoggerNames = new Set(
-    (visibleTimelineItems ?? [])
-      .map((item) => item.activity?.auditInfo?.loggedBy?.trim())
-      .filter((name): name is string => Boolean(name)),
-  );
-  const showTimelineInitials = timelineLoggerNames.size > 1;
+  const shouldShowTimelineInitials = (activity?: ActivityLog) => {
+    const loggedByUserId = activity?.auditInfo?.loggedByUserId;
+    return Boolean(loggedByUserId && notebookOwnerId && loggedByUserId !== notebookOwnerId);
+  };
 
   if (grouped) {
     const groupedLogs = groupActivitiesByDay(visibleActivityLogs);
@@ -819,7 +819,7 @@ export function ActivityFeed({
     const [detailSummary, detailNotes] = item.detail.split(" • Notes: ", 2);
     const status = timelineStatusFor(item);
     const showRightPhotoControls = Boolean(pottyAttachmentActivity);
-    const loggedBy = showTimelineInitials ? item.activity?.auditInfo?.loggedBy ?? null : null;
+    const loggedBy = shouldShowTimelineInitials(item.activity) ? item.activity?.auditInfo?.loggedBy ?? null : null;
     const content = (
       <>
         <div className="flex items-start justify-between gap-3">

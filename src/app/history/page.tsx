@@ -98,6 +98,7 @@ type HistoryDay = {
     detail: string;
 
     activity?: ActivityLog;
+    auditInfo?: MealLog["auditInfo"] | ActivityLog["auditInfo"];
 
     activityType: ActivityLog["activityType"] | "meal" | "manual";
 
@@ -1511,6 +1512,7 @@ export default function HistoryPage() {
   const [includeLogDetails, setIncludeLogDetails] = useState(false);
   const [historyEditUnlocked, setHistoryEditUnlocked] = useState(false);
   const [activeNotebookRole, setActiveNotebookRole] = useState<NotebookAccessRole | null>(null);
+  const [activeNotebookOwnerId, setActiveNotebookOwnerId] = useState<string | null>(null);
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
   const [profile, setProfile] = useState<PetProfile>(() => loadPetProfile());
   const supabaseReady = isSupabaseConfigured();
@@ -1580,6 +1582,7 @@ export default function HistoryPage() {
         const session = supabase ? await getSupabaseCurrentSession(supabase) : null;
         const access = supabase && session?.user ? await resolveActiveNotebookAccess(supabase, session.user) : null;
         setActiveNotebookRole(access?.role ?? null);
+        setActiveNotebookOwnerId(state.notebookOwnerId ?? access?.notebookOwnerId ?? session?.user?.id ?? null);
 
       } finally {
 
@@ -1787,6 +1790,7 @@ export default function HistoryPage() {
           : `${meal.mealName}: ${meal.food}`,
 
         activityType: "meal",
+        auditInfo: meal.auditInfo,
 
         mealGroupId: `meal-${meal.id}`,
 
@@ -2042,7 +2046,10 @@ export default function HistoryPage() {
     const [detailSummary, detailNotes] = item.detail.split(" • Notes: ", 2);
     const status = timelineStatusFor(item);
     const showRightPhotoControls = Boolean(pottyAttachmentActivity);
-    const loggedBy = item.activity?.auditInfo?.loggedBy ?? null;
+    const auditInfo = item.activity?.auditInfo ?? item.auditInfo;
+    const loggedBy = auditInfo?.loggedByUserId && activeNotebookOwnerId && auditInfo.loggedByUserId !== activeNotebookOwnerId
+      ? auditInfo.loggedBy
+      : null;
     const content = (
       <>
         <div className="flex items-start justify-between gap-3">
