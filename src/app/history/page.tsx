@@ -123,6 +123,25 @@ type HistoryTimelineEntry =
 
 
 
+function initialsFromName(name?: string | null) {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "";
+  return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
+}
+
+function InitialsBadge({ name }: { name?: string | null }) {
+  const initials = initialsFromName(name);
+  if (!initials) return null;
+
+  return (
+    <span className="inline-flex size-[22px] shrink-0 items-center justify-center rounded-full bg-white/80 text-[10px] font-bold leading-none text-zinc-500 ring-1 ring-zinc-200/80">
+      {initials}
+    </span>
+  );
+}
+
+
+
 function formatDayLabel(dayKey: string) {
 
   return new Intl.DateTimeFormat("en-US", {
@@ -355,7 +374,12 @@ function compareHistoryMeals(a: HistoryDay["meals"][number], b: HistoryDay["meal
 }
 
 function MealHistoryTime({ meal }: { meal: HistoryDay["meals"][number] }) {
-  return <p className="shrink-0 text-sm text-zinc-500">{meal.actualTime}</p>;
+  return (
+    <div className="flex shrink-0 items-center gap-1.5">
+      <p className="text-sm text-zinc-500">{meal.actualTime}</p>
+      <InitialsBadge name={meal.auditInfo?.loggedBy} />
+    </div>
+  );
 }
 
 function MealHistoryPlannedTime({ meal }: { meal: HistoryDay["meals"][number] }) {
@@ -2022,6 +2046,7 @@ export default function HistoryPage() {
     const [detailSummary, detailNotes] = item.detail.split(" • Notes: ", 2);
     const status = timelineStatusFor(item);
     const showRightPhotoControls = Boolean(pottyAttachmentActivity);
+    const loggedBy = item.activity?.auditInfo?.loggedBy ?? null;
     const content = (
       <>
         <div className="flex items-start justify-between gap-3">
@@ -2029,9 +2054,12 @@ export default function HistoryPage() {
             <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
           </div>
           {showTime && !showRightPhotoControls ? (
-            <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
-              {item.time}
-            </span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+                {item.time}
+              </span>
+              <InitialsBadge name={loggedBy} />
+            </div>
           ) : null}
         </div>
 
@@ -2069,9 +2097,12 @@ export default function HistoryPage() {
           {pottyAttachmentActivity ? (
             <div className="flex shrink-0 flex-col items-end gap-2">
               {showTime ? (
-                <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
-                  {item.time}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+                    {item.time}
+                  </span>
+                  <InitialsBadge name={loggedBy} />
+                </div>
               ) : null}
               <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="flex flex-wrap justify-end gap-2" />
             </div>
@@ -3068,7 +3099,10 @@ export default function HistoryPage() {
 
                               <div className="shrink-0 text-right">
 
-                                <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+                                  <InitialsBadge name={activity.auditInfo?.loggedBy} />
+                                </div>
 
                                 <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="mt-2 flex flex-wrap justify-end gap-2" />
 
@@ -3102,7 +3136,10 @@ export default function HistoryPage() {
 
                             </div>
 
-                            <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+                              <InitialsBadge name={activity.auditInfo?.loggedBy} />
+                            </div>
 
                           </div>
 
@@ -3321,7 +3358,10 @@ export default function HistoryPage() {
 
                               <div className="shrink-0 text-right">
 
-                                <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <p className="whitespace-nowrap text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+                                  <InitialsBadge name={activity.auditInfo?.loggedBy} />
+                                </div>
 
                                 <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="mt-2 flex flex-wrap justify-end gap-2" />
 
@@ -3366,7 +3406,10 @@ export default function HistoryPage() {
 
                             </div>
 
-                            <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <p className="text-sm text-zinc-500">{formatActivityTime(activity.happenedAt)}</p>
+                              <InitialsBadge name={activity.auditInfo?.loggedBy} />
+                            </div>
 
                           </div>
 

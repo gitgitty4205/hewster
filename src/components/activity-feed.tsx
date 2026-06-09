@@ -42,6 +42,23 @@ type TextModal = {
   text: string;
 };
 
+function initialsFromName(name?: string | null) {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "";
+  return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
+}
+
+function InitialsBadge({ name }: { name?: string | null }) {
+  const initials = initialsFromName(name);
+  if (!initials) return null;
+
+  return (
+    <span className="inline-flex size-[22px] shrink-0 items-center justify-center rounded-full bg-white/80 text-[10px] font-bold leading-none text-zinc-500 ring-1 ring-zinc-200/80">
+      {initials}
+    </span>
+  );
+}
+
 function OpenableText({
   children,
   className = "",
@@ -624,6 +641,12 @@ export function ActivityFeed({
   const [textModal, setTextModal] = useState<TextModal | null>(null);
   const visibleActivityLogs = activityLogs.filter((activity) => isVisibleActivity(activity, careTemplates));
   const visibleTimelineItems = timelineItems?.filter((item) => !item.activity || isVisibleActivity(item.activity, careTemplates));
+  const timelineLoggerNames = new Set(
+    (visibleTimelineItems ?? [])
+      .map((item) => item.activity?.auditInfo?.loggedBy?.trim())
+      .filter((name): name is string => Boolean(name)),
+  );
+  const showTimelineInitials = timelineLoggerNames.size > 1;
 
   if (grouped) {
     const groupedLogs = groupActivitiesByDay(visibleActivityLogs);
@@ -795,6 +818,7 @@ export function ActivityFeed({
     const [detailSummary, detailNotes] = item.detail.split(" • Notes: ", 2);
     const status = timelineStatusFor(item);
     const showRightPhotoControls = Boolean(pottyAttachmentActivity);
+    const loggedBy = showTimelineInitials ? item.activity?.auditInfo?.loggedBy ?? null : null;
     const content = (
       <>
         <div className="flex items-start justify-between gap-3">
@@ -802,9 +826,12 @@ export function ActivityFeed({
             <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
           </div>
           {!showRightPhotoControls ? (
-            <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
-              {item.time}
-            </span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+                {item.time}
+              </span>
+              <InitialsBadge name={loggedBy} />
+            </div>
           ) : null}
         </div>
         {item.careItem ? (
@@ -846,9 +873,12 @@ export function ActivityFeed({
           </div>
           {pottyAttachmentActivity ? (
             <div className="flex shrink-0 flex-col items-end gap-2">
-              <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
-                {item.time}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+                  {item.time}
+                </span>
+                <InitialsBadge name={loggedBy} />
+              </div>
               <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="flex flex-wrap justify-end gap-2" />
             </div>
           ) : null}
