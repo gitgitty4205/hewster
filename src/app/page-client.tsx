@@ -247,6 +247,11 @@ function mealPlanCareDetailText(item: CareItemTemplate) {
   return `${dose}${routeText}`;
 }
 
+function mealPlanCareDetailParts(item: CareItemTemplate) {
+  const route = medicationTypeLabel(item);
+  return [item.dose.trim(), route ? `(${route})` : ""].filter(Boolean).join(" ");
+}
+
 const MAX_MEAL_PLAN_SUPPLEMENTS = 4;
 
 function mealCareNameDose(item: CareItemTemplate) {
@@ -359,14 +364,18 @@ function mealCareItemsWithDoseBadges(careTemplates: CareItemTemplate[], meal: Me
   });
 }
 
+function mealCareGroupLabel() {
+  return "Supplements";
+}
+
 function mealExpandedDetailText(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
-  const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, meals, dayKey)
-    .map((item) => [item.name, mealPlanCareDetailText(item).trim(), item.notes.trim()].filter(Boolean).join(" - "));
+  const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, meals, dayKey);
+  const mealCareItemDetails = mealCareItems.map((item) => [item.name, mealPlanCareDetailParts(item), item.notes.trim()].filter(Boolean).join(" - "));
 
   return [
     meal.food.trim() ? `Food: ${meal.food.trim()}` : null,
     meal.notes.trim() ? `Notes: ${meal.notes.trim()}` : null,
-    mealCareItems.length ? `Meal Plan Care: ${mealCareItems.join("; ")}` : null,
+    mealCareItemDetails.length ? `${mealCareGroupLabel()}: ${mealCareItemDetails.join("; ")}` : null,
   ].filter(Boolean).join("\n");
 }
 
@@ -2360,6 +2369,8 @@ export default function HomeApp() {
               const hasMealActions = reminderMealId !== null && Number.isFinite(reminderMealId);
               const detailKey = `reminder-${reminder.id}`;
               const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
+              const expandedDetail = reminder.expandedDetail?.trim();
+              const hasExpandedDetail = Boolean(expandedDetail && expandedDetail !== reminder.detail.trim());
 
               return (
                 <div
@@ -2372,18 +2383,22 @@ export default function HomeApp() {
                       <p className="text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{reminder.title}</p>
                       <p className="mt-0.5 truncate text-xs leading-4 text-[var(--hewie-active-text,#334155)]/60">{reminder.detail}</p>
                     </div>
-                    <ExpandDetailsButton
-                      expanded={detailsExpanded}
-                      className="text-[var(--hewie-active-text,#334155)]/70 hover:text-[var(--hewie-active-text,#334155)]"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
-                      }}
-                    />
+                    {hasExpandedDetail ? (
+                      <ExpandDetailsButton
+                        expanded={detailsExpanded}
+                        className="text-[var(--hewie-active-text,#334155)]/70 hover:text-[var(--hewie-active-text,#334155)]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
+                        }}
+                      />
+                    ) : null}
                   </div>
-                  <InlineDetails expanded={detailsExpanded} className="ml-7 bg-white/55 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/65">
-                    {reminder.detail}
-                  </InlineDetails>
+                  {hasExpandedDetail ? (
+                    <InlineDetails expanded={detailsExpanded} className="ml-7 bg-white/55 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/65">
+                      {expandedDetail}
+                    </InlineDetails>
+                  ) : null}
                   {hasMealActions ? (
                     <div className="mt-2 grid grid-cols-2 gap-2 pl-7" onKeyDown={(event) => event.stopPropagation()}>
                       <Button

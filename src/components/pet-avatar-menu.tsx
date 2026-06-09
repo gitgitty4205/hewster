@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Plus, X } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
@@ -15,10 +15,18 @@ import {
 } from "@/lib/notebook-access";
 import { DEFAULT_PET_PHOTO_URL, defaultPetProfile, loadPetProfile, loadSharedPetProfile, savePetProfile, type PetProfile } from "@/lib/pet-profile";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import {
+  loadStoredSubscriptionPlan,
+  petLimitForSubscriptionPlan,
+  SUBSCRIPTION_PLAN_UPDATED_EVENT,
+  type SubscriptionPlanId,
+} from "@/lib/subscription-plan";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 import { cn } from "@/lib/utils";
 
 const PET_ROSTER_STORAGE_KEY = "hewster.petRoster";
+const ADD_PET_UPGRADE_RETURN_PATH_KEY = "petnotebook.addPetUpgradeReturnPath";
+const OPEN_ADD_PET_UPGRADE_DIALOG_KEY = "petnotebook.openAddPetUpgradeDialog";
 
 type RosterPet = {
   id: string;
@@ -108,9 +116,38 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
   const [memberships, setMemberships] = useState<NotebookMember[]>([]);
   const [notebookRole, setNotebookRole] = useState<NotebookAccessRole | null>(null);
   const [ownNotebook, setOwnNotebook] = useState<NotebookMember | null>(null);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
   const [adding, setAdding] = useState(false);
+  const [addPetMessage, setAddPetMessage] = useState("");
+  const [freePetUpgradeDialogOpen, setFreePetUpgradeDialogOpen] = useState(false);
   const [newPetName, setNewPetName] = useState("");
   const [newPetSpecies, setNewPetSpecies] = useState("Dog");
+
+  useEffect(() => {
+    const refreshPlan = () => setSubscriptionPlan(loadStoredSubscriptionPlan());
+    refreshPlan();
+    window.addEventListener(SUBSCRIPTION_PLAN_UPDATED_EVENT, refreshPlan);
+    window.addEventListener("storage", refreshPlan);
+    return () => {
+      window.removeEventListener(SUBSCRIPTION_PLAN_UPDATED_EVENT, refreshPlan);
+      window.removeEventListener("storage", refreshPlan);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !user) return;
+    if (window.sessionStorage.getItem(OPEN_ADD_PET_UPGRADE_DIALOG_KEY) !== "1") return;
+
+    window.sessionStorage.removeItem(OPEN_ADD_PET_UPGRADE_DIALOG_KEY);
+    const timeoutId = window.setTimeout(() => {
+      setOpen(true);
+      setAddPetMessage("");
+      setAdding(false);
+      setFreePetUpgradeDialogOpen(true);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [user]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -217,13 +254,31 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
       });
   }, [currentPet, memberships, notebookRole, ownedPrimaryPet, profile, user?.id]);
   const canAddOwnedPet = Boolean(user);
+  const ownedPetCount = user ? Math.max(pets.length, 1) : 0;
+  const ownedPetLimit = petLimitForSubscriptionPlan(subscriptionPlan);
   const imageSize = shape === "tile" ? 72 : 80;
+
+  const openFreePetUpgradeDialog = () => {
+    setAddPetMessage("");
+    setAdding(false);
+    setFreePetUpgradeDialogOpen(true);
+  };
 
   const addPet = async () => {
     const name = clampText(newPetName.trim(), TEXT_LIMITS.shortName);
     const species = clampText(newPetSpecies.trim(), TEXT_LIMITS.shortName) || "Pet";
     const supabase = getSupabaseBrowserClient();
     if (!name || !user || !supabase) return;
+    if (ownedPetCount >= ownedPetLimit) {
+      if (subscriptionPlan === "free") {
+        openFreePetUpgradeDialog();
+        return;
+      }
+
+      setAddPetMessage("Need to add more pets? Contact support and we'll help.");
+      setAdding(false);
+      return;
+    }
     const [petFirstName, ...petLastNameParts] = name.split(/\s+/).filter(Boolean);
     const newProfile = {
       ...defaultPetProfile,
@@ -263,7 +318,34 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
     setNotebookRole("owner");
     setNewPetName("");
     setNewPetSpecies("Dog");
+    setAddPetMessage("");
     setAdding(false);
+  };
+
+  const handleStartAddPet = () => {
+    if (ownedPetCount >= ownedPetLimit) {
+      if (subscriptionPlan === "free") {
+        openFreePetUpgradeDialog();
+        return;
+      }
+
+      setAddPetMessage("Need to add more pets? Contact support and we'll help.");
+      setAdding(false);
+      return;
+    }
+
+    setAddPetMessage("");
+    setAdding(true);
+  };
+
+  const handleUpgradeForMorePets = () => {
+    if (typeof window === "undefined") return;
+
+    window.sessionStorage.setItem(
+      ADD_PET_UPGRADE_RETURN_PATH_KEY,
+      `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    );
+    window.location.href = "/hewie/account-settings?upgrade=plus&returnToAddPet=1";
   };
 
   const switchNotebook = (ownerId: string) => {
@@ -390,7 +472,10 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                     <button type="button" onClick={addPet} className="rounded-full bg-[var(--hewie-active-text,#334155)] px-4 py-2 text-sm font-bold text-white">
                       Add Pet
                     </button>
-                    <button type="button" onClick={() => setAdding(false)} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-[var(--hewie-active-text,#334155)] shadow-sm">
+                    <button type="button" onClick={() => {
+                      setAdding(false);
+                      setAddPetMessage("");
+                    }} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-[var(--hewie-active-text,#334155)] shadow-sm">
                       Cancel
                     </button>
                   </div>
@@ -398,7 +483,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
               ) : canAddOwnedPet ? (
                 <button
                   type="button"
-                  onClick={() => setAdding(true)}
+                  onClick={handleStartAddPet}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--hewie-active-text,#334155)] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:scale-[1.01] hover:opacity-90"
                 >
                   <Plus className="size-4" />
@@ -406,8 +491,64 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                 </button>
               ) : null}
 
+              {addPetMessage ? (
+                <p className="rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)]/92 p-3 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] backdrop-blur-[1px]">
+                  {addPetMessage}
+                </p>
+              ) : null}
+
             </div>
           </div>
+
+          {freePetUpgradeDialogOpen ? (
+            <div className="fixed inset-0 z-[90] flex items-end bg-zinc-950/35 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="add-pet-upgrade-title">
+              <button type="button" aria-label="Close upgrade" className="absolute inset-0 cursor-default" onClick={() => setFreePetUpgradeDialogOpen(false)} />
+              <div className="relative w-full max-w-md rounded-3xl bg-white p-5 text-zinc-900 shadow-xl ring-1 ring-zinc-200">
+                <div className="mb-4">
+                  <h3 id="add-pet-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
+                    <span>Add unlimited pets with</span>
+                    <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+                      PetNotebook Plus
+                    </span>
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                    Free includes 1 pet. Upgrade to Plus for unlimited pets, family sharing, and lifetime health history.
+                  </p>
+                </div>
+
+                <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
+                  {[
+                    "Unlimited pets",
+                    "Share notebooks with family and caregivers",
+                    "Keep everyone in sync",
+                    "Lifetime health history",
+                  ].map((feature) => (
+                    <div key={feature} className="flex items-start gap-2 text-xs font-medium leading-5 text-zinc-500">
+                      <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                      <span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFreePetUpgradeDialogOpen(false)}
+                    className="h-11 rounded-full border border-zinc-200 bg-white px-4 text-sm font-bold text-zinc-700"
+                  >
+                    Not now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUpgradeForMorePets}
+                    className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
+                  >
+                    Upgrade to Plus
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </>

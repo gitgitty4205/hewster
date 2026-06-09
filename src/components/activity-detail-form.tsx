@@ -59,6 +59,10 @@ type Props = {
 
   onAttachmentNameRemove?: (index: number) => void;
 
+  maxAttachmentFiles?: number;
+
+  attachmentLimitMessage?: string;
+
   recordTags?: string[];
 
   onRecordTagsChange?: (tags: string[]) => void;
@@ -782,6 +786,10 @@ export function ActivityDetailForm({
 
   onAttachmentNameRemove,
 
+  maxAttachmentFiles = MAX_ATTACHMENT_FILES,
+
+  attachmentLimitMessage,
+
   onHappenedAtChange,
 
   onSave,
@@ -894,7 +902,7 @@ export function ActivityDetailForm({
     const nextFiles = [...attachmentFiles];
     files
       .filter((file) => !poopPhotoDetail || file.type.startsWith("image/"))
-      .slice(0, Math.max(0, MAX_ATTACHMENT_FILES - attachmentNames.length - nextFiles.length))
+      .slice(0, Math.max(0, maxAttachmentFiles - attachmentNames.length - nextFiles.length))
       .forEach((file) => {
       const alreadyAttached = nextFiles.some((attached) =>
         attached.name === file.name && attached.size === file.size && attached.lastModified === file.lastModified
@@ -919,7 +927,8 @@ export function ActivityDetailForm({
 
   };
 
-  const attachmentLimitReached = attachmentNames.length + attachmentFiles.length >= MAX_ATTACHMENT_FILES;
+  const attachmentLimitReached = attachmentNames.length + attachmentFiles.length >= maxAttachmentFiles;
+  const attachmentLimitLabel = attachmentLimitMessage ?? "Attachment limit reached.";
 
 
 
@@ -1595,9 +1604,9 @@ export function ActivityDetailForm({
             </label>
           )}
 
-          {!poopPhotoDetail ? <p className="mt-1 text-xs text-zinc-500">{attachmentHelp} Up to {MAX_ATTACHMENT_FILES} files.</p> : null}
+          {!poopPhotoDetail ? <p className="mt-1 text-xs text-zinc-500">{attachmentHelp} Up to {maxAttachmentFiles} {maxAttachmentFiles === 1 ? "file" : "files"}.</p> : null}
 
-          {attachmentLimitReached ? <p className="mt-1 text-xs font-medium text-amber-700">Attachment limit reached.</p> : null}
+          {attachmentLimitReached ? <p className="mt-1 text-xs font-medium text-amber-700">{attachmentLimitLabel}</p> : null}
 
           {displayedAttachments.length ? (
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { CircleHelp, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import type { ComponentType } from "react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useMemo, useState } from "react";
@@ -495,7 +495,7 @@ export function CareSettingsPage({
                               aria-label="Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal."
                               className="group relative ml-0.5 inline-flex size-5 items-center justify-center rounded-full bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] transition hover:bg-[var(--hewie-ring,#cbd5e1)] hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-ring,#cbd5e1)]"
                             >
-                              <Info className="h-3.5 w-3.5" strokeWidth={2.4} />
+                              <CircleHelp className="h-3.5 w-3.5" strokeWidth={2.4} />
                               <span className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-64 -translate-x-1/2 rounded-2xl bg-zinc-900 px-3 py-2 text-left text-xs font-medium leading-5 text-white shadow-lg group-hover:block group-focus:block">
                                 Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal.
                               </span>

@@ -356,7 +356,7 @@ async function getSignedInSupabase() {
   const user = session?.user ?? null;
   if (!user) return null;
 
-  const access = await resolveActiveNotebookAccess(supabase, user);
+  const access = await resolveActiveNotebookAccess(supabase, user, { forceRefresh: true });
   return { supabase, userId: access.notebookOwnerId, accessRole: access.role, members: access.members };
 }
 
@@ -1629,15 +1629,25 @@ export async function saveActivityLogToSupabase(activity: ActivityLog) {
   cacheActivityLog(activity);
 
   const signedInSupabase = await getSignedInSupabase();
-  if (!signedInSupabase) return;
+  if (!signedInSupabase) {
+    throw new Error("Sign in is required to save shared activity logs.");
+  }
 
   const { supabase, userId } = signedInSupabase;
-  const { error } = await supabase.from("activity_logs").upsert(mapActivityLogToRow(activity, userId), {
-    onConflict: "id",
-  });
+  const { data, error } = await supabase
+    .from("activity_logs")
+    .upsert(mapActivityLogToRow(activity, userId), {
+      onConflict: "id",
+    })
+    .select("id, owner_id, profile_slug")
+    .single();
 
   if (error) {
     throw error;
+  }
+
+  if (!data || data.owner_id !== userId || data.profile_slug !== HEWSTER_PROFILE_SLUG) {
+    throw new Error("Activity save verification failed.");
   }
 }
 

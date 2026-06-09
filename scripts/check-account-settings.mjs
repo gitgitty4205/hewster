@@ -1,10 +1,76 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright";
 
 const targetUrl = process.env.CHECK_URL || "http://localhost:3000/hewie/account-settings";
 const screenshotPath = process.env.CHECK_SCREENSHOT_PATH || path.join(os.tmpdir(), "petnotebook-account-settings-check.png");
+const accountSettingsSourcePath = path.resolve("src/app/account-settings/page.tsx");
+const subscriptionPlanSourcePath = path.resolve("src/lib/subscription-plan.ts");
+const petAvatarMenuSourcePath = path.resolve("src/components/pet-avatar-menu.tsx");
+
+async function checkAccountSettingsBubbleBorders() {
+  const source = await readFile(accountSettingsSourcePath, "utf8");
+  const requiredBorderSnippets = [
+    'className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"',
+    'className="mt-2 flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50',
+    'className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50',
+    ': "border-zinc-200 bg-zinc-50"',
+  ];
+  const oldRingOnlySnippets = [
+    "rounded-2xl bg-zinc-50 p-4 ring-1 ring-zinc-200",
+    "rounded-2xl bg-zinc-50 px-4 py-3 text-left ring-1 ring-zinc-200",
+    "rounded-2xl bg-zinc-50 px-4 py-2 ring-1 ring-zinc-200",
+    ': "border-transparent bg-zinc-50 ring-zinc-200"',
+  ];
+
+  for (const snippet of requiredBorderSnippets) {
+    if (!source.includes(snippet)) {
+      throw new Error(`Account Settings bubble border guard failed. Missing: ${snippet}`);
+    }
+  }
+
+  for (const snippet of oldRingOnlySnippets) {
+    if (source.includes(snippet)) {
+      throw new Error(`Account Settings bubble border guard failed. Ring-only outline returned: ${snippet}`);
+    }
+  }
+}
+
+async function checkPetPlanLimits() {
+  const [subscriptionSource, petAvatarSource, accountSettingsSource] = await Promise.all([
+    readFile(subscriptionPlanSourcePath, "utf8"),
+    readFile(petAvatarMenuSourcePath, "utf8"),
+    readFile(accountSettingsSourcePath, "utf8"),
+  ]);
+
+  const requiredSnippets = [
+    "export const FREE_PET_LIMIT = 1;",
+    "export const PLUS_PET_LIMIT = 99;",
+    "SUBSCRIPTION_PLAN_CONFIRMED_STORAGE_KEY",
+    "petLimitForSubscriptionPlan(subscriptionPlan)",
+    "Need to add more pets? Contact support and we'll help.",
+    "Free includes 1 pet. Upgrade to Plus for unlimited pets, family sharing, and lifetime health history.",
+    "<span>Add unlimited pets with</span>",
+    "PetNotebook Plus",
+    "Share notebooks with family and caregivers",
+    "Family sharing",
+    "Keep everyone in sync",
+    "Unlimited PDF exports",
+    "Unlimited photos and files",
+    "Meals, reminders, and alerts",
+    "Health records and daily logs",
+    "handleUpgradeForMorePets",
+    "upgrade=plus&returnToAddPet=1",
+    "petnotebook.openAddPetUpgradeDialog",
+  ];
+
+  for (const snippet of requiredSnippets) {
+    if (!subscriptionSource.includes(snippet) && !petAvatarSource.includes(snippet) && !accountSettingsSource.includes(snippet)) {
+      throw new Error(`Pet plan limit guard failed. Missing: ${snippet}`);
+    }
+  }
+}
 
 async function launchBrowser() {
   for (const channel of ["chrome", "msedge"]) {
@@ -18,6 +84,8 @@ async function launchBrowser() {
 }
 
 async function main() {
+  await checkAccountSettingsBubbleBorders();
+  await checkPetPlanLimits();
   await mkdir(path.dirname(screenshotPath), { recursive: true });
 
   const browser = await launchBrowser();

@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
+import { NotebookAccessRevokedError, resolveActiveNotebookAccess } from "@/lib/notebook-access";
 import { checkSupabaseAuthReachable, PASSWORD_RESET_REQUIRED_STORAGE_KEY } from "@/lib/supabase";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 const HEWIE_AUTH_GATE_TIMEOUT_MS = 5_000;
 const PASSWORD_RESET_PATH = "/hewie/account-settings?resetPassword=1";
@@ -13,7 +15,7 @@ const PASSWORD_RESET_PATH = "/hewie/account-settings?resetPassword=1";
 export default function HewieLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { configured, loading, user } = useAuth();
+  const { configured, loading, user, signOut } = useAuth();
   const [authGateTimedOut, setAuthGateTimedOut] = useState(false);
   const [authReachable, setAuthReachable] = useState<boolean | null>(null);
   const [browserHostname, setBrowserHostname] = useState<string | null>(null);
@@ -79,6 +81,42 @@ export default function HewieLayout({ children }: { children: React.ReactNode })
       router.replace("/login");
     }
   }, [router, shouldRequireLogin]);
+
+  useEffect(() => {
+    if (!configured || loading || !user) return;
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+
+    let active = true;
+    let checking = false;
+
+    const checkActiveNotebookAccess = async () => {
+      if (checking) return;
+      checking = true;
+
+      try {
+        await resolveActiveNotebookAccess(supabase, user, { forceRefresh: true });
+      } catch (error) {
+        if (active && error instanceof NotebookAccessRevokedError) {
+          await signOut();
+          router.replace("/login");
+        }
+      } finally {
+        checking = false;
+      }
+    };
+
+    void checkActiveNotebookAccess();
+    window.addEventListener("focus", checkActiveNotebookAccess);
+    window.addEventListener("petnotebook-active-notebook-updated", checkActiveNotebookAccess);
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", checkActiveNotebookAccess);
+      window.removeEventListener("petnotebook-active-notebook-updated", checkActiveNotebookAccess);
+    };
+  }, [configured, loading, router, signOut, user]);
 
   if (shouldShowAuthGate) {
     return (

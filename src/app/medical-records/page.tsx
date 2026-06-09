@@ -24,6 +24,13 @@ import {
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { HEWSTER_PROFILE_SLUG, getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  FREE_MEDICAL_ATTACHMENT_LIMIT,
+  FREE_POTTY_IMAGE_LIMIT,
+  activityAttachmentCounts,
+  loadStoredSubscriptionPlan,
+  type SubscriptionPlanId,
+} from "@/lib/subscription-plan";
 
 const filters = ["All", "Symptoms", "Vet Visit", "Medication", "Injection", "Other Health", "Attachments"];
 const dateFilters = ["All Time", "Date Range"] as const;
@@ -489,7 +496,39 @@ export default function MedicalRecordsPage() {
   const [happenedAtValue, setHappenedAtValue] = useState(() => nowForTimeInput());
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
   const supabaseReady = isSupabaseConfigured();
+
+  useEffect(() => {
+    const refreshPlan = () => setSubscriptionPlan(loadStoredSubscriptionPlan());
+    refreshPlan();
+    window.addEventListener("storage", refreshPlan);
+    window.addEventListener("focus", refreshPlan);
+    return () => {
+      window.removeEventListener("storage", refreshPlan);
+      window.removeEventListener("focus", refreshPlan);
+    };
+  }, []);
+
+  const freeAttachmentCounts = useMemo(
+    () => activityAttachmentCounts(activityLogs, editingActivityId),
+    [activityLogs, editingActivityId]
+  );
+
+  const detailAttachmentLimit = useMemo(() => {
+    if (subscriptionPlan === "plus") return 5;
+    if (detailActivityType === "potty" || detailActivityType === "poop") {
+      return Math.max(0, FREE_POTTY_IMAGE_LIMIT - freeAttachmentCounts.pottyImages);
+    }
+    return Math.max(0, FREE_MEDICAL_ATTACHMENT_LIMIT - freeAttachmentCounts.medicalAttachments);
+  }, [detailActivityType, freeAttachmentCounts.medicalAttachments, freeAttachmentCounts.pottyImages, subscriptionPlan]);
+
+  const detailAttachmentLimitMessage =
+    subscriptionPlan === "plus"
+      ? undefined
+      : detailActivityType === "potty" || detailActivityType === "poop"
+        ? "Potty images are a PetNotebook Plus feature after your first free image. Upgrade for $9.99/month to unlock more."
+        : "Attachments are a PetNotebook Plus feature after your first free file. Upgrade for $9.99/month to unlock more.";
 
   useEffect(() => {
     let mounted = true;
@@ -934,6 +973,8 @@ export default function MedicalRecordsPage() {
                             : undefined
                         }
                         onAttachmentsChange={setAttachmentFiles}
+                        maxAttachmentFiles={detailAttachmentLimit}
+                        attachmentLimitMessage={detailAttachmentLimitMessage}
                         onHappenedAtChange={setHappenedAtValue}
                         onSave={saveDetailedActivity}
                         onCancel={resetEditor}

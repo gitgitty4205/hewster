@@ -365,6 +365,10 @@ function careItemExpandedDetail(item: CareItemTemplate, scheduleLine?: string) {
   ].filter(Boolean).join("\n");
 }
 
+function mealCareGroupLabel() {
+  return "Supplements";
+}
+
 function mealExpandedDetail(meal: MealTemplate, templates: MealTemplate[], todayKey: string, careTemplates: CareItemTemplate[]) {
   const mealCareItems = careTemplates
     .filter((item) => careItemOccursWithMeal(item, meal, templates, todayKey))
@@ -377,7 +381,7 @@ function mealExpandedDetail(meal: MealTemplate, templates: MealTemplate[], today
   return [
     meal.food.trim() ? `Food: ${meal.food.trim()}` : null,
     meal.notes.trim() ? `Notes: ${meal.notes.trim()}` : null,
-    mealCareItems.length ? `Meal Plan Care: ${mealCareItems.join("; ")}` : null,
+    mealCareItems.length ? `${mealCareGroupLabel()}: ${mealCareItems.join("; ")}` : null,
   ].filter(Boolean).join("\n");
 }
 

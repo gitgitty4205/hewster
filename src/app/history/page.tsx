@@ -49,6 +49,7 @@ import { getSupabaseBrowserClient, getSupabaseCurrentSession, isSupabaseConfigur
 import { canExportNotebook, resolveActiveNotebookAccess, type NotebookAccessRole } from "@/lib/notebook-access";
 import { displayPetAge, loadPetProfile, type PetProfile } from "@/lib/pet-profile";
 import { formatManualAlertTimelineDetail } from "@/lib/alerts";
+import { FREE_HISTORY_MONTHS, loadStoredSubscriptionPlan, type SubscriptionPlanId } from "@/lib/subscription-plan";
 
 
 
@@ -152,6 +153,13 @@ function historyDayKeyFromDate(date: Date) {
 
   }).format(date);
 
+}
+
+function freeHistoryCutoffDayKey() {
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setMonth(cutoff.getMonth() - FREE_HISTORY_MONTHS);
+  return historyDayKeyFromDate(cutoff);
 }
 
 
@@ -1483,6 +1491,7 @@ export default function HistoryPage() {
   const [includeLogDetails, setIncludeLogDetails] = useState(false);
   const [historyEditUnlocked, setHistoryEditUnlocked] = useState(false);
   const [activeNotebookRole, setActiveNotebookRole] = useState<NotebookAccessRole | null>(null);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
   const [profile, setProfile] = useState<PetProfile>(() => loadPetProfile());
   const supabaseReady = isSupabaseConfigured();
   const canIncludeLogDetails = activeNotebookRole ? canExportNotebook(activeNotebookRole) : false;
@@ -1497,6 +1506,17 @@ export default function HistoryPage() {
     return () => {
       window.removeEventListener("pet-profile-updated", refreshProfile);
       window.removeEventListener("storage", refreshProfile);
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshPlan = () => setSubscriptionPlan(loadStoredSubscriptionPlan());
+    refreshPlan();
+    window.addEventListener("storage", refreshPlan);
+    window.addEventListener("focus", refreshPlan);
+    return () => {
+      window.removeEventListener("storage", refreshPlan);
+      window.removeEventListener("focus", refreshPlan);
     };
   }, []);
 
@@ -1937,11 +1957,18 @@ export default function HistoryPage() {
 
   }, [activityLogs, careTemplates, dailyMealHistory, historicalMealTemplates, manualAlerts, mealLogs, templates, weightLogs]);
 
+  const freeHistoryCutoff = useMemo(() => freeHistoryCutoffDayKey(), []);
+  const availableHistoryDays = useMemo(() => {
+    if (subscriptionPlan === "plus") return historyDays;
+    return historyDays.filter((day) => day.day >= freeHistoryCutoff);
+  }, [freeHistoryCutoff, historyDays, subscriptionPlan]);
+  const archivedFreeHistoryCount = subscriptionPlan === "free" ? historyDays.length - availableHistoryDays.length : 0;
+
   const filteredHistoryDays = useMemo(() => {
 
-    return filterHistoryDays(historyDays, activeFilter, startDate, endDate);
+    return filterHistoryDays(availableHistoryDays, activeFilter, startDate, endDate);
 
-  }, [activeFilter, endDate, historyDays, startDate]);
+  }, [activeFilter, availableHistoryDays, endDate, startDate]);
 
   const hasActiveHistoryFilter = activeFilter !== "all" || Boolean(startDate) || Boolean(endDate);
 
@@ -2097,7 +2124,7 @@ export default function HistoryPage() {
     setShowFilters(false);
     setSendCopyStatus("");
 
-    const latestDay = historyDays[0]?.day;
+    const latestDay = availableHistoryDays[0]?.day;
 
     if (latestDay) {
 
@@ -2225,6 +2252,13 @@ export default function HistoryPage() {
   };
 
   const handleSendCopy = async () => {
+
+    if (subscriptionPlan !== "plus") {
+      const upgradeMessage = "PDF reports are a PetNotebook Plus feature. Upgrade to unlock reports, full history, sharing, and attachments for $9.99/month.";
+      setSendCopyStatus(upgradeMessage);
+      window.alert(upgradeMessage);
+      return;
+    }
 
     const dateRange = historyCopyDateRange(startDate, endDate);
     const generatedDate = historyCopyGeneratedDate();
@@ -2484,6 +2518,15 @@ export default function HistoryPage() {
 
         </header>
 
+
+        {subscriptionPlan === "free" ? (
+          <div className="mb-4 rounded-3xl bg-white/92 p-4 text-sm leading-5 text-zinc-600 shadow-sm ring-1 ring-zinc-200">
+            <p className="font-semibold text-zinc-900">Free plan: latest 3 months of history</p>
+            <p className="mt-1">
+              Older history is archived for Plus. {archivedFreeHistoryCount > 0 ? `${archivedFreeHistoryCount} older day${archivedFreeHistoryCount === 1 ? "" : "s"} can be unlocked with PetNotebook Plus.` : "PetNotebook Plus keeps complete lifetime history available."}
+            </p>
+          </div>
+        ) : null}
 
 
         <section className="mb-4 overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
@@ -2763,7 +2806,7 @@ export default function HistoryPage() {
 
                   <Button type="button" className="h-8 rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60" onClick={() => void handleSendCopy()} disabled={isSendingCopy}>
 
-                    {isSendingCopy ? "Sending..." : "Send Copy"}
+                    {isSendingCopy ? "Sending..." : subscriptionPlan === "plus" ? "Send Copy" : "Plus Export"}
 
                   </Button>
 

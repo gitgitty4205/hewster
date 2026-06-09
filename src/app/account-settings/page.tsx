@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
-import { Check, KeyRound, Pencil, UserRound } from "lucide-react";
+import { Bell, Check, ChevronDown, Crown, KeyRound, Pencil, UserRound, X } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
 
@@ -24,6 +24,12 @@ import {
   loadUserTheme,
   type ThemeId,
 } from "@/lib/pet-profile";
+import {
+  loadStoredSubscriptionPlan,
+  saveStoredSubscriptionPlan,
+  subscriptionPlans,
+  type SubscriptionPlanId,
+} from "@/lib/subscription-plan";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 const EMAIL_MAX_LENGTH = 254;
@@ -31,7 +37,13 @@ const PHONE_MAX_LENGTH = 32;
 const PASSWORD_MAX_LENGTH = 128;
 
 const ACCOUNT_INFO_STORAGE_KEY = "petnotebook.accountInfoSnapshot";
+const NOTIFICATION_SETTINGS_STORAGE_KEY = "petnotebook.notificationSettings";
+const ADD_PET_UPGRADE_RETURN_PATH_KEY = "petnotebook.addPetUpgradeReturnPath";
+const OPEN_ADD_PET_UPGRADE_DIALOG_KEY = "petnotebook.openAddPetUpgradeDialog";
 type TwoFactorMethod = "email" | "sms";
+type NotificationChannel = "app" | "email" | "sms";
+type ReminderTimeUnit = "minutes" | "hours";
+type BillingInterval = "monthly" | "annual";
 type AccountInfoSnapshot = {
   firstName: string;
   lastName: string;
@@ -41,21 +53,110 @@ type AccountInfoSnapshot = {
   twoFactorEnabled: boolean;
   twoFactorMethod: TwoFactorMethod;
 };
+type NotificationSettingsSnapshot = {
+  enabled: boolean;
+  preferences: Record<string, boolean>;
+  upcomingReminderAmount: string;
+  upcomingReminderUnit: ReminderTimeUnit;
+  channels: NotificationChannel[];
+  quietHoursStart: string;
+  quietHoursEnd: string;
+};
 
-const planOptions = [
+const notificationPreferences = [
   {
-    name: "Free",
-    description: "One pet notebook.",
+    title: "Updates from other users",
+    description: "Get notified when someone updates a shared notebook.",
   },
   {
-    name: "Plus",
-    description: "More history tools and exports for one pet.",
+    title: "Alerts and reminders",
+    description: "Get notified for alerts and reminders.",
   },
   {
-    name: "Family",
-    description: "Multiple pet notebooks and shared access.",
+    title: "Due today",
+    description: "Get notified about items due today.",
+  },
+  {
+    title: "Advance reminders",
+    description: "Get notified before an upcoming item is due.",
+  },
+  {
+    title: "Anniversaries",
+    description: "Get notified about birthdays and other special dates.",
+  },
+  {
+    title: "Notification channels",
+    description: "Choose where notifications are sent.",
+  },
+  {
+    title: "Quiet hours",
+    description: "Set times when notifications are muted.",
   },
 ];
+
+const notificationChannels: { id: NotificationChannel; label: string }[] = [
+  { id: "app", label: "App" },
+  { id: "email", label: "Email" },
+  { id: "sms", label: "SMS" },
+];
+const notificationChannelIds = notificationChannels.map((channel) => channel.id);
+const membershipPlanDisplayOrder = [...subscriptionPlans].sort((plan) => (plan.id === "plus" ? -1 : 1));
+
+function getDefaultNotificationPreferenceStates() {
+  return Object.fromEntries(notificationPreferences.map((item) => [item.title, true]));
+}
+
+function getReminderMaxAmount(unit: ReminderTimeUnit) {
+  return unit === "hours" ? 24 : 1440;
+}
+
+function normalizeReminderAmount(value: string, unit: ReminderTimeUnit) {
+  if (!value) return value;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "1";
+  return String(Math.min(Math.max(Math.trunc(parsed), 1), getReminderMaxAmount(unit)));
+}
+
+function reminderUnitLabel(unit: ReminderTimeUnit, amount: string) {
+  const parsed = Number(amount);
+  const isSingular = Number.isFinite(parsed) && Math.trunc(parsed) === 1;
+  if (unit === "hours") return isSingular ? "Hour" : "Hours";
+  return isSingular ? "Minute" : "Minutes";
+}
+
+function loadStoredNotificationSettings(): NotificationSettingsSnapshot | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const stored = window.localStorage.getItem(NOTIFICATION_SETTINGS_STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Partial<NotificationSettingsSnapshot>;
+    const unit: ReminderTimeUnit = parsed.upcomingReminderUnit === "hours" ? "hours" : "minutes";
+    const channels = Array.isArray(parsed.channels)
+      ? parsed.channels.filter((channel): channel is NotificationChannel => notificationChannelIds.includes(channel as NotificationChannel))
+      : [];
+
+    return {
+      enabled: parsed.enabled !== false,
+      preferences: {
+        ...getDefaultNotificationPreferenceStates(),
+        ...(parsed.preferences && typeof parsed.preferences === "object" ? parsed.preferences : {}),
+      },
+      upcomingReminderAmount: normalizeReminderAmount(typeof parsed.upcomingReminderAmount === "string" ? parsed.upcomingReminderAmount : "30", unit),
+      upcomingReminderUnit: unit,
+      channels: channels.length ? channels : ["app"],
+      quietHoursStart: typeof parsed.quietHoursStart === "string" ? parsed.quietHoursStart : "22:00",
+      quietHoursEnd: typeof parsed.quietHoursEnd === "string" ? parsed.quietHoursEnd : "07:00",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveStoredNotificationSettings(settings: NotificationSettingsSnapshot) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(NOTIFICATION_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+}
 
 function notebookRoleLabel(role: NotebookAccessRole | null) {
   if (role === "co-owner") return "Co-Owner";
@@ -140,7 +241,22 @@ export default function AccountSettingsPage() {
   const [notebookRole, setNotebookRole] = useState<NotebookAccessRole | null>(null);
   const [notebookRoleLoaded, setNotebookRoleLoaded] = useState(false);
   const [membershipPlanVisible, setMembershipPlanVisible] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState("Plus");
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>(() => loadStoredSubscriptionPlan());
+  const [expandedPlanDetails, setExpandedPlanDetails] = useState<Record<SubscriptionPlanId, boolean>>({ free: false, plus: false });
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [selectedBillingInterval, setSelectedBillingInterval] = useState<BillingInterval>("monthly");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationsExpanded, setNotificationsExpanded] = useState(false);
+  const [notificationPreferenceStates, setNotificationPreferenceStates] = useState<Record<string, boolean>>(
+    getDefaultNotificationPreferenceStates,
+  );
+  const [upcomingReminderAmount, setUpcomingReminderAmount] = useState("30");
+  const [upcomingReminderUnit, setUpcomingReminderUnit] = useState<ReminderTimeUnit>("minutes");
+  const [upcomingReminderMessage, setUpcomingReminderMessage] = useState("");
+  const [selectedNotificationChannels, setSelectedNotificationChannels] = useState<NotificationChannel[]>(["app"]);
+  const [quietHoursStart, setQuietHoursStart] = useState("22:00");
+  const [quietHoursEnd, setQuietHoursEnd] = useState("07:00");
+  const [securityExpanded, setSecurityExpanded] = useState(false);
   const [passwordEditing, setPasswordEditing] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -149,6 +265,7 @@ export default function AccountSettingsPage() {
   const [passwordResetRequired, setPasswordResetRequired] = useState(false);
   const [twoFactorStatus, setTwoFactorStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [twoFactorMessage, setTwoFactorMessage] = useState("");
+  const [membershipExpanded, setMembershipExpanded] = useState(false);
   const [themeId, setThemeId] = useState<ThemeId>(defaultPetProfile.themeId);
 
   useEffect(() => {
@@ -167,6 +284,22 @@ export default function AccountSettingsPage() {
   }, [themeId]);
 
   useEffect(() => {
+    void Promise.resolve().then(() => {
+      const storedSettings = loadStoredNotificationSettings();
+      if (!storedSettings) return;
+
+      setNotificationsEnabled(storedSettings.enabled);
+      setNotificationsExpanded(false);
+      setNotificationPreferenceStates(storedSettings.preferences);
+      setUpcomingReminderAmount(storedSettings.upcomingReminderAmount);
+      setUpcomingReminderUnit(storedSettings.upcomingReminderUnit);
+      setSelectedNotificationChannels(storedSettings.channels);
+      setQuietHoursStart(storedSettings.quietHoursStart);
+      setQuietHoursEnd(storedSettings.quietHoursEnd);
+    });
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("resetPassword") !== "1") return;
@@ -177,6 +310,20 @@ export default function AccountSettingsPage() {
       setPasswordEditing(true);
       setPasswordStatus("idle");
       setPasswordMessage("Choose a new password for this account.");
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("upgrade") !== "plus") return;
+
+    const timeoutId = window.setTimeout(() => {
+      setMembershipExpanded(true);
+      setExpandedPlanDetails((current) => ({ ...current, plus: true }));
+      setUpgradeDialogOpen(true);
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
@@ -202,6 +349,22 @@ export default function AccountSettingsPage() {
   }, []);
 
   const displayUser = user ?? storedUser;
+
+  const completePlusUpgrade = () => {
+    setSelectedPlan("plus");
+    saveStoredSubscriptionPlan("plus");
+    setExpandedPlanDetails((current) => ({ ...current, plus: true }));
+    setUpgradeDialogOpen(false);
+
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("returnToAddPet") !== "1") return;
+
+    const returnPath = window.sessionStorage.getItem(ADD_PET_UPGRADE_RETURN_PATH_KEY) || "/hewie";
+    window.sessionStorage.removeItem(ADD_PET_UPGRADE_RETURN_PATH_KEY);
+    window.sessionStorage.setItem(OPEN_ADD_PET_UPGRADE_DIALOG_KEY, "1");
+    window.location.href = returnPath;
+  };
 
   useEffect(() => {
     void Promise.resolve().then(() => {
@@ -292,6 +455,69 @@ export default function AccountSettingsPage() {
     setAccountMessage("");
   }
 
+  function toggleNotificationPreference(title: string) {
+    setNotificationPreferenceStates((current) => ({
+      ...current,
+      [title]: !current[title],
+    }));
+  }
+
+  function handleToggleNotifications() {
+    setNotificationsEnabled((enabled) => {
+      const nextEnabled = !enabled;
+      setNotificationsExpanded(nextEnabled);
+      saveStoredNotificationSettings({
+        enabled: nextEnabled,
+        preferences: notificationPreferenceStates,
+        upcomingReminderAmount: normalizeReminderAmount(upcomingReminderAmount, upcomingReminderUnit),
+        upcomingReminderUnit,
+        channels: selectedNotificationChannels,
+        quietHoursStart,
+        quietHoursEnd,
+      });
+      return nextEnabled;
+    });
+  }
+
+  function toggleNotificationChannel(channel: NotificationChannel) {
+    setSelectedNotificationChannels((current) => {
+      if (current.includes(channel)) {
+        return current.length > 1 ? current.filter((item) => item !== channel) : current;
+      }
+      return [...current, channel];
+    });
+  }
+
+  function handleUpcomingReminderAmountChange(value: string) {
+    const parsed = Number(value);
+    const maxAmount = getReminderMaxAmount(upcomingReminderUnit);
+    setUpcomingReminderMessage(Number.isFinite(parsed) && parsed > maxAmount ? "Maximum is 1 day." : "");
+    setUpcomingReminderAmount(normalizeReminderAmount(value, upcomingReminderUnit));
+  }
+
+  function handleUpcomingReminderUnitChange(unit: ReminderTimeUnit) {
+    setUpcomingReminderUnit(unit);
+    setUpcomingReminderAmount((amount) => {
+      const parsed = Number(amount);
+      const maxAmount = getReminderMaxAmount(unit);
+      setUpcomingReminderMessage(Number.isFinite(parsed) && parsed > maxAmount ? "Maximum is 1 day." : "");
+      return normalizeReminderAmount(amount, unit);
+    });
+  }
+
+  function handleSaveNotificationSettings() {
+    saveStoredNotificationSettings({
+      enabled: notificationsEnabled,
+      preferences: notificationPreferenceStates,
+      upcomingReminderAmount: normalizeReminderAmount(upcomingReminderAmount, upcomingReminderUnit),
+      upcomingReminderUnit,
+      channels: selectedNotificationChannels,
+      quietHoursStart,
+      quietHoursEnd,
+    });
+    setNotificationsExpanded(false);
+  }
+
   async function handleSaveAccountInfo() {
     const trimmedFirstName = clampText(ownerFirstName.trim(), TEXT_LIMITS.shortName);
     const trimmedLastName = clampText(ownerLastName.trim(), TEXT_LIMITS.shortName);
@@ -378,6 +604,15 @@ export default function AccountSettingsPage() {
     setNewPassword("");
     setConfirmNewPassword("");
     setPasswordEditing(false);
+    setPasswordStatus("idle");
+    setPasswordMessage("");
+  }
+
+  function startPasswordChange() {
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setSecurityExpanded(true);
+    setPasswordEditing(true);
     setPasswordStatus("idle");
     setPasswordMessage("");
   }
@@ -484,6 +719,8 @@ export default function AccountSettingsPage() {
   const accountInfoTitle = `${notebookRoleLabel(displayedNotebookRole)} Info`;
   const showAccountInfoTitle = (!authLoading && !displayUser) || notebookRoleLoaded;
   const canUseSmsTwoFactor = Boolean(savedOwnerInfo.phoneNumber);
+  const securityContentVisible = passwordResetRequired || securityExpanded || passwordEditing;
+  const membershipSummary = selectedPlan === "plus" ? "PetNotebook Plus" : "Free";
 
   return (
     <main className="min-h-[100dvh] bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
@@ -499,7 +736,7 @@ export default function AccountSettingsPage() {
         </header>
 
         {!passwordResetRequired ? (
-        <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
+        <section className="mb-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <span
@@ -543,7 +780,7 @@ export default function AccountSettingsPage() {
                   maxLength={TEXT_LIMITS.shortName}
                   placeholder={authLoading ? "Loading..." : "First"}
                   disabled={!ownerInfoEditing}
-                  className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
+                  className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-normal normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
                     ownerInfoEditing ? "bg-zinc-50 ring-zinc-200" : "bg-zinc-100 text-zinc-600 ring-zinc-200"
                   }`}
                 />
@@ -557,7 +794,7 @@ export default function AccountSettingsPage() {
                   maxLength={TEXT_LIMITS.shortName}
                   placeholder={authLoading ? "Loading..." : "Last"}
                   disabled={!ownerInfoEditing}
-                  className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
+                  className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-normal normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
                     ownerInfoEditing ? "bg-zinc-50 ring-zinc-200" : "bg-zinc-100 text-zinc-600 ring-zinc-200"
                   }`}
                 />
@@ -572,7 +809,7 @@ export default function AccountSettingsPage() {
                 maxLength={EMAIL_MAX_LENGTH}
                 placeholder={authLoading ? "Loading account..." : "name@example.com"}
                 disabled={!ownerInfoEditing}
-                className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
+                className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-normal normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
                   ownerInfoEditing ? "bg-zinc-50 ring-zinc-200" : "bg-zinc-100 text-zinc-600 ring-zinc-200"
                 }`}
               />
@@ -587,7 +824,7 @@ export default function AccountSettingsPage() {
                 placeholder={authLoading ? "Loading account..." : "Optional for account recovery"}
                 disabled={!ownerInfoEditing}
                 autoComplete="tel"
-                className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
+                className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-normal normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
                   ownerInfoEditing ? "bg-zinc-50 ring-zinc-200" : "bg-zinc-100 text-zinc-600 ring-zinc-200"
                 }`}
               />
@@ -625,21 +862,215 @@ export default function AccountSettingsPage() {
 
         ) : null}
 
-        <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
+        {!passwordResetRequired ? (
+          <section className="mb-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span
+                className="flex size-11 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: theme.accent, color: theme.accentText }}
+              >
+                <Bell className="size-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-semibold">Notifications</h2>
+                <p className="text-sm leading-5 text-zinc-500">
+                  {notificationsEnabled ? "On" : "Off"}
+                </p>
+              </div>
+              {notificationsEnabled && !notificationsExpanded ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setNotificationsExpanded(true)}
+                  aria-label="Expand notification settings"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white p-0 text-zinc-700"
+                >
+                  <ChevronDown className="size-5" />
+                </Button>
+              ) : null}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={notificationsEnabled}
+                onClick={handleToggleNotifications}
+                className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition ${
+                  notificationsEnabled ? "justify-end bg-[var(--hewie-accent,#64748b)]" : "justify-start bg-zinc-300"
+                }`}
+              >
+                <span className="size-5 rounded-full bg-white shadow-sm" />
+              </button>
+            </div>
+
+            <div className={`grid transition-all ${notificationsEnabled && notificationsExpanded ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+              <div className="min-h-0 overflow-hidden space-y-2">
+                {notificationPreferences.map((item) => {
+                  const isSelected = notificationPreferenceStates[item.title] ?? true;
+                  const hasSelectionInput = item.title === "Advance reminders" || item.title === "Notification channels" || item.title === "Quiet hours";
+
+                  return (
+                    <div key={item.title} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-semibold text-zinc-900">{item.title}</h3>
+                          <p className="mt-1 text-xs leading-4 text-zinc-500">{item.description}</p>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={isSelected}
+                          onClick={() => toggleNotificationPreference(item.title)}
+                          className={`flex h-6 w-10 shrink-0 items-center rounded-full p-1 transition ${
+                            isSelected ? "justify-end bg-[var(--hewie-accent,#64748b)]" : "justify-start bg-zinc-300"
+                          }`}
+                        >
+                          <span className="size-4 rounded-full bg-white shadow-sm" />
+                        </button>
+                      </div>
+
+                      {hasSelectionInput && isSelected ? (
+                        <div className="mt-3">
+                          {item.title === "Advance reminders" ? (
+                            <label className="block text-xs font-semibold text-zinc-600">
+                              Remind me before
+                              <div className="mt-2 grid grid-cols-[minmax(0,1fr)_7rem] gap-2">
+                                <div className="flex h-11 items-center rounded-2xl border border-zinc-200 bg-white px-3 focus-within:border-[var(--hewie-accent,#64748b)]">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max={getReminderMaxAmount(upcomingReminderUnit)}
+                                    step="1"
+                                    inputMode="numeric"
+                                    value={upcomingReminderAmount}
+                                    onChange={(event) => handleUpcomingReminderAmountChange(event.target.value)}
+                                    className="min-w-0 flex-1 border-0 bg-transparent text-sm font-semibold text-zinc-800 outline-none"
+                                  />
+                                </div>
+                                <select
+                                  value={upcomingReminderUnit}
+                                  onChange={(event) => handleUpcomingReminderUnitChange(event.target.value as ReminderTimeUnit)}
+                                  className="h-11 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                >
+                                  <option value="minutes">{reminderUnitLabel("minutes", upcomingReminderAmount)}</option>
+                                  <option value="hours">{reminderUnitLabel("hours", upcomingReminderAmount)}</option>
+                                </select>
+                              </div>
+                              {upcomingReminderMessage ? (
+                                <span className="mt-1 block text-[11px] font-semibold text-amber-700">
+                                  {upcomingReminderMessage}
+                                </span>
+                              ) : null}
+                            </label>
+                          ) : null}
+
+                          {item.title === "Notification channels" ? (
+                            <div>
+                              <p className="text-xs font-semibold text-zinc-600">Send to</p>
+                              <div className="mt-2 grid grid-cols-3 gap-2">
+                                {notificationChannels.map((channel) => {
+                                  const selected = selectedNotificationChannels.includes(channel.id);
+                                  return (
+                                    <button
+                                      key={channel.id}
+                                      type="button"
+                                      aria-pressed={selected}
+                                      onClick={() => toggleNotificationChannel(channel.id)}
+                                      className={`h-10 rounded-2xl px-2 text-xs font-semibold ring-1 transition ${
+                                        selected
+                                          ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-zinc-900 ring-[var(--hewie-ring,#cbd5e1)]"
+                                          : "bg-white text-zinc-500 ring-zinc-200"
+                                      }`}
+                                    >
+                                      {channel.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {item.title === "Quiet hours" ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              <label className="block text-xs font-semibold text-zinc-600">
+                                Start
+                                <input
+                                  type="time"
+                                  value={quietHoursStart}
+                                  onChange={(event) => setQuietHoursStart(event.target.value)}
+                                  className="mt-2 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                />
+                              </label>
+                              <label className="block text-xs font-semibold text-zinc-600">
+                                End
+                                <input
+                                  type="time"
+                                  value={quietHoursEnd}
+                                  onChange={(event) => setQuietHoursEnd(event.target.value)}
+                                  className="mt-2 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                />
+                              </label>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+
+                <Button
+                  type="button"
+                  onClick={handleSaveNotificationSettings}
+                  className="mt-3 h-11 w-full rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]"
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="mb-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <span
                 className="flex size-11 shrink-0 items-center justify-center rounded-full"
                 style={{ backgroundColor: theme.accent, color: theme.accentText }}
               >
                 <KeyRound className="size-5" />
               </span>
-              <div>
+              <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-semibold">Security</h2>
-                <p className="mt-1 text-sm leading-5 text-zinc-500">{passwordResetRequired ? "Choose a new password to finish account recovery." : "Update password and login verification settings."}</p>
+                <p className="text-sm leading-5 text-zinc-500">{passwordResetRequired ? "Choose a new password to finish account recovery." : "Password and login verification"}</p>
               </div>
             </div>
+            {!passwordResetRequired ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSecurityExpanded((expanded) => !expanded)}
+                aria-label={securityContentVisible ? "Collapse security settings" : "Expand security settings"}
+                aria-expanded={securityContentVisible}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white p-0 text-zinc-700"
+              >
+                <ChevronDown className={`size-5 transition-transform ${securityContentVisible ? "rotate-180" : ""}`} />
+              </Button>
+            ) : null}
           </div>
+
+          <div className={`grid transition-all ${securityContentVisible ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+            <div className="min-h-0 overflow-hidden">
+          {!passwordEditing && !passwordResetRequired ? (
+            <button
+              type="button"
+              onClick={startPasswordChange}
+              disabled={!displayUser}
+              className="mt-2 flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left transition hover:bg-zinc-100 disabled:opacity-60"
+            >
+              <span>
+                <span className="block text-sm font-semibold text-zinc-900">Change Password</span>
+              </span>
+              <ChevronDown className="-rotate-90 size-5 shrink-0 text-zinc-400" />
+            </button>
+          ) : null}
 
           {passwordEditing ? (
             <div className="space-y-3">
@@ -653,7 +1084,7 @@ export default function AccountSettingsPage() {
                   autoComplete="new-password"
                   minLength={6}
                   maxLength={PASSWORD_MAX_LENGTH}
-                  className="mt-2 w-full rounded-2xl border-0 bg-zinc-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-zinc-200 placeholder:text-zinc-400"
+                  className="mt-2 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 placeholder:text-zinc-400"
                 />
               </label>
               <label className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
@@ -666,7 +1097,7 @@ export default function AccountSettingsPage() {
                   autoComplete="new-password"
                   minLength={6}
                   maxLength={PASSWORD_MAX_LENGTH}
-                  className="mt-2 w-full rounded-2xl border-0 bg-zinc-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-zinc-200 placeholder:text-zinc-400"
+                  className="mt-2 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 placeholder:text-zinc-400"
                 />
               </label>
             </div>
@@ -674,7 +1105,7 @@ export default function AccountSettingsPage() {
 
           {!passwordResetRequired ? (
           <div className="mt-2">
-            <div className="flex items-center gap-3 rounded-2xl bg-zinc-50 px-4 py-2 ring-1 ring-zinc-200">
+            <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2">
               <p className="shrink-0 text-sm font-semibold text-zinc-800">2FA</p>
               <button
                 type="button"
@@ -692,8 +1123,8 @@ export default function AccountSettingsPage() {
                 <button
                   type="button"
                   onClick={() => void handleSaveTwoFactorSettings(true, "email")}
-                  className={`rounded-xl px-3 py-1.5 text-left ring-1 transition ${
-                    twoFactorMethod === "email" ? "bg-[var(--hewie-active-bg,#f1f5f9)] ring-[var(--hewie-ring,#cbd5e1)]" : "bg-white ring-zinc-200"
+                  className={`rounded-xl border px-3 py-1.5 text-left transition ${
+                    twoFactorMethod === "email" ? "border-[var(--hewie-ring,#cbd5e1)] bg-[var(--hewie-active-bg,#f1f5f9)]" : "border-zinc-200 bg-white"
                   }`}
                   disabled={!displayUser || twoFactorStatus === "saving" || !twoFactorEnabled}
                 >
@@ -702,8 +1133,8 @@ export default function AccountSettingsPage() {
                 <button
                   type="button"
                   onClick={() => void handleSaveTwoFactorSettings(true, "sms")}
-                  className={`rounded-xl px-3 py-1.5 text-left ring-1 transition ${
-                    twoFactorMethod === "sms" ? "bg-[var(--hewie-active-bg,#f1f5f9)] ring-[var(--hewie-ring,#cbd5e1)]" : "bg-white ring-zinc-200"
+                  className={`rounded-xl border px-3 py-1.5 text-left transition ${
+                    twoFactorMethod === "sms" ? "border-[var(--hewie-ring,#cbd5e1)] bg-[var(--hewie-active-bg,#f1f5f9)]" : "border-zinc-200 bg-white"
                   } ${canUseSmsTwoFactor ? "" : "opacity-60"}`}
                   disabled={!displayUser || twoFactorStatus === "saving" || !twoFactorEnabled || !canUseSmsTwoFactor}
                 >
@@ -749,41 +1180,105 @@ export default function AccountSettingsPage() {
               </Button>
             </div>
           ) : null}
+            </div>
+          </div>
         </section>
 
         {!passwordResetRequired && canViewMembershipPlan ? (
-          <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold">Membership Plan</h2>
-              <p className="text-sm text-zinc-500">Choose the account level for pet notebooks.</p>
+          <section className="mb-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full"
+                  style={{ backgroundColor: theme.accent, color: theme.accentText }}
+                >
+                  <Crown className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-semibold">Membership</h2>
+                  <p className="text-sm leading-5 text-zinc-500">{membershipSummary}</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setMembershipExpanded((expanded) => !expanded)}
+                aria-label={membershipExpanded ? "Collapse membership settings" : "Expand membership settings"}
+                aria-expanded={membershipExpanded}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white p-0 text-zinc-700"
+              >
+                <ChevronDown className={`size-5 transition-transform ${membershipExpanded ? "rotate-180" : ""}`} />
+              </Button>
             </div>
 
-            <div className="space-y-2">
-              {planOptions.map((plan) => {
-                const selected = selectedPlan === plan.name;
+            <div className={`grid transition-all ${membershipExpanded ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+              <div className="min-h-0 overflow-hidden space-y-2">
+              {membershipPlanDisplayOrder.map((plan) => {
+                const selected = selectedPlan === plan.id;
+                const selectedPlus = selected && plan.id === "plus";
+                const expanded = expandedPlanDetails[plan.id];
+                const showSummary = plan.id !== "free" || expanded;
                 return (
-                  <button
-                    key={plan.name}
-                    type="button"
-                    onClick={() => setSelectedPlan(plan.name)}
-                    className={`w-full rounded-2xl p-4 text-left ring-1 transition ${
-                      selected ? "bg-[var(--hewie-active-bg,#f1f5f9)] ring-[var(--hewie-ring,#cbd5e1)]" : "bg-zinc-50 ring-zinc-200"
+                  <div
+                    key={plan.id}
+                    className={`rounded-2xl border transition ${
+                      selectedPlus
+                        ? "border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)]"
+                        : "border-zinc-200 bg-zinc-50"
                     }`}
                   >
-                    <span className="flex items-center justify-between gap-3">
-                      <span>
-                        <span className="block font-semibold text-zinc-900">{plan.name}</span>
-                        <span className="mt-1 block text-xs leading-4 text-zinc-500">{plan.description}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (plan.id === "plus" && selectedPlan !== "plus") {
+                          setUpgradeDialogOpen(true);
+                          setExpandedPlanDetails((current) => ({ ...current, plus: true }));
+                          return;
+                        }
+                        setSelectedPlan(plan.id);
+                        saveStoredSubscriptionPlan(plan.id);
+                        setExpandedPlanDetails((current) => ({ ...current, [plan.id]: !current[plan.id] }));
+                      }}
+                      aria-expanded={expanded}
+                      className="flex w-full items-center justify-between gap-3 p-4 text-left"
+                    >
+                      <span className="min-w-0">
+                        {plan.id === "plus" ? (
+                          <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-sm font-bold text-[var(--hewie-active-text,#334155)]">
+                            {plan.name}
+                          </span>
+                        ) : (
+                          <span className="block text-sm font-medium text-zinc-700">{plan.name}</span>
+                        )}
+                        {plan.priceLabel ? <span className="mt-0.5 block text-xs font-medium text-zinc-500">{plan.priceLabel}</span> : null}
+                        {showSummary && plan.summary ? (
+                          <span className="mt-1 block whitespace-pre-line text-xs font-medium leading-4 text-zinc-500">
+                            {plan.summary}
+                          </span>
+                        ) : null}
                       </span>
-                      {selected ? <Check className="size-4 shrink-0 text-emerald-600" /> : null}
-                    </span>
-                  </button>
+                      <span className="flex shrink-0 items-center gap-2 text-zinc-400">
+                        {selected ? <Check className={`size-4 ${selectedPlus ? "text-emerald-600" : "text-zinc-400"}`} /> : null}
+                        <ChevronDown className={`size-5 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                      </span>
+                    </button>
+                    <div className={`grid transition-all ${expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                      <div className="min-h-0 overflow-hidden">
+                        <div className="mx-4 mb-4 space-y-2 border-t border-zinc-200/80 pt-3">
+                          {plan.features.map((feature) => (
+                            <div key={feature} className="flex items-center gap-2 text-xs font-medium text-zinc-500">
+                              <Check className="size-3.5 shrink-0 text-emerald-600" />
+                              <span>{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
+              </div>
             </div>
-            <p className="mt-3 rounded-2xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-500 ring-1 ring-zinc-200">
-              Plan management will connect later. Adding extra pets can trigger upgrade options when plans are wired in.
-            </p>
           </section>
         ) : null}
 
@@ -811,6 +1306,100 @@ export default function AccountSettingsPage() {
             <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-xs leading-5 text-amber-700 ring-1 ring-amber-100">Supabase auth needs the public URL and anon key before login can work.</p>
           ) : null}
         </div>
+        ) : null}
+
+        {upgradeDialogOpen ? (
+          <div className="fixed inset-0 z-[80] flex items-end bg-zinc-950/35 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="plus-upgrade-title">
+            <button type="button" aria-label="Close upgrade" className="absolute inset-0 cursor-default" onClick={() => setUpgradeDialogOpen(false)} />
+            <div className="relative w-full max-w-md rounded-3xl bg-white p-5 shadow-xl ring-1 ring-zinc-200">
+              <button
+                type="button"
+                aria-label="Close upgrade"
+                className="absolute right-3 top-3 inline-flex size-6 items-center justify-center rounded-full bg-zinc-50 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:bg-white hover:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
+                onClick={() => setUpgradeDialogOpen(false)}
+              >
+                <X className="size-3" aria-hidden="true" />
+              </button>
+              <div className="mb-4 pr-8">
+                <h3 id="plus-upgrade-title" className="flex flex-wrap items-center gap-2 text-lg font-semibold text-zinc-900">
+                  <span>Upgrade to</span>
+                  <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-sm font-bold text-[var(--hewie-active-text,#334155)]">
+                    PetNotebook Plus
+                  </span>
+                </h3>
+                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                  Everything you need to care for your pet, all in one place.
+                </p>
+              </div>
+
+              <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
+                {[
+                  "Unlimited pets",
+                  "Family sharing",
+                  "Keep everyone in sync",
+                  "Unlimited PDF exports",
+                  "Unlimited photos and files",
+                  "Lifetime health history",
+                  "Meals, reminders, and alerts",
+                  "Health records and daily logs",
+                ].map((feature) => (
+                  <div key={feature} className="flex items-start gap-2 text-xs font-medium leading-5 text-zinc-500">
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Choose a plan</p>
+                {[
+                  { id: "monthly" as BillingInterval, title: "Monthly", price: "$9.99/month", badge: "Cancel anytime" },
+                  { id: "annual" as BillingInterval, title: "Annual", price: "$99/year", note: "Get 2 months free", badge: "Most popular" },
+                ].map((option) => {
+                  const billingSelected = selectedBillingInterval === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setSelectedBillingInterval(option.id)}
+                      className={`flex w-full items-center justify-between rounded-2xl border-2 p-3 text-left transition ${
+                        billingSelected
+                          ? "border-[var(--hewie-accent,#64748b)] bg-zinc-50"
+                          : "border-zinc-200 bg-zinc-50"
+                      }`}
+                    >
+                      <span>
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold text-zinc-900">{option.title}</span>
+                        </span>
+                        {option.note ? <span className="mt-0.5 block text-xs text-zinc-500">{option.note}</span> : null}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {option.badge ? (
+                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                            option.id === "annual"
+                              ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]"
+                              : "border border-zinc-300 bg-white text-zinc-500"
+                          }`}>
+                            {option.badge}
+                          </span>
+                        ) : null}
+                        <span className="text-sm font-semibold text-zinc-500">{option.price}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Button
+                type="button"
+                className="mt-4 h-12 w-full rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-[var(--hewie-accent-text,#ffffff)]"
+                onClick={completePlusUpgrade}
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
         ) : null}
 
         <BottomNav />

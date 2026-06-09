@@ -36,6 +36,7 @@ import {
   type ThemeId,
 } from "@/lib/pet-profile";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
+import { loadStoredSubscriptionPlan, type SubscriptionPlanId } from "@/lib/subscription-plan";
 
 const EMAIL_MAX_LENGTH = 254;
 
@@ -173,6 +174,18 @@ export default function ProfilePage() {
   const [profilePhotoMessage, setProfilePhotoMessage] = useState("");
   const [showGoodbyeIntro, setShowGoodbyeIntro] = useState(false);
   const [showMemorialSettings, setShowMemorialSettings] = useState(false);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
+
+  useEffect(() => {
+    const refreshPlan = () => setSubscriptionPlan(loadStoredSubscriptionPlan());
+    refreshPlan();
+    window.addEventListener("storage", refreshPlan);
+    window.addEventListener("focus", refreshPlan);
+    return () => {
+      window.removeEventListener("storage", refreshPlan);
+      window.removeEventListener("focus", refreshPlan);
+    };
+  }, []);
 
   useEffect(() => {
     void Promise.resolve().then(async () => {
@@ -220,6 +233,12 @@ export default function ProfilePage() {
   }
 
   async function handleInvitePerson() {
+    if (subscriptionPlan !== "plus") {
+      setAccessStatus("error");
+      setAccessMessage("Shared access is a PetNotebook Plus feature. Upgrade for $9.99/month to invite people.");
+      return;
+    }
+
     const supabase = getSupabaseBrowserClient();
     if (!supabase || !user) {
       setAccessStatus("error");
@@ -353,7 +372,9 @@ export default function ProfilePage() {
 
   const theme = appThemes[themeId];
   const notebookName = petNotebookName(profile);
-  const canManageNotebookAccess = activeNotebookRole === "owner" && activeNotebookOwnerId === user?.id;
+  const isNotebookSharingUnlocked = subscriptionPlan === "plus";
+  const canManageNotebookAccess = activeNotebookRole === "owner" && activeNotebookOwnerId === user?.id && isNotebookSharingUnlocked;
+  const canOwnNotebookAccess = activeNotebookRole === "owner" && activeNotebookOwnerId === user?.id;
   const notebookRoleLoaded = !user || Boolean(activeNotebookOwnerId);
   const canEditProfile = !user || (notebookRoleLoaded && (activeNotebookRole === "owner" || activeNotebookRole === "co-owner"));
   const canManageProfilePhoto = !user || (notebookRoleLoaded && activeNotebookRole === "owner" && activeNotebookOwnerId === user.id);
@@ -866,7 +887,11 @@ export default function ProfilePage() {
             <div>
               <h2 className="text-lg font-semibold">{notebookName} Access</h2>
               <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">
-                {canManageNotebookAccess ? "Invite people and choose how they can help with this notebook." : "View who has access to this notebook."}
+                {canManageNotebookAccess
+                  ? "Invite people and choose how they can help with this notebook."
+                  : canOwnNotebookAccess && !isNotebookSharingUnlocked
+                    ? "Notebook sharing is included with PetNotebook Plus."
+                    : "View who has access to this notebook."}
               </p>
             </div>
           </div>
@@ -953,6 +978,11 @@ export default function ProfilePage() {
                 {accessStatus === "saving" ? "Sending..." : "Invite"}
               </Button>
             </>
+          ) : null}
+          {canOwnNotebookAccess && !isNotebookSharingUnlocked ? (
+            <div className="rounded-2xl bg-white/65 p-3 text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+              Shared access is a PetNotebook Plus feature. Upgrade to invite family, caretakers, or pet sitters for $9.99/month.
+            </div>
           ) : null}
           {canManageNotebookAccess && accessMessage ? (
             <p className={`mt-3 rounded-2xl p-3 text-xs leading-5 ring-1 ${accessStatus === "error" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-white/65 text-[var(--hewie-active-text,#334155)]/65 ring-[var(--hewie-ring,#cbd5e1)]/70"}`}>

@@ -43,6 +43,17 @@ type ResolvedNotebookAccess = {
   members: NotebookMember[];
 };
 
+type ResolveNotebookAccessOptions = {
+  forceRefresh?: boolean;
+};
+
+export class NotebookAccessRevokedError extends Error {
+  constructor(message = "You don't currently have access to this notebook. Ask the owner if you think this is a mistake.") {
+    super(message);
+    this.name = "NotebookAccessRevokedError";
+  }
+}
+
 export const notebookAccessRoleDescriptions: Record<NotebookAccessRole, string> = {
   owner: "Full access, including invites, access management, and exporting notebook copies.",
   "co-owner": "Full notebook access, including care history and exporting copies. Cannot manage invites or access.",
@@ -223,7 +234,11 @@ export async function claimNotebookInvites(supabase: SupabaseClient, user: User)
     .eq("status", "invited");
 }
 
-export async function loadNotebookMembers(supabase: SupabaseClient, user: User) {
+export async function loadNotebookMembers(supabase: SupabaseClient, user: User, options: { forceRefresh?: boolean } = {}) {
+  if (options.forceRefresh) {
+    clearNotebookAccessCaches(user.id);
+  }
+
   const cached = notebookMembersCache.get(user.id);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.members;
@@ -257,7 +272,11 @@ async function loadNotebookMembersUncached(supabase: SupabaseClient, user: User)
   return (data as NotebookMemberRow[]).map(mapNotebookMember);
 }
 
-export async function resolveActiveNotebookAccess(supabase: SupabaseClient, user: User) {
+export async function resolveActiveNotebookAccess(supabase: SupabaseClient, user: User, options: ResolveNotebookAccessOptions = {}) {
+  if (options.forceRefresh) {
+    clearNotebookAccessCaches(user.id);
+  }
+
   const cachedAccess = activeAccessCache.get(user.id);
   if (cachedAccess && cachedAccess.expiresAt > Date.now()) {
     return cachedAccess.access;
@@ -266,7 +285,7 @@ export async function resolveActiveNotebookAccess(supabase: SupabaseClient, user
   const pendingAccess = activeAccessPromises.get(user.id);
   if (pendingAccess) return pendingAccess;
 
-  const accessPromise = resolveFreshNotebookAccess(supabase, user);
+  const accessPromise = resolveFreshNotebookAccess(supabase, user, options);
   activeAccessPromises.set(user.id, accessPromise);
 
   try {
@@ -278,9 +297,21 @@ export async function resolveActiveNotebookAccess(supabase: SupabaseClient, user
   }
 }
 
-async function resolveFreshNotebookAccess(supabase: SupabaseClient, user: User): Promise<ResolvedNotebookAccess> {
-  const members = await loadNotebookMembers(supabase, user);
-  const { activeMembership } = selectActiveNotebookMembership(members, user.id, user.email);
+async function resolveFreshNotebookAccess(supabase: SupabaseClient, user: User, options: ResolveNotebookAccessOptions = {}): Promise<ResolvedNotebookAccess> {
+  const members = await loadNotebookMembers(supabase, user, { forceRefresh: options.forceRefresh });
+  const { activeMembership, visibleMemberships } = selectActiveNotebookMembership(members, user.id, user.email);
+  const selectedNotebookOwnerId = activeNotebookOwnerIdFromStorage();
+
+  if (
+    hasExplicitActiveNotebookSelection() &&
+    selectedNotebookOwnerId &&
+    !visibleMemberships.some((member) => member.notebookOwnerId === selectedNotebookOwnerId && member.status === "active")
+  ) {
+    clearActiveNotebookOwnerId();
+    if (!activeMembership) {
+      throw new NotebookAccessRevokedError();
+    }
+  }
 
   if (!activeMembership) {
     return {
