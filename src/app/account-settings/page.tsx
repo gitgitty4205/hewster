@@ -65,6 +65,10 @@ type NotificationSettingsSnapshot = {
 
 const notificationPreferences = [
   {
+    title: "Notification channels",
+    description: "Choose where notifications are sent.",
+  },
+  {
     title: "Updates from other users",
     description: "Get notified when someone updates a shared notebook.",
   },
@@ -85,10 +89,6 @@ const notificationPreferences = [
     description: "Get notified about birthdays and other special dates.",
   },
   {
-    title: "Notification channels",
-    description: "Choose where notifications are sent.",
-  },
-  {
     title: "Quiet hours",
     description: "Set times when notifications are muted.",
   },
@@ -96,8 +96,8 @@ const notificationPreferences = [
 
 const notificationChannels: { id: NotificationChannel; label: string }[] = [
   { id: "app", label: "App" },
-  { id: "email", label: "Email" },
   { id: "sms", label: "SMS" },
+  { id: "email", label: "Email" },
 ];
 const notificationChannelIds = notificationChannels.map((channel) => channel.id);
 const membershipPlanDisplayOrder = [...subscriptionPlans].sort((plan) => (plan.id === "plus" ? -1 : 1));
@@ -821,7 +821,7 @@ export default function AccountSettingsPage() {
                 value={ownerPhoneNumber}
                 onChange={(event) => setOwnerPhoneNumber(clampText(event.target.value, PHONE_MAX_LENGTH))}
                 maxLength={PHONE_MAX_LENGTH}
-                placeholder={authLoading ? "Loading account..." : "Optional for account recovery"}
+                placeholder={authLoading ? "Loading account..." : "Optional"}
                 disabled={!ownerInfoEditing}
                 autoComplete="tel"
                 className={`mt-2 w-full rounded-2xl border-0 px-4 py-3 text-sm font-normal normal-case tracking-normal text-zinc-800 ring-1 placeholder:text-zinc-400 ${
