@@ -956,17 +956,13 @@ export default function ProfilePage() {
             </span>
             <div>
               <h2 className="text-lg font-semibold">{notebookName} Access</h2>
-              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">
-                {canManageNotebookAccess
-                  ? "Invite people and choose how they can help with this notebook."
-                  : canOwnNotebookAccess && !isNotebookSharingUnlocked
-                    ? (
-                      <>
-                        Notebook sharing is included with <PetNotebookPlusBadge />. Invite co-owners, caretakers, and pet sitters to help care for your pet.
-                      </>
-                    )
+              {canManageNotebookAccess || !canOwnNotebookAccess || isNotebookSharingUnlocked ? (
+                <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">
+                  {canManageNotebookAccess
+                    ? "Invite people and choose how they can help with this notebook."
                     : "View who has access to this notebook."}
-              </p>
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -1057,9 +1053,9 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={openNotebookSharingUpgrade}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white/65 px-4 py-3 text-sm font-semibold text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
+              className="w-full rounded-2xl bg-white/65 p-3 text-left text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
             >
-              Upgrade with <PetNotebookPlusBadge />
+              Notebook sharing is included with <PetNotebookPlusBadge />. Invite co-owners, caretakers, and pet sitters to help care for your pet.
             </button>
           ) : null}
           {canManageNotebookAccess && accessMessage ? (
