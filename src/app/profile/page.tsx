@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronRight, CircleHelp, Heart, Pencil, ShieldCheck } from "lucide-react";
+import { ChevronRight, CircleHelp, Heart, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
 
@@ -175,6 +175,7 @@ export default function ProfilePage() {
   const [profilePhotoMessage, setProfilePhotoMessage] = useState("");
   const [showGoodbyeIntro, setShowGoodbyeIntro] = useState(false);
   const [showMemorialSettings, setShowMemorialSettings] = useState(false);
+  const [showNotebookSharingIntro, setShowNotebookSharingIntro] = useState(false);
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
 
   useEffect(() => {
@@ -1042,22 +1043,14 @@ export default function ProfilePage() {
             </>
           ) : null}
           {canOwnNotebookAccess && !isNotebookSharingUnlocked ? (
-            <div className="w-full rounded-2xl bg-white/65 p-4 text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
-              <span className="block">
-                Notebook sharing is included with <strong className="font-bold text-[var(--hewie-active-text,#334155)]">Plus</strong>.
-              </span>
-              <span className="mt-1.5 block">
-                Invite co-owners, caretakers, and pet sitters to help care for your pet.
-              </span>
-              <button
-                type="button"
-                onClick={openNotebookSharingUpgrade}
-                className="ml-auto mt-3 flex w-fit items-center gap-1 rounded-full px-1 py-0.5 text-xs font-semibold text-[var(--hewie-accent,#64748b)] transition hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
-              >
-                View Plus benefits
-                <ChevronRight className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowNotebookSharingIntro(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--hewie-active-text,#334155)] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:scale-[1.01] hover:opacity-90"
+            >
+              <Plus className="size-4" />
+              Invite Notebook Members
+            </button>
           ) : null}
           {canManageNotebookAccess && accessMessage ? (
             <p className={`mt-3 rounded-2xl p-3 text-xs leading-5 ring-1 ${accessStatus === "error" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-white/65 text-[var(--hewie-active-text,#334155)]/65 ring-[var(--hewie-ring,#cbd5e1)]/70"}`}>
@@ -1118,6 +1111,50 @@ export default function ProfilePage() {
           </div>
         </section>
 
+        {showNotebookSharingIntro ? (
+          <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/35 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center">
+            <button
+              type="button"
+              aria-label="Close notebook sharing details"
+              className="absolute inset-0 cursor-default"
+              onClick={() => setShowNotebookSharingIntro(false)}
+            />
+            <div className="relative mx-auto w-full max-w-md rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/70 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+                    <ShieldCheck className="size-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-lg font-semibold">Invite Notebook Members</h2>
+                    <p className="mt-1 text-sm leading-6 text-[var(--hewie-active-text,#334155)]/70">
+                      Notebook sharing is included with <strong className="font-bold text-[var(--hewie-active-text,#334155)]">Plus</strong>.
+                    </p>
+                    <p className="mt-1.5 text-sm leading-6 text-[var(--hewie-active-text,#334155)]/70">
+                      Invite co-owners, caretakers, and pet sitters to help care for your pet.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNotebookSharingIntro(false)}
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/65 text-lg font-semibold text-[var(--hewie-active-text,#334155)]/65 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={openNotebookSharingUpgrade}
+                className="ml-auto flex w-fit items-center gap-1 rounded-full px-1 py-0.5 text-xs font-semibold text-[var(--hewie-accent,#64748b)] transition hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
+              >
+                View Plus benefits
+                <ChevronRight className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <BottomNav />
       </div>
