@@ -38,6 +38,8 @@ const themeBootstrapScript = `
     }
     const theme = themes[themeId || "slate"];
     const root = document.documentElement;
+    const language = localStorage.getItem("petnotebook.language");
+    if (["en", "es", "fr"].includes(language)) root.lang = language;
     root.style.setProperty("--hewie-bg", theme[0]);
     root.style.setProperty("--hewie-active-bg", theme[1]);
     root.style.setProperty("--hewie-active-text", theme[2]);
