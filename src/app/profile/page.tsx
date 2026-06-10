@@ -592,31 +592,6 @@ export default function ProfilePage() {
           </fieldset>
         </section>
 
-        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
-          <h2 className="mb-3 text-lg font-semibold">Emergency Contact</h2>
-          <fieldset disabled={profileDetailsLocked} className="grid grid-cols-2 gap-3 disabled:opacity-80">
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Name</span>
-              <input
-                value={profile.emergencyContactName}
-                onChange={(event) => updateProfile({ emergencyContactName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
-                maxLength={TEXT_LIMITS.shortName}
-                className={petInfoInputClass()}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Phone</span>
-              <input
-                type="tel"
-                value={profile.emergencyContactPhone}
-                onChange={(event) => updateProfile({ emergencyContactPhone: clampText(event.target.value, TEXT_LIMITS.shortName) })}
-                maxLength={TEXT_LIMITS.shortName}
-                className={petInfoInputClass()}
-              />
-            </label>
-          </fieldset>
-        </section>
-
         {showGoodbyeIntro ? (
           <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/35 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center">
             <div className="mx-auto w-full max-w-md rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
@@ -867,6 +842,31 @@ export default function ProfilePage() {
                 rows={3}
                 placeholder="Feeding quirks, walking style, bedtime routine"
                 className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
+              />
+            </label>
+          </fieldset>
+        </section>
+
+        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+          <h2 className="mb-3 text-lg font-semibold">Emergency Contact</h2>
+          <fieldset disabled={profileDetailsLocked} className="grid grid-cols-2 gap-3 disabled:opacity-80">
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Name</span>
+              <input
+                value={profile.emergencyContactName}
+                onChange={(event) => updateProfile({ emergencyContactName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                maxLength={TEXT_LIMITS.shortName}
+                className={petInfoInputClass()}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Phone</span>
+              <input
+                type="tel"
+                value={profile.emergencyContactPhone}
+                onChange={(event) => updateProfile({ emergencyContactPhone: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                maxLength={TEXT_LIMITS.shortName}
+                className={petInfoInputClass()}
               />
             </label>
           </fieldset>
