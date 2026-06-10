@@ -3600,7 +3600,7 @@ export default function HistoryPage() {
                   onClick={openHistoryCopyUpgrade}
                   className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
                 >
-                  Continue
+                  Upgrade to Plus
                 </button>
               </div>
             </div>
