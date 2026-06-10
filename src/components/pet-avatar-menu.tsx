@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Plus, X } from "lucide-react";
+import { Check, ChevronRight, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
@@ -522,13 +522,23 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                     "Notebook sharing",
                     "Unlimited exports",
                     "Lifetime health history",
-                    "And more",
                   ].map((feature) => (
                     <div key={feature} className="flex items-start gap-2 text-xs font-medium leading-5 text-zinc-500">
                       <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
                       <span>{feature}</span>
                     </div>
                   ))}
+                  <button
+                    type="button"
+                    onClick={handleUpgradeForMorePets}
+                    className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text,#334155)]"
+                  >
+                    <span className="flex items-start gap-2">
+                      <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                      <span>And more</span>
+                    </span>
+                    <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
