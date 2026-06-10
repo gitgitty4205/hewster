@@ -95,11 +95,11 @@ const presets: Record<ActivityType, string[]> = {
 
     "Type 1: Very Firm, Small Pieces",
 
-    "Type 2: Firm, Slightly Uneven Log",
+    "Type 2: Firm, Uneven Log",
 
-    "Type 3: Formed Log With Light Cracks",
+    "Type 3: Formed Log, Light Cracks",
 
-    "Type 4: Smooth, Well-Formed Log",
+    "Type 4: Smooth, Well-Formed",
 
     "Type 5: Soft, Formed Pieces",
 
@@ -155,11 +155,11 @@ const groupedPresets: Partial<Record<ActivityType, Array<{ label: string; option
 
         "Type 1: Very Firm, Small Pieces",
 
-        "Type 2: Firm, Slightly Uneven Log",
+        "Type 2: Firm, Uneven Log",
 
-        "Type 3: Formed Log With Light Cracks",
+        "Type 3: Formed Log, Light Cracks",
 
-        "Type 4: Smooth, Well-Formed Log",
+        "Type 4: Smooth, Well-Formed",
 
         "Type 5: Soft, Formed Pieces",
 
