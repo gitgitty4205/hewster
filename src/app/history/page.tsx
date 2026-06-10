@@ -1986,8 +1986,6 @@ export default function HistoryPage() {
     if (subscriptionPlan === "plus") return historyDays;
     return historyDays.filter((day) => day.day >= freeHistoryCutoff);
   }, [freeHistoryCutoff, historyDays, subscriptionPlan]);
-  const archivedFreeHistoryCount = subscriptionPlan === "free" ? historyDays.length - availableHistoryDays.length : 0;
-
   const filteredHistoryDays = useMemo(() => {
 
     return filterHistoryDays(availableHistoryDays, activeFilter, startDate, endDate);
@@ -2556,9 +2554,9 @@ export default function HistoryPage() {
 
         {subscriptionPlan === "free" ? (
           <div className="mb-4 rounded-3xl bg-white/92 p-4 text-sm leading-5 text-zinc-600 shadow-sm ring-1 ring-zinc-200">
-            <p className="font-semibold text-zinc-900">Free plan: latest 3 months of history</p>
+            <p className="font-semibold text-zinc-900">View the latest 3 months of history.</p>
             <p className="mt-1">
-              Older history is archived for Plus. {archivedFreeHistoryCount > 0 ? `${archivedFreeHistoryCount} older day${archivedFreeHistoryCount === 1 ? "" : "s"} can be unlocked with PetNotebook Plus.` : "PetNotebook Plus keeps complete lifetime history available."}
+              Older records are available with PetNotebook Plus.
             </p>
           </div>
         ) : null}
