@@ -596,23 +596,21 @@ export default function ProfilePage() {
           <h2 className="mb-3 text-lg font-semibold">Emergency Contact</h2>
           <fieldset disabled={profileDetailsLocked} className="grid grid-cols-2 gap-3 disabled:opacity-80">
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Emergency Contact Name</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Name</span>
               <input
                 value={profile.emergencyContactName}
                 onChange={(event) => updateProfile({ emergencyContactName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
                 maxLength={TEXT_LIMITS.shortName}
-                placeholder="Optional"
                 className={petInfoInputClass()}
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Emergency Contact Phone</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Phone</span>
               <input
                 type="tel"
                 value={profile.emergencyContactPhone}
                 onChange={(event) => updateProfile({ emergencyContactPhone: clampText(event.target.value, TEXT_LIMITS.shortName) })}
                 maxLength={TEXT_LIMITS.shortName}
-                placeholder="Optional"
                 className={petInfoInputClass()}
               />
             </label>
