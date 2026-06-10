@@ -1122,7 +1122,7 @@ export default function ProfilePage() {
             <div className="relative w-full max-w-md rounded-3xl bg-white p-5 text-zinc-900 shadow-xl ring-1 ring-zinc-200">
               <div className="mb-4">
                 <h3 id="notebook-sharing-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
-                  <span>Invite notebook members with</span>
+                  <span>Invite Notebook Members</span>
                   <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
                     Plus
                   </span>
