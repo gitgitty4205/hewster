@@ -213,7 +213,7 @@ const groupedPresets: Partial<Record<ActivityType, Array<{ label: string; option
 
     {
 
-      label: "Wellness Care",
+      label: "Wellness Type",
 
       options: ["Supplements", "Dental Care", "Bath / Grooming", "Nail Trim", "Ear Cleaning", "Eye Care", "Other"],
 
