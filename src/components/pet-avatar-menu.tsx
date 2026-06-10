@@ -535,7 +535,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                   >
                     <span className="flex items-start gap-2">
                       <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
-                      <span>And more</span>
+                      <span>View all Plus features</span>
                     </span>
                     <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
                   </button>
