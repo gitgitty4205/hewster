@@ -47,6 +47,13 @@ function currentDateTimeInputValue() {
   return local.toISOString().slice(0, 16);
 }
 
+function formatStartedDate(value: string) {
+  if (!value) return "Start date & time";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Start date & time";
+  return `Started ${new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date)}`;
+}
+
 function defaultTemplate(kind: CareItemKind, count: number): CareItemTemplate {
   return {
     id: Date.now(),
@@ -73,16 +80,16 @@ function defaultTemplate(kind: CareItemKind, count: number): CareItemTemplate {
 
 function summarizeSchedule(item: CareItemTemplate, meals: MealTemplate[]) {
   if (item.scheduleKind === "custom") {
-    const timing = item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food";
+    const timing = item.customTiming === "empty-stomach" ? "Empty stomach" : "With food";
     const validSteps = item.scheduleSteps.filter((step) => step.everyHours && (step.forDays || item.ongoing || item.asNeeded));
     const schedule = validSteps.length > 1
-      ? `${validSteps.length} Schedules${item.ongoing ? " • Ongoing" : item.asNeeded ? " • As Needed" : ""}`
+      ? `${validSteps.length} schedules${item.ongoing ? " • Ongoing" : item.asNeeded ? " • As needed" : ""}`
       : validSteps[0]
-        ? `Every ${validSteps[0].everyHours} Hours${item.ongoing ? " • Ongoing" : item.asNeeded ? " • As Needed" : ` For ${validSteps[0].forDays} Days`}`
+        ? `Every ${validSteps[0].everyHours} hours${item.ongoing ? " • Ongoing" : item.asNeeded ? " • As needed" : ` for ${validSteps[0].forDays} days`}`
         : item.ongoing
           ? ""
-        : "Schedule Needed";
-    return [item.startDateTime || "Start Date & Time", schedule, timing].filter(Boolean).join(" • ");
+        : "Schedule needed";
+    return [formatStartedDate(item.startDateTime), schedule, timing].filter(Boolean).join(" • ");
   }
 
   const mealNames = meals.filter((meal) => item.mealIds.includes(meal.id)).map((meal) => meal.name);
