@@ -2835,7 +2835,7 @@ export default function HistoryPage() {
                       className="mt-0.5 size-4 rounded border-zinc-300 accent-[var(--hewie-accent,#64748b)]"
                     />
                     <span>
-                      Include log details
+                      Include logging details
                     </span>
                   </label>
                 ) : null}
