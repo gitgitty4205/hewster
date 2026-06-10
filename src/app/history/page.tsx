@@ -3559,7 +3559,7 @@ export default function HistoryPage() {
                   </span>
                 </h3>
                 <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
-                  Create and email filtered PDF reports from your pet&apos;s history.
+                  Create and email PDF reports from your pet&apos;s history.
                 </p>
               </div>
 
