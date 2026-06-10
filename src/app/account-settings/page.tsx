@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
-import { Bell, Check, ChevronDown, Crown, KeyRound, Languages, Pencil, UserRound, X } from "lucide-react";
+import { Bell, Check, ChevronDown, Crown, KeyRound, Pencil, UserRound, X } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
 
@@ -42,7 +42,6 @@ const PASSWORD_MAX_LENGTH = 128;
 
 const ACCOUNT_INFO_STORAGE_KEY = "petnotebook.accountInfoSnapshot";
 const NOTIFICATION_SETTINGS_STORAGE_KEY = "petnotebook.notificationSettings";
-const LANGUAGE_SETTINGS_STORAGE_KEY = "petnotebook.language";
 const PLUS_PET_TILE_FALLBACK_URL = "/paw-notes-transparent.svg";
 const ADD_PET_UPGRADE_RETURN_PATH_KEY = "petnotebook.addPetUpgradeReturnPath";
 const OPEN_ADD_PET_UPGRADE_DIALOG_KEY = "petnotebook.openAddPetUpgradeDialog";
@@ -50,7 +49,6 @@ type TwoFactorMethod = "email" | "sms";
 type NotificationChannel = "app" | "email" | "sms";
 type ReminderTimeUnit = "minutes" | "hours";
 type BillingInterval = "monthly" | "annual";
-type AppLanguage = "en" | "es" | "fr" | "zh-Hans" | "zh-Hant" | "ja" | "ko" | "de" | "it" | "pt" | "hi" | "ar";
 type AccountInfoSnapshot = {
   firstName: string;
   lastName: string;
@@ -107,45 +105,7 @@ const notificationChannels: { id: NotificationChannel; label: string }[] = [
   { id: "email", label: "Email" },
 ];
 const notificationChannelIds = notificationChannels.map((channel) => channel.id);
-const languageOptions: { id: AppLanguage; label: string; nativeLabel: string }[] = [
-  { id: "en", label: "English", nativeLabel: "English" },
-  { id: "es", label: "Spanish", nativeLabel: "Español" },
-  { id: "fr", label: "French", nativeLabel: "Français" },
-  { id: "zh-Hans", label: "Chinese (Simplified)", nativeLabel: "简体中文" },
-  { id: "zh-Hant", label: "Chinese (Traditional)", nativeLabel: "繁體中文" },
-  { id: "ja", label: "Japanese", nativeLabel: "日本語" },
-  { id: "ko", label: "Korean", nativeLabel: "한국어" },
-  { id: "de", label: "German", nativeLabel: "Deutsch" },
-  { id: "it", label: "Italian", nativeLabel: "Italiano" },
-  { id: "pt", label: "Portuguese", nativeLabel: "Português" },
-  { id: "hi", label: "Hindi", nativeLabel: "हिन्दी" },
-  { id: "ar", label: "Arabic", nativeLabel: "العربية" },
-];
-const languageIds = languageOptions.map((language) => language.id);
 const membershipPlanDisplayOrder = [...subscriptionPlans].sort((plan) => (plan.id === "plus" ? -1 : 1));
-
-function normalizeAppLanguage(value: unknown): AppLanguage {
-  return languageIds.includes(value as AppLanguage) ? value as AppLanguage : "en";
-}
-
-function loadStoredLanguage() {
-  if (typeof window === "undefined") return "en";
-  return normalizeAppLanguage(window.localStorage.getItem(LANGUAGE_SETTINGS_STORAGE_KEY));
-}
-
-function saveStoredLanguage(language: AppLanguage) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(LANGUAGE_SETTINGS_STORAGE_KEY, language);
-}
-
-function applyStoredLanguage(language: AppLanguage) {
-  if (typeof document === "undefined") return;
-  document.documentElement.lang = language;
-}
-
-function languageLabel(language: AppLanguage) {
-  return languageOptions.find((option) => option.id === language)?.label ?? "English";
-}
 
 function getDefaultNotificationPreferenceStates() {
   return Object.fromEntries(notificationPreferences.map((item) => [item.title, true]));
@@ -301,8 +261,6 @@ export default function AccountSettingsPage() {
   const [selectedNotificationChannels, setSelectedNotificationChannels] = useState<NotificationChannel[]>(["app"]);
   const [quietHoursStart, setQuietHoursStart] = useState("22:00");
   const [quietHoursEnd, setQuietHoursEnd] = useState("07:00");
-  const [selectedLanguage, setSelectedLanguage] = useState<AppLanguage>(() => loadStoredLanguage());
-  const [languageMessage, setLanguageMessage] = useState("");
   const [securityExpanded, setSecurityExpanded] = useState(false);
   const [passwordEditing, setPasswordEditing] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -330,10 +288,6 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     applyPetTheme(themeId);
   }, [themeId]);
-
-  useEffect(() => {
-    applyStoredLanguage(selectedLanguage);
-  }, [selectedLanguage]);
 
   useEffect(() => {
     void Promise.resolve().then(() => {
@@ -600,13 +554,6 @@ export default function AccountSettingsPage() {
       quietHoursEnd,
     });
     setNotificationsExpanded(false);
-  }
-
-  function handleLanguageChange(language: AppLanguage) {
-    setSelectedLanguage(language);
-    saveStoredLanguage(language);
-    applyStoredLanguage(language);
-    setLanguageMessage(`${languageLabel(language)} saved.`);
   }
 
   async function handleSaveAccountInfo() {
@@ -1370,51 +1317,6 @@ export default function AccountSettingsPage() {
               })}
               </div>
             </div>
-          </section>
-        ) : null}
-
-        {!passwordResetRequired ? (
-          <section className="mb-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <span
-                className="flex size-11 shrink-0 items-center justify-center rounded-full"
-                style={{ backgroundColor: theme.accent, color: theme.accentText }}
-              >
-                <Languages className="size-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-semibold">Language</h2>
-                <p className="text-sm leading-5 text-zinc-500">{languageLabel(selectedLanguage)}</p>
-              </div>
-            </div>
-
-            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
-              App Language
-              <div className="relative mt-2">
-                <select
-                  value={selectedLanguage}
-                  onChange={(event) => handleLanguageChange(normalizeAppLanguage(event.target.value))}
-                  className="h-12 w-full appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 pr-10 text-sm font-semibold normal-case tracking-normal text-zinc-800 outline-none transition focus:border-[var(--hewie-accent,#64748b)]"
-                >
-                  {languageOptions.map((language) => (
-                    <option key={language.id} value={language.id}>
-                      {language.label} ({language.nativeLabel})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-zinc-400" />
-              </div>
-            </label>
-
-            <p className="mt-3 text-xs leading-5 text-zinc-500">
-              This saves the preferred app language for this device. More translated app text can use this setting as language support expands.
-            </p>
-
-            {languageMessage ? (
-              <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-100">
-                {languageMessage}
-              </p>
-            ) : null}
           </section>
         ) : null}
 
