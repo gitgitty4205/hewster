@@ -1335,7 +1335,7 @@ export default function AccountSettingsPage() {
               <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
                 {[
                   "Unlimited pets",
-                  "Family sharing",
+                  "Notebook sharing",
                   "Keep everyone in sync",
                   "Unlimited PDF exports",
                   "Unlimited photos and files",

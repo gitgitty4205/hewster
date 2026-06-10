@@ -512,16 +512,20 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                     </span>
                   </h3>
                   <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
-                    Free includes 1 pet. Upgrade to Plus for unlimited pets, family sharing, and lifetime health history.
+                    Free includes 1 pet. Upgrade to Plus for unlimited pets, notebook sharing, and lifetime health history.
                   </p>
                 </div>
 
                 <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
                   {[
                     "Unlimited pets",
-                    "Share notebooks with family and caregivers",
+                    "Notebook sharing",
                     "Keep everyone in sync",
+                    "Unlimited PDF exports",
+                    "Unlimited photos and files",
                     "Lifetime health history",
+                    "Meals, reminders, and alerts",
+                    "Health records and daily logs",
                   ].map((feature) => (
                     <div key={feature} className="flex items-start gap-2 text-xs font-medium leading-5 text-zinc-500">
                       <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
