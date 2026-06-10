@@ -1714,7 +1714,7 @@ export function ActivityDetailForm({
 
             <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
               {[
-                poopPhotoDetail ? "More poop photo uploads" : "More medical file uploads",
+                poopPhotoDetail ? "More poop photo uploads" : "Additional file uploads",
                 "Up to 5 files per log",
                 "Lifetime health history",
                 "Unlimited PDF reports",
