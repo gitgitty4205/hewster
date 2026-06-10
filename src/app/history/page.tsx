@@ -2844,7 +2844,7 @@ export default function HistoryPage() {
 
                   <Button type="button" className="h-8 rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60" onClick={() => void handleSendCopy()} disabled={isSendingCopy}>
 
-                    {isSendingCopy ? "Sending..." : subscriptionPlan === "plus" ? "Send Copy" : "Plus Export"}
+                    {isSendingCopy ? "Sending..." : "Email History Report"}
 
                   </Button>
 
@@ -3553,13 +3553,13 @@ export default function HistoryPage() {
             <div className="relative w-full max-w-md rounded-3xl bg-white p-5 text-zinc-900 shadow-xl ring-1 ring-zinc-200">
               <div className="mb-4">
                 <h3 id="history-copy-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
-                  <span>Create History Reports</span>
+                  <span>Email History Reports</span>
                   <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
                     Plus
                   </span>
                 </h3>
                 <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
-                  Export and email filtered PDF reports from your pet&apos;s history.
+                  Create and email filtered PDF reports from your pet&apos;s history.
                 </p>
               </div>
 
