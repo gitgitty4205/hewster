@@ -481,9 +481,13 @@ export default function MedicalRecordsPage() {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
+  const [draftFilter, setDraftFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState<DateFilter>("All Time");
+  const [draftDateFilter, setDraftDateFilter] = useState<DateFilter>("All Time");
   const [selectedMonth, setSelectedMonth] = useState(() => monthInputValue(new Date()));
+  const [draftSelectedMonth, setDraftSelectedMonth] = useState(() => monthInputValue(new Date()));
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [draftSortOrder, setDraftSortOrder] = useState<"newest" | "oldest">("newest");
   const [activityState, setActivityState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [canEditEntries, setCanEditEntries] = useState(true);
   const [canDeleteEntries, setCanDeleteEntries] = useState(true);
@@ -700,6 +704,41 @@ export default function MedicalRecordsPage() {
     () => buildMedicalRecordItems(medicalRecords, sortOrder),
     [medicalRecords, sortOrder]
   );
+  const toggleFilters = () => {
+    if (showFilters) {
+      setShowFilters(false);
+      return;
+    }
+
+    setDraftFilter(activeFilter);
+    setDraftDateFilter(dateFilter);
+    setDraftSelectedMonth(selectedMonth);
+    setDraftSortOrder(sortOrder);
+    setShowFilters(true);
+  };
+
+  const applyFilters = () => {
+    setActiveFilter(draftFilter);
+    setDateFilter(draftDateFilter);
+    setSelectedMonth(draftSelectedMonth);
+    setSortOrder(draftSortOrder);
+    setShowFilters(false);
+  };
+
+  const clearFilters = () => {
+    const currentMonth = monthInputValue(new Date());
+
+    setActiveFilter("All");
+    setDraftFilter("All");
+    setDateFilter("All Time");
+    setDraftDateFilter("All Time");
+    setSelectedMonth(currentMonth);
+    setDraftSelectedMonth(currentMonth);
+    setSortOrder("newest");
+    setDraftSortOrder("newest");
+    setShowFilters(false);
+  };
+
   const toggleMedicationCourse = (courseId: string) => {
     setExpandedMedicationCourses((current) =>
       current.includes(courseId) ? current.filter((id) => id !== courseId) : [...current, courseId]
@@ -723,7 +762,7 @@ export default function MedicalRecordsPage() {
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => setShowFilters((current) => !current)}
+              onClick={toggleFilters}
               aria-label={showFilters ? "Hide filters" : "Open filters"}
               className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--hewie-accent,#78608f)] p-0 text-[var(--hewie-accent-text,#ffffff)] shadow-[0_8px_18px_rgba(15,23,42,0.14)] ring-1 ring-[var(--hewie-accent,#78608f)]/20 transition hover:opacity-90"
             >
@@ -741,9 +780,9 @@ export default function MedicalRecordsPage() {
                       <button
                         key={filter}
                         type="button"
-                        onClick={() => setActiveFilter(filter)}
+                        onClick={() => setDraftFilter(filter)}
                         className={`rounded-full px-3 py-2 text-sm font-semibold ring-1 ${
-                          activeFilter === filter
+                          draftFilter === filter
                             ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]"
                             : "bg-white text-zinc-600 ring-zinc-200"
                         }`}
@@ -764,9 +803,9 @@ export default function MedicalRecordsPage() {
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => setSortOrder(option.value)}
+                        onClick={() => setDraftSortOrder(option.value)}
                         className={`rounded-full px-3 py-2 text-sm font-semibold ring-1 ${
-                          sortOrder === option.value
+                          draftSortOrder === option.value
                             ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]"
                             : "bg-white text-zinc-600 ring-zinc-200"
                         }`}
@@ -781,8 +820,8 @@ export default function MedicalRecordsPage() {
                     </label>
                     <select
                       id="medical-date-range"
-                      value={dateFilter}
-                      onChange={(event) => setDateFilter(event.target.value as DateFilter)}
+                      value={draftDateFilter}
+                      onChange={(event) => setDraftDateFilter(event.target.value as DateFilter)}
                       className="w-full rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-zinc-700 ring-1 ring-zinc-200"
                     >
                       {dateFilters.map((filter) => (
@@ -791,14 +830,30 @@ export default function MedicalRecordsPage() {
                         </option>
                       ))}
                     </select>
-                    {dateFilter === "Date Range" ? (
+                    {draftDateFilter === "Date Range" ? (
                       <input
                         type="month"
-                        value={selectedMonth}
-                        onChange={(event) => setSelectedMonth(event.target.value)}
+                        value={draftSelectedMonth}
+                        onChange={(event) => setDraftSelectedMonth(event.target.value)}
                         className="mt-3 w-full rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-zinc-700 ring-1 ring-zinc-200"
                       />
                     ) : null}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={applyFilters}
+                        className="rounded-full bg-[var(--hewie-accent,#78608f)] px-4 py-2 text-sm font-bold text-[var(--hewie-accent-text,#ffffff)] transition hover:opacity-90"
+                      >
+                        Apply Filters
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearFilters}
+                        className="rounded-full bg-white px-4 py-2 text-sm font-bold text-zinc-600 ring-1 ring-zinc-200 transition hover:bg-zinc-50"
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
