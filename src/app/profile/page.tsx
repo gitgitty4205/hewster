@@ -77,14 +77,6 @@ function RequiredMark({ show }: { show: boolean }) {
   return show ? <span className="text-rose-500">*</span> : null;
 }
 
-function PetNotebookPlusBadge() {
-  return (
-    <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
-      PetNotebook Plus
-    </span>
-  );
-}
-
 function todayDateInputValue() {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
@@ -1056,7 +1048,7 @@ export default function ProfilePage() {
               className="w-full rounded-2xl bg-white/65 p-4 text-left text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
             >
               <span className="block">
-                Notebook sharing is included with <PetNotebookPlusBadge />.
+                Notebook sharing is included with <strong className="font-bold text-[var(--hewie-active-text,#334155)]">Plus</strong>.
               </span>
               <span className="mt-1.5 block">
                 Invite co-owners, caretakers, and pet sitters to help care for your pet.
