@@ -49,7 +49,7 @@ const pages = [
   { label: "Health Records", href: `${APP_BASE}/medical-records`, icon: FileHeart },
   { label: "Weight", href: `${APP_BASE}/weight`, iconKind: "weight" },
   { label: "Fitness", href: `${APP_BASE}/activity`, icon: Activity },
-  { label: "Alerts", href: `${APP_BASE}/alerts`, icon: BellPlus, badge: true },
+  { label: "Care Alerts", href: `${APP_BASE}/alerts`, icon: BellPlus, badge: true },
   { label: "Pet Profile", href: `${APP_BASE}/profile`, iconKind: "paw" },
   { label: "Settings", href: `${APP_BASE}/settings`, icon: Settings2 },
 ];

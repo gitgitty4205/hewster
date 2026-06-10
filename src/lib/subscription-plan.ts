@@ -37,7 +37,7 @@ export const subscriptionPlans: SubscriptionPlan[] = [
     priceLabel: "",
     summary: "Track every pet, share with caregivers, and keep records forever.",
     features: [
-      "Track everyday pet care: meals, reminders, alerts, health records, and daily logs",
+      "Track everyday pet care: meals, reminders, care alerts, health records, and daily logs",
       "Additional pets included",
       "Share notebooks with other caretakers so they can view and log updates",
       "Keep lifetime history and records for every pet",

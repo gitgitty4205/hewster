@@ -10,7 +10,7 @@ const introPages = [
   {
     title: "Today",
     href: "/hewie",
-    description: "See today's meals, care reminders, alerts, potty notes, and recent events in one place.",
+    description: "See today's meals, care reminders, care alerts, potty notes, and recent events in one place.",
   },
   {
     title: "Manage Events",
@@ -20,7 +20,7 @@ const introPages = [
   {
     title: "History",
     href: "/hewie/history",
-    description: "Review meals, activities, notes, alerts, and weight entries by day or filter.",
+    description: "Review meals, activities, notes, care alerts, and weight entries by day or filter.",
   },
   {
     title: "Health Records",
@@ -38,7 +38,7 @@ const introPages = [
     description: "View tracker summaries and activity details.",
   },
   {
-    title: "Alerts",
+    title: "Care Alerts",
     href: "/hewie/alerts",
     description: "Create reminders for anything that needs special attention.",
   },

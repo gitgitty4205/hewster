@@ -57,7 +57,7 @@ export class NotebookAccessRevokedError extends Error {
 export const notebookAccessRoleDescriptions: Record<NotebookAccessRole, string> = {
   owner: "Full access, including invites, access management, and exporting notebook copies.",
   "co-owner": "Full notebook access, including care history and exporting copies. Cannot manage invites or access.",
-  caretaker: "Can help manage daily care, logs, alerts, and settings. Cannot manage invites, access, or exports.",
+  caretaker: "Can help manage daily care, logs, care alerts, and settings. Cannot manage invites, access, or exports.",
   "pet-sitter": "Limited access for short-term care. Can log basic care only, with no medical records, full history, or exports.",
 };
 

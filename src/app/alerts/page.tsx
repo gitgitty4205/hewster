@@ -748,7 +748,7 @@ export default function AlertsPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Alerts</h1>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Care Alerts</h1>
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
@@ -757,22 +757,22 @@ export default function AlertsPage() {
         <section className="mb-4 rounded-3xl bg-[#fff0f1] p-5 text-[#d91f56] shadow-sm ring-1 ring-[#e6c8ce]/80">
           <div className="mb-4 flex items-center gap-2">
             <TriangleAlert className="size-5 text-[#8f1739]" />
-            <h2 className="text-lg font-semibold text-[#8f1739]">Alerts</h2>
+            <h2 className="text-lg font-semibold text-[#8f1739]">Care Alerts</h2>
           </div>
           <p className="mb-4 text-sm leading-5 text-[#b71f48]/70">
-            Create a one-time or everyday alert for something that needs special attention.
+            Create a one-time or everyday care alert for something that needs special attention.
           </p>
 
           <div className="space-y-3">
             {!showAlertForm ? (
-              <Button onClick={() => setShowAlertForm(true)} className="rounded-full bg-[#8f1739] text-white hover:bg-[#7c1431]">Add Alert</Button>
+              <Button onClick={() => setShowAlertForm(true)} className="rounded-full bg-[#8f1739] text-white hover:bg-[#7c1431]">Add Care Alert</Button>
             ) : (
               <div className="space-y-3 rounded-2xl bg-white/60 p-3 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
                 <input
                   value={titleValue}
                   onChange={(event) => setTitleValue(clampText(event.target.value, TEXT_LIMITS.shortName))}
                   maxLength={TEXT_LIMITS.shortName}
-                  placeholder="Alert Title"
+                  placeholder="Care Alert Title"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                 />
                 <div className="grid grid-cols-[1fr_auto] gap-3">
@@ -835,12 +835,12 @@ export default function AlertsPage() {
                   onChange={(event) => setMessageValue(event.target.value.slice(0, 100))}
                   maxLength={100}
                   rows={3}
-                  placeholder="Alert Details / Message For Myself And Other Caretakers"
+                  placeholder="Care Alert Details / Message For Myself And Other Caretakers"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                 />
                 {newAlertError ? <p className="text-sm font-medium text-[#8f1739]">{newAlertError}</p> : null}
                 <div className="flex flex-wrap gap-2">
-                  <Button disabled={Boolean(newAlertError)} onClick={addManualAlert} className="rounded-full bg-[#8f1739] text-white hover:bg-[#7c1431] disabled:opacity-45">Save Alert</Button>
+                  <Button disabled={Boolean(newAlertError)} onClick={addManualAlert} className="rounded-full bg-[#8f1739] text-white hover:bg-[#7c1431] disabled:opacity-45">Save Care Alert</Button>
                   <Button variant="outline" onClick={() => setShowAlertForm(false)} className="rounded-full">Cancel</Button>
                 </div>
               </div>
@@ -848,7 +848,7 @@ export default function AlertsPage() {
 
             {alertCards.length ? (
               <div className="space-y-3 border-t border-[#e6c8ce]/70 pt-3">
-                <h3 className="text-sm font-semibold text-[#8f1739]/80">Unresolved Alerts</h3>
+                <h3 className="text-sm font-semibold text-[#8f1739]/80">Unresolved Care Alerts</h3>
                 {alertCards.map((alert) => {
                   const mealReviewAction = alert.reviewAction?.type === "meal" ? alert.reviewAction : null;
                   const customCareReviewAction = alert.reviewAction?.type === "custom-care" ? alert.reviewAction : null;
@@ -980,7 +980,7 @@ export default function AlertsPage() {
 
             {savedManualAlerts.length ? (
               <div className="space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-3">
-                <h3 className="text-sm font-semibold text-[#8f1739]/80">Saved Alerts</h3>
+                <h3 className="text-sm font-semibold text-[#8f1739]/80">Saved Care Alerts</h3>
                 {savedManualAlerts.map((alert) => {
                   const detailKey = `saved-alert-${alert.id}`;
                   const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
@@ -1011,7 +1011,7 @@ export default function AlertsPage() {
                         value={editingTitleValue}
                         onChange={(event) => setEditingTitleValue(clampText(event.target.value, TEXT_LIMITS.shortName))}
                         maxLength={TEXT_LIMITS.shortName}
-                        placeholder="Alert Title"
+                        placeholder="Care Alert Title"
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                       />
                       <div className="grid grid-cols-[1fr_auto] gap-3">
@@ -1074,7 +1074,7 @@ export default function AlertsPage() {
                         onChange={(event) => setEditingMessageValue(event.target.value.slice(0, 100))}
                         maxLength={100}
                         rows={3}
-                        placeholder="Alert Details / Message For Myself And Other Caretakers"
+                        placeholder="Care Alert Details / Message For Myself And Other Caretakers"
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                       />
                       {editingAlertError ? <p className="text-sm font-medium text-[#8f1739]">{editingAlertError}</p> : null}
