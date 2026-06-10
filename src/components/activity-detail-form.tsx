@@ -719,6 +719,14 @@ function isOtherMedicalDetail(detail: string) {
 
 }
 
+function sickNotesPlaceholder(detail: string) {
+  if (detail === "Vet Visit") return "Clinic, vet name, reason for visit, or a short note. Attach documents below.";
+  if (detail === "Medication" || detail.startsWith("Medication: ")) return "Reason for medication, instructions, side effects, or follow-up notes";
+  if (detail === "Injection" || detail.startsWith("Injection: ")) return "Injection details, reaction, or follow-up notes";
+  if (isOtherMedicalDetail(detail)) return "Health notes, prevention, follow-up, records, or anything notable";
+  return notesPlaceholders.sick;
+}
+
 
 
 function displayDetailValue(detail: string) {
@@ -863,6 +871,7 @@ export function ActivityDetailForm({
   const presetGroups = activityType === "sick" ? undefined : groupedPresets[activityType];
 
   const hasNotesContent = Boolean(notes.trim() || extraNotes.trim());
+  const notesPlaceholder = activityType === "sick" ? sickNotesPlaceholder(detail) : notesPlaceholders[activityType];
 
   const requiresPresetDetail = activityType === "potty" || activityType === "poop";
 
@@ -1544,7 +1553,7 @@ export function ActivityDetailForm({
 
           rows={activityType === "medication" || activityType === "supplement" ? 1 : activityType === "wellness" || isPottyLog ? 2 : 3}
 
-          placeholder={activityType === "sick" && detail === "Vet Visit" ? "Clinic, vet name, reason for visit, or a short note. Attach documents below." : notesPlaceholders[activityType]}
+          placeholder={notesPlaceholder}
 
           className={`w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 ${activityType === "wellness" ? "resize-none overflow-hidden" : ""}`}
 
