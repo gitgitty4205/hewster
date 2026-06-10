@@ -1510,6 +1510,7 @@ export default function HistoryPage() {
   const [sendCopyStatus, setSendCopyStatus] = useState("");
   const [isSendingCopy, setIsSendingCopy] = useState(false);
   const [showHistoryCopyUpgradeDialog, setShowHistoryCopyUpgradeDialog] = useState(false);
+  const [showHistoryAccessUpgradeDialog, setShowHistoryAccessUpgradeDialog] = useState(false);
   const [includeLogDetails, setIncludeLogDetails] = useState(false);
   const [historyEditUnlocked, setHistoryEditUnlocked] = useState(false);
   const [activeNotebookRole, setActiveNotebookRole] = useState<NotebookAccessRole | null>(null);
@@ -2464,6 +2465,20 @@ export default function HistoryPage() {
     router.push("/hewie/account-settings?upgrade=plus");
   };
 
+  const openHistoryAccessUpgrade = () => {
+    setShowHistoryAccessUpgradeDialog(false);
+    router.push("/hewie/account-settings?upgrade=plus");
+  };
+
+  const selectHistoryDay = (dayKey: string) => {
+    if (subscriptionPlan !== "plus" && dayKey < freeHistoryCutoff) {
+      setShowHistoryAccessUpgradeDialog(true);
+      return;
+    }
+
+    setSelectedDay(dayKey);
+  };
+
   const openHistoryMealEditor = (dayKey: string, mealId: number) => {
     if (!historyEditUnlocked) return;
     router.push(`/hewie/log?date=${dayKey}&editMeal=${mealId}`);
@@ -2888,7 +2903,7 @@ export default function HistoryPage() {
 
                   disabled={!cell.selectable}
 
-                  onClick={() => setSelectedDay(cell.key)}
+                  onClick={() => selectHistoryDay(cell.key)}
 
                   className={`relative flex aspect-square w-full flex-col items-center justify-center rounded-[0.85rem] text-sm font-semibold transition ${
 
@@ -3598,6 +3613,66 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={openHistoryCopyUpgrade}
+                  className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
+                >
+                  Upgrade to Plus
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showHistoryAccessUpgradeDialog ? (
+          <div className="fixed inset-0 z-[80] flex items-end bg-zinc-950/35 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="history-access-upgrade-title">
+            <button type="button" aria-label="Close upgrade" className="absolute inset-0 cursor-default" onClick={() => setShowHistoryAccessUpgradeDialog(false)} />
+            <div className="relative w-full max-w-md rounded-3xl bg-white p-5 text-zinc-900 shadow-xl ring-1 ring-zinc-200">
+              <div className="mb-4">
+                <h3 id="history-access-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
+                  <span>Unlock full history with</span>
+                  <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+                    Plus
+                  </span>
+                </h3>
+                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                  Free includes the latest 3 months. Upgrade to Plus to view older history.
+                </p>
+              </div>
+
+              <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
+                {[
+                  "Lifetime health history",
+                  "Unlimited PDF reports",
+                  "Unlimited photos and files",
+                ].map((feature) => (
+                  <div key={feature} className="flex items-start gap-2 text-xs font-medium leading-5 text-zinc-500">
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={openHistoryAccessUpgrade}
+                  className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text,#334155)]"
+                >
+                  <span className="flex items-start gap-2">
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                    <span>View all Plus features</span>
+                  </span>
+                  <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryAccessUpgradeDialog(false)}
+                  className="h-11 rounded-full border border-zinc-200 bg-white px-4 text-sm font-bold text-zinc-700"
+                >
+                  Not now
+                </button>
+                <button
+                  type="button"
+                  onClick={openHistoryAccessUpgrade}
                   className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
                 >
                   Upgrade to Plus
