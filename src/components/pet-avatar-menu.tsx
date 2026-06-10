@@ -508,7 +508,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                   <h3 id="add-pet-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
                     <span>Add unlimited pets with</span>
                     <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
-                      PetNotebook Plus
+                      Plus
                     </span>
                   </h3>
                   <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">

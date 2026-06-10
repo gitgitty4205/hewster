@@ -1509,6 +1509,7 @@ export default function HistoryPage() {
 
   const [sendCopyStatus, setSendCopyStatus] = useState("");
   const [isSendingCopy, setIsSendingCopy] = useState(false);
+  const [showHistoryCopyUpgradeDialog, setShowHistoryCopyUpgradeDialog] = useState(false);
   const [includeLogDetails, setIncludeLogDetails] = useState(false);
   const [historyEditUnlocked, setHistoryEditUnlocked] = useState(false);
   const [activeNotebookRole, setActiveNotebookRole] = useState<NotebookAccessRole | null>(null);
@@ -2287,9 +2288,8 @@ export default function HistoryPage() {
   const handleSendCopy = async () => {
 
     if (subscriptionPlan !== "plus") {
-      const upgradeMessage = "PDF reports are a PetNotebook Plus feature. Upgrade to unlock reports, full history, sharing, and attachments for $9.99/month.";
-      setSendCopyStatus(upgradeMessage);
-      window.alert(upgradeMessage);
+      setSendCopyStatus("");
+      setShowHistoryCopyUpgradeDialog(true);
       return;
     }
 
@@ -2457,6 +2457,11 @@ export default function HistoryPage() {
         <Icon className="size-3" />
       </button>
     );
+  };
+
+  const openHistoryCopyUpgrade = () => {
+    setShowHistoryCopyUpgradeDialog(false);
+    router.push("/hewie/account-settings?upgrade=plus");
   };
 
   const openHistoryMealEditor = (dayKey: string, mealId: number) => {
@@ -3540,6 +3545,67 @@ export default function HistoryPage() {
           )}
 
         </section>
+
+
+        {showHistoryCopyUpgradeDialog ? (
+          <div className="fixed inset-0 z-[80] flex items-end bg-zinc-950/35 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="history-copy-upgrade-title">
+            <button type="button" aria-label="Close upgrade" className="absolute inset-0 cursor-default" onClick={() => setShowHistoryCopyUpgradeDialog(false)} />
+            <div className="relative w-full max-w-md rounded-3xl bg-white p-5 text-zinc-900 shadow-xl ring-1 ring-zinc-200">
+              <div className="mb-4">
+                <h3 id="history-copy-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
+                  <span>Send history copies with</span>
+                  <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+                    Plus
+                  </span>
+                </h3>
+                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                  Upgrade to export and send filtered PDF reports from your pet&apos;s history.
+                </p>
+              </div>
+
+              <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
+                {[
+                  "Unlimited PDF exports",
+                  "Lifetime health history",
+                  "Notebook sharing",
+                ].map((feature) => (
+                  <div key={feature} className="flex items-start gap-2 text-xs font-medium leading-5 text-zinc-500">
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={openHistoryCopyUpgrade}
+                  className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text,#334155)]"
+                >
+                  <span className="flex items-start gap-2">
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                    <span>View all Plus features</span>
+                  </span>
+                  <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryCopyUpgradeDialog(false)}
+                  className="h-11 rounded-full border border-zinc-200 bg-white px-4 text-sm font-bold text-zinc-700"
+                >
+                  Not now
+                </button>
+                <button
+                  type="button"
+                  onClick={openHistoryCopyUpgrade}
+                  className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
 
 
