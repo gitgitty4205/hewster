@@ -2692,7 +2692,7 @@ export default function HistoryPage() {
 
                 <div>
 
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Records</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Record Types</p>
 
                   <div className="grid grid-cols-2 gap-2 min-[390px]:grid-cols-3">
 
@@ -2778,7 +2778,7 @@ export default function HistoryPage() {
 
                     <Button type="button" className="rounded-full bg-[var(--hewie-accent,#64748b)] !font-bold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90" onClick={applyFilters}>
 
-                      Filter
+                      Apply Filters
 
                     </Button>
 
