@@ -945,7 +945,7 @@ export function ActivityDetailForm({
       <div className="mb-4">
 
         <h2 className="text-lg font-semibold">
-          {isEditing ? "Edit" : "Log"} {activityType === "other" ? "Other Event" : formatActivityLabel(activityType)}
+          {isEditing ? "Edit" : "Log"} {activityType === "other" ? "Other" : formatActivityLabel(activityType)}
         </h2>
 
       </div>
@@ -1517,7 +1517,7 @@ export function ActivityDetailForm({
               onDetailChange(isOtherMedicalDetail(detail) ? nextValue ? `${otherVetMedicalDetail}: ${nextValue}` : otherVetMedicalDetail : nextValue);
             }}
 
-            placeholder={activityType === "other" ? "What would you like to log?" : "Add a title"}
+            placeholder={activityType === "other" ? "Event name" : "Add a title"}
             maxLength={MAX_EVENT_TITLE_LENGTH}
 
             className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
