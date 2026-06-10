@@ -1762,6 +1762,7 @@ export function ActivityDetailForm({
       <div className="mt-4 flex flex-wrap gap-2">
 
         <Button
+          type="button"
           onClick={onSave}
           disabled={saveDisabled}
           className="rounded-full !text-white hover:opacity-90 disabled:!opacity-100 disabled:brightness-90 disabled:cursor-not-allowed"
@@ -1772,11 +1773,11 @@ export function ActivityDetailForm({
 
         </Button>
 
-        <Button variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
+        <Button type="button" variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
 
         {onDelete ? (
 
-          <Button variant="outline" onClick={onDelete} className="rounded-full text-rose-600">
+          <Button type="button" variant="outline" onClick={onDelete} className="rounded-full text-rose-600">
 
             Delete
 

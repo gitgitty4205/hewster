@@ -942,6 +942,7 @@ export default function HomeApp() {
   const [notebookDataUnavailable, setNotebookDataUnavailable] = useState(false);
   const [notebookOwnerId, setNotebookOwnerId] = useState<string | null>(null);
   const initialLoadComplete = useRef(false);
+  const activitySaveInFlightRef = useRef(false);
   const previousTodayKeyRef = useRef<string | null>(null);
   const missedRolloverRef = useRef<string | null>(null);
   const supabaseReady = isSupabaseConfigured();
@@ -2085,49 +2086,55 @@ export default function HomeApp() {
   };
 
   const saveDetailedActivity = async () => {
-    if (!detailActivityType) return;
+    if (!detailActivityType || activitySaveInFlightRef.current) return;
+    activitySaveInFlightRef.current = true;
+    setActivityState("saving");
 
-    const recordTagNote = "";
-    const trimmedDetail = detailValue.trim();
-    const resolvedActivityType = resolveActivityTypeForSave(detailActivityType, trimmedDetail);
-    const happenedAt = mergeTodayWithTime(happenedAtValue);
-    const attachmentDocumentTypes = attachmentDocumentTypesForActivity(resolvedActivityType);
-    const attachmentNames = activityAttachmentFileNamesForSave(
-      { id: editingActivityId ?? "", profileSlug: HEWSTER_PROFILE_SLUG, activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
-      attachmentFiles,
-      attachmentDocumentTypes
-    );
-    const attachmentNote = attachmentNames.length ? `Attachments: ${attachmentNames.join(", ")}` : "";
-    const resolvedNotes =
-      detailActivityType === "treat" || detailActivityType === "food"
-        ? [notesValue.trim(), extraNotesValue.trim() ? `Notes: ${extraNotesValue.trim()}` : ""].filter(Boolean).join(" ") || null
-        : [notesValue.trim(), recordTagNote, attachmentNote].filter(Boolean).join("\n") || null;
-    const activity: ActivityLog = {
-      id: editingActivityId ?? `${resolvedActivityType}-${Date.now()}`,
-      profileSlug: HEWSTER_PROFILE_SLUG,
-      activityType: resolvedActivityType,
-      happenedAt,
-      detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : trimmedDetail || null,
-      notes: resolvedNotes,
-      createdAt: editingActivityId ? activityLogs.find((entry) => entry.id === editingActivityId)?.createdAt : new Date().toISOString(),
-    };
+    try {
+      const recordTagNote = "";
+      const trimmedDetail = detailValue.trim();
+      const resolvedActivityType = resolveActivityTypeForSave(detailActivityType, trimmedDetail);
+      const happenedAt = mergeTodayWithTime(happenedAtValue);
+      const attachmentDocumentTypes = attachmentDocumentTypesForActivity(resolvedActivityType);
+      const attachmentNames = activityAttachmentFileNamesForSave(
+        { id: editingActivityId ?? "", profileSlug: HEWSTER_PROFILE_SLUG, activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
+        attachmentFiles,
+        attachmentDocumentTypes
+      );
+      const attachmentNote = attachmentNames.length ? `Attachments: ${attachmentNames.join(", ")}` : "";
+      const resolvedNotes =
+        detailActivityType === "treat" || detailActivityType === "food"
+          ? [notesValue.trim(), extraNotesValue.trim() ? `Notes: ${extraNotesValue.trim()}` : ""].filter(Boolean).join(" ") || null
+          : [notesValue.trim(), recordTagNote, attachmentNote].filter(Boolean).join("\n") || null;
+      const activity: ActivityLog = {
+        id: editingActivityId ?? `${resolvedActivityType}-${Date.now()}`,
+        profileSlug: HEWSTER_PROFILE_SLUG,
+        activityType: resolvedActivityType,
+        happenedAt,
+        detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : trimmedDetail || null,
+        notes: resolvedNotes,
+        createdAt: editingActivityId ? activityLogs.find((entry) => entry.id === editingActivityId)?.createdAt : new Date().toISOString(),
+      };
 
-    await saveActivity(activity, editingActivityId ? "update" : "create");
-    if (attachmentFiles.length) {
-      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypes);
+      await saveActivity(activity, editingActivityId ? "update" : "create");
+      if (attachmentFiles.length) {
+        const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypes);
 
-      if (savedAttachments.length) {
-        setActivityLogs((current) => {
-          const nextLogs = current.map((entry) =>
-            entry.id === activity.id ? { ...entry, attachments: savedAttachments } : entry
-          );
-          window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
-          persistLocalState(templates, dailyMealState, nextLogs, undefined, todayKey || currentTodayKey(), manualAlerts, mealLogs);
-          return nextLogs;
-        });
+        if (savedAttachments.length) {
+          setActivityLogs((current) => {
+            const nextLogs = current.map((entry) =>
+              entry.id === activity.id ? { ...entry, attachments: savedAttachments } : entry
+            );
+            window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+            persistLocalState(templates, dailyMealState, nextLogs, undefined, todayKey || currentTodayKey(), manualAlerts, mealLogs);
+            return nextLogs;
+          });
+        }
       }
+      resetActivityEditor();
+    } finally {
+      activitySaveInFlightRef.current = false;
     }
-    resetActivityEditor();
   };
 
   const deleteActivity = async () => {

@@ -3,7 +3,7 @@
 import { FileText, Paperclip, SlidersHorizontal } from "lucide-react";
 import { ActivityDetailForm } from "@/components/activity-detail-form";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { ExpandableNoteText } from "@/components/expandable-note-text";
@@ -489,6 +489,7 @@ export default function MedicalRecordsPage() {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [draftSortOrder, setDraftSortOrder] = useState<"newest" | "oldest">("newest");
   const [activityState, setActivityState] = useState<"idle" | "saved" | "saving" | "error">("idle");
+  const activitySaveInFlightRef = useRef(false);
   const [canEditEntries, setCanEditEntries] = useState(true);
   const [canDeleteEntries, setCanDeleteEntries] = useState(true);
   const [expandedMedicationCourses, setExpandedMedicationCourses] = useState<string[]>([]);
@@ -608,10 +609,13 @@ export default function MedicalRecordsPage() {
   };
 
   const saveDetailedActivity = async () => {
-    if (!editingActivityId || !detailActivityType) return;
+    if (!editingActivityId || !detailActivityType || activitySaveInFlightRef.current) return;
+    activitySaveInFlightRef.current = true;
+    setActivityState("saving");
 
-    const existingActivity = activityLogs.find((entry) => entry.id === editingActivityId);
-    if (!existingActivity) return;
+    try {
+      const existingActivity = activityLogs.find((entry) => entry.id === editingActivityId);
+      if (!existingActivity) return;
 
     const trimmedDetail = detailValue.trim();
     const resolvedActivityType = resolveActivityTypeForSave(detailActivityType, trimmedDetail);
@@ -661,7 +665,10 @@ export default function MedicalRecordsPage() {
       return nextLogs;
     });
 
-    resetEditor();
+      resetEditor();
+    } finally {
+      activitySaveInFlightRef.current = false;
+    }
   };
 
   const deleteActivity = async () => {

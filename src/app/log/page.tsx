@@ -4,7 +4,7 @@
 
 import { Check, Clock3, Tablets } from "lucide-react";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 
 
@@ -604,6 +604,7 @@ export default function LogPage() {
   const [medicationTemplates, setMedicationTemplates] = useState<CareItemTemplate[]>([]);
 
   const [activityState, setActivityState] = useState<"idle" | "saved" | "saving" | "error">("idle");
+  const activitySaveInFlightRef = useRef(false);
 
   const [logEventOpen, setLogEventOpen] = useState(false);
 
@@ -1184,7 +1185,11 @@ export default function LogPage() {
 
   const saveDetailedActivity = async () => {
 
-    if (!detailActivityType) return;
+    if (!detailActivityType || activitySaveInFlightRef.current) return;
+    activitySaveInFlightRef.current = true;
+    setActivityState("saving");
+
+    try {
 
 
 
@@ -1256,8 +1261,11 @@ export default function LogPage() {
       }
     }
 
-    resetEditor();
-    setLogEventOpen(false);
+      resetEditor();
+      setLogEventOpen(false);
+    } finally {
+      activitySaveInFlightRef.current = false;
+    }
 
   };
 
