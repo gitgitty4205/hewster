@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronRight, CircleHelp, Heart, Pencil, Plus, ShieldCheck } from "lucide-react";
+import { Check, CircleHelp, Heart, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
 
@@ -1112,46 +1112,56 @@ export default function ProfilePage() {
         </section>
 
         {showNotebookSharingIntro ? (
-          <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/35 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center">
+          <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/35 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="notebook-sharing-upgrade-title">
             <button
               type="button"
               aria-label="Close notebook sharing details"
               className="absolute inset-0 cursor-default"
               onClick={() => setShowNotebookSharingIntro(false)}
             />
-            <div className="relative mx-auto w-full max-w-md rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/70 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
-                    <ShieldCheck className="size-5" />
+            <div className="relative w-full max-w-md rounded-3xl bg-white p-5 text-zinc-900 shadow-xl ring-1 ring-zinc-200">
+              <div className="mb-4">
+                <h3 id="notebook-sharing-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
+                  <span>Invite notebook members with</span>
+                  <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+                    Plus
                   </span>
-                  <div>
-                    <h2 className="text-lg font-semibold">Invite Notebook Members</h2>
-                    <p className="mt-1 text-sm leading-6 text-[var(--hewie-active-text,#334155)]/70">
-                      Notebook sharing is included with <strong className="font-bold text-[var(--hewie-active-text,#334155)]">Plus</strong>.
-                    </p>
-                    <p className="mt-1.5 text-sm leading-6 text-[var(--hewie-active-text,#334155)]/70">
-                      Invite co-owners, caretakers, and pet sitters to help care for your pet.
-                    </p>
+                </h3>
+                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                  Invite co-owners, caretakers, and pet sitters to help care for your pet.
+                </p>
+              </div>
+
+              <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
+                {[
+                  "Notebook sharing",
+                  "Keep everyone in sync",
+                  "Unlimited pets",
+                  "And more",
+                ].map((feature) => (
+                  <div key={feature} className="flex items-start gap-2 text-xs font-medium leading-5 text-zinc-500">
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                    <span>{feature}</span>
                   </div>
-                </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setShowNotebookSharingIntro(false)}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/65 text-lg font-semibold text-[var(--hewie-active-text,#334155)]/65 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white"
-                  aria-label="Close"
+                  className="h-11 rounded-full border border-zinc-200 bg-white px-4 text-sm font-bold text-zinc-700"
                 >
-                  ×
+                  Not now
+                </button>
+                <button
+                  type="button"
+                  onClick={openNotebookSharingUpgrade}
+                  className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
+                >
+                  Continue
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={openNotebookSharingUpgrade}
-                className="ml-auto flex w-fit items-center gap-1 rounded-full px-1 py-0.5 text-xs font-semibold text-[var(--hewie-accent,#64748b)] transition hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
-              >
-                View Plus benefits
-                <ChevronRight className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
-              </button>
             </div>
           </div>
         ) : null}
