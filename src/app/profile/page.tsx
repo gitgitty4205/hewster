@@ -77,6 +77,14 @@ function RequiredMark({ show }: { show: boolean }) {
   return show ? <span className="text-rose-500">*</span> : null;
 }
 
+function PetNotebookPlusBadge() {
+  return (
+    <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+      PetNotebook Plus
+    </span>
+  );
+}
+
 function todayDateInputValue() {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
@@ -952,7 +960,11 @@ export default function ProfilePage() {
                 {canManageNotebookAccess
                   ? "Invite people and choose how they can help with this notebook."
                   : canOwnNotebookAccess && !isNotebookSharingUnlocked
-                    ? "Notebook sharing is included with PetNotebook Plus. Invite co-owners, caretakers, and pet sitters to help care for your pet."
+                    ? (
+                      <>
+                        Notebook sharing is included with <PetNotebookPlusBadge />. Invite co-owners, caretakers, and pet sitters to help care for your pet.
+                      </>
+                    )
                     : "View who has access to this notebook."}
               </p>
             </div>
@@ -1045,11 +1057,9 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={openNotebookSharingUpgrade}
-              className="w-full rounded-2xl bg-white/65 p-3 text-left text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white/65 px-4 py-3 text-sm font-semibold text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
             >
-              Notebook sharing is included with PetNotebook Plus.
-              <br />
-              Invite co-owners, caretakers, and pet sitters to help care for your pet.
+              Upgrade with <PetNotebookPlusBadge />
             </button>
           ) : null}
           {canManageNotebookAccess && accessMessage ? (
