@@ -50,7 +50,7 @@ type TwoFactorMethod = "email" | "sms";
 type NotificationChannel = "app" | "email" | "sms";
 type ReminderTimeUnit = "minutes" | "hours";
 type BillingInterval = "monthly" | "annual";
-type AppLanguage = "en" | "es" | "fr";
+type AppLanguage = "en" | "es" | "fr" | "zh-Hans" | "zh-Hant" | "ja" | "ko" | "de" | "it" | "pt" | "hi" | "ar";
 type AccountInfoSnapshot = {
   firstName: string;
   lastName: string;
@@ -111,6 +111,15 @@ const languageOptions: { id: AppLanguage; label: string; nativeLabel: string }[]
   { id: "en", label: "English", nativeLabel: "English" },
   { id: "es", label: "Spanish", nativeLabel: "Español" },
   { id: "fr", label: "French", nativeLabel: "Français" },
+  { id: "zh-Hans", label: "Chinese (Simplified)", nativeLabel: "简体中文" },
+  { id: "zh-Hant", label: "Chinese (Traditional)", nativeLabel: "繁體中文" },
+  { id: "ja", label: "Japanese", nativeLabel: "日本語" },
+  { id: "ko", label: "Korean", nativeLabel: "한국어" },
+  { id: "de", label: "German", nativeLabel: "Deutsch" },
+  { id: "it", label: "Italian", nativeLabel: "Italiano" },
+  { id: "pt", label: "Portuguese", nativeLabel: "Português" },
+  { id: "hi", label: "Hindi", nativeLabel: "हिन्दी" },
+  { id: "ar", label: "Arabic", nativeLabel: "العربية" },
 ];
 const languageIds = languageOptions.map((language) => language.id);
 const membershipPlanDisplayOrder = [...subscriptionPlans].sort((plan) => (plan.id === "plus" ? -1 : 1));
@@ -951,51 +960,6 @@ export default function AccountSettingsPage() {
                 className="flex size-11 shrink-0 items-center justify-center rounded-full"
                 style={{ backgroundColor: theme.accent, color: theme.accentText }}
               >
-                <Languages className="size-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-semibold">Language</h2>
-                <p className="text-sm leading-5 text-zinc-500">{languageLabel(selectedLanguage)}</p>
-              </div>
-            </div>
-
-            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
-              App Language
-              <div className="relative mt-2">
-                <select
-                  value={selectedLanguage}
-                  onChange={(event) => handleLanguageChange(normalizeAppLanguage(event.target.value))}
-                  className="h-12 w-full appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 pr-10 text-sm font-semibold normal-case tracking-normal text-zinc-800 outline-none transition focus:border-[var(--hewie-accent,#64748b)]"
-                >
-                  {languageOptions.map((language) => (
-                    <option key={language.id} value={language.id}>
-                      {language.label} ({language.nativeLabel})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-zinc-400" />
-              </div>
-            </label>
-
-            <p className="mt-3 text-xs leading-5 text-zinc-500">
-              This saves the preferred app language for this device. More translated app text can use this setting as language support expands.
-            </p>
-
-            {languageMessage ? (
-              <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-100">
-                {languageMessage}
-              </p>
-            ) : null}
-          </section>
-        ) : null}
-
-        {!passwordResetRequired ? (
-          <section className="mb-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <span
-                className="flex size-11 shrink-0 items-center justify-center rounded-full"
-                style={{ backgroundColor: theme.accent, color: theme.accentText }}
-              >
                 <Bell className="size-5" />
               </span>
               <div className="min-w-0 flex-1">
@@ -1406,6 +1370,51 @@ export default function AccountSettingsPage() {
               })}
               </div>
             </div>
+          </section>
+        ) : null}
+
+        {!passwordResetRequired ? (
+          <section className="mb-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span
+                className="flex size-11 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: theme.accent, color: theme.accentText }}
+              >
+                <Languages className="size-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-semibold">Language</h2>
+                <p className="text-sm leading-5 text-zinc-500">{languageLabel(selectedLanguage)}</p>
+              </div>
+            </div>
+
+            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
+              App Language
+              <div className="relative mt-2">
+                <select
+                  value={selectedLanguage}
+                  onChange={(event) => handleLanguageChange(normalizeAppLanguage(event.target.value))}
+                  className="h-12 w-full appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 pr-10 text-sm font-semibold normal-case tracking-normal text-zinc-800 outline-none transition focus:border-[var(--hewie-accent,#64748b)]"
+                >
+                  {languageOptions.map((language) => (
+                    <option key={language.id} value={language.id}>
+                      {language.label} ({language.nativeLabel})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-zinc-400" />
+              </div>
+            </label>
+
+            <p className="mt-3 text-xs leading-5 text-zinc-500">
+              This saves the preferred app language for this device. More translated app text can use this setting as language support expands.
+            </p>
+
+            {languageMessage ? (
+              <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-100">
+                {languageMessage}
+              </p>
+            ) : null}
           </section>
         ) : null}
 
