@@ -1072,7 +1072,7 @@ export default function ProfilePage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-[var(--hewie-active-text,#334155)]/85">{member.memberEmail}</p>
-                      <p className="mt-0.5 text-xs text-[var(--hewie-active-text,#334155)]/60">
+                      <p className="mt-0.5 text-xs text-[var(--hewie-active-text,#334155)]/72">
                         {notebookRoleLabel(member.role)} - {accessStatusLabel(member.status)}
                       </p>
                     </div>
