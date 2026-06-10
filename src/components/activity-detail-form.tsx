@@ -276,6 +276,7 @@ const notesPlaceholders: Record<ActivityType, string> = {
 function bristolScaleClasses(value: string, selected: boolean) {
 
   const normalized = value.trim().toLowerCase();
+  const bristolType = normalized.match(/^type\s+([1-7])\b/)?.[1];
 
 
 
@@ -296,30 +297,35 @@ function bristolScaleClasses(value: string, selected: boolean) {
     case "no poop":
 
       return selected ? "bg-zinc-200 text-zinc-900 ring-zinc-600 shadow-sm" : "bg-zinc-50/70 text-zinc-700 ring-zinc-300/70 hover:bg-zinc-50";
+  }
 
-    case "type 1: very firm, small pieces":
 
-    case "type 2: firm, slightly uneven log":
+
+  switch (bristolType) {
+
+    case "1":
+
+    case "2":
 
       return selected ? "bg-stone-300 text-stone-950 ring-stone-500 shadow-sm" : "bg-stone-50 text-stone-800 ring-stone-200/60 hover:bg-stone-100";
 
-    case "type 3: formed log with light cracks":
+    case "3":
 
       return selected ? "bg-orange-200 text-orange-950 ring-[#c17a2b] shadow-sm" : "bg-orange-50/60 text-orange-800 ring-orange-200/50 hover:bg-orange-50";
 
-    case "type 4: smooth, well-formed log":
+    case "4":
 
       return selected ? "bg-amber-200 text-amber-950 ring-[#c99a2e] shadow-sm" : "bg-amber-50/60 text-amber-800 ring-amber-200/50 hover:bg-amber-50";
 
-    case "type 5: soft, formed pieces":
+    case "5":
 
       return selected ? "bg-orange-200 text-orange-950 ring-[#c17a2b] shadow-sm" : "bg-orange-50/60 text-orange-800 ring-orange-200/50 hover:bg-orange-50";
 
-    case "type 6: very soft, loose pieces":
+    case "6":
 
       return selected ? "bg-rose-200 text-rose-950 ring-[#c86b7d] shadow-sm" : "bg-rose-50/60 text-rose-800 ring-rose-200/50 hover:bg-rose-50";
 
-    case "type 7: fully liquid":
+    case "7":
 
       return selected ? "bg-rose-300 text-rose-950 ring-[#c86b7d] shadow-sm" : "bg-rose-50/70 text-rose-800 ring-rose-200/60 hover:bg-rose-50";
 
