@@ -1373,7 +1373,7 @@ export default function AccountSettingsPage() {
               </div>
 
               <div className="relative mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 pr-20 ring-1 ring-zinc-200">
-                <span className="absolute right-3 top-3 size-14 overflow-hidden rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)] shadow-md ring-2 ring-white">
+                <span className="absolute right-3 top-3 size-14 overflow-hidden rounded-2xl border border-white bg-[var(--hewie-active-bg,#f1f5f9)] shadow-[0_10px_24px_rgba(15,23,42,0.18)] ring-1 ring-[var(--hewie-accent,#64748b)]/25">
                   <Image
                     src={plusPetPhotoUrl}
                     alt="Pet profile"
@@ -1403,7 +1403,7 @@ export default function AccountSettingsPage() {
                 <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Choose a plan</p>
                 {[
                   { id: "monthly" as BillingInterval, title: "Monthly", price: "$9.99/month", badge: "Cancel anytime" },
-                  { id: "annual" as BillingInterval, title: "Annual", price: "$99/year", note: "Get 2 months free", badge: "Most popular" },
+                  { id: "annual" as BillingInterval, title: "Annual", price: "$99/year", note: "2 months free", badge: "Most popular" },
                 ].map((option) => {
                   const billingSelected = selectedBillingInterval === option.id;
                   return (
@@ -1445,7 +1445,7 @@ export default function AccountSettingsPage() {
                 className="mt-4 h-12 w-full rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-[var(--hewie-accent-text,#ffffff)]"
                 onClick={completePlusUpgrade}
               >
-                Continue
+                Upgrade to Plus
               </Button>
             </div>
           </div>
