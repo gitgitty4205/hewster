@@ -69,7 +69,7 @@ import { careItemsForMeal, loadCareTemplates, loadCareTemplatesFromSupabase, mea
 import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import {
-  FREE_MEDICAL_ATTACHMENT_LIMIT,
+  FREE_MEDICAL_ATTACHMENT_USE_LIMIT,
   FREE_POTTY_IMAGE_LIMIT,
   activityAttachmentCounts,
   loadStoredSubscriptionPlan,
@@ -661,15 +661,22 @@ export default function LogPage() {
     if (detailActivityType === "potty" || detailActivityType === "poop") {
       return Math.max(0, FREE_POTTY_IMAGE_LIMIT - freeAttachmentCounts.pottyImages);
     }
-    return Math.max(0, FREE_MEDICAL_ATTACHMENT_LIMIT - freeAttachmentCounts.medicalAttachments);
-  }, [detailActivityType, freeAttachmentCounts.medicalAttachments, freeAttachmentCounts.pottyImages, subscriptionPlan]);
+    return 5;
+  }, [detailActivityType, freeAttachmentCounts.pottyImages, subscriptionPlan]);
+
+  const detailAttachmentPickerBlocked =
+    subscriptionPlan !== "plus" &&
+    detailActivityType !== "potty" &&
+    detailActivityType !== "poop" &&
+    freeAttachmentCounts.medicalAttachmentUses >= FREE_MEDICAL_ATTACHMENT_USE_LIMIT;
 
   const detailAttachmentLimitMessage =
     subscriptionPlan === "plus"
       ? undefined
       : detailActivityType === "potty" || detailActivityType === "poop"
         ? "Potty images are a PetNotebook Plus feature after your first free image. Upgrade for $9.99/month to unlock more."
-        : "Attachments are a PetNotebook Plus feature after your first free file. Upgrade for $9.99/month to unlock more.";
+        : undefined;
+  const detailAttachmentPickerBlockedMessage = "Attachments are a PetNotebook Plus feature after your first free upload. Upgrade for $9.99/month to unlock more.";
 
   useEffect(() => {
     const requestedDay = new URLSearchParams(window.location.search).get("date");
@@ -1348,6 +1355,8 @@ export default function LogPage() {
                 onAttachmentsChange={setAttachmentFiles}
                 maxAttachmentFiles={detailAttachmentLimit}
                 attachmentLimitMessage={detailAttachmentLimitMessage}
+                attachmentPickerBlocked={detailAttachmentPickerBlocked}
+                attachmentPickerBlockedMessage={detailAttachmentPickerBlockedMessage}
                 recordTags={recordTags}
                 onRecordTagsChange={setRecordTags}
                 onHappenedAtChange={setHappenedAtValue}
@@ -1481,6 +1490,8 @@ export default function LogPage() {
                 onAttachmentsChange={setAttachmentFiles}
                 maxAttachmentFiles={detailAttachmentLimit}
                 attachmentLimitMessage={detailAttachmentLimitMessage}
+                attachmentPickerBlocked={detailAttachmentPickerBlocked}
+                attachmentPickerBlockedMessage={detailAttachmentPickerBlockedMessage}
 
                 recordTags={recordTags}
 

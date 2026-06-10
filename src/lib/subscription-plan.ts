@@ -16,7 +16,7 @@ export const SUBSCRIPTION_PLAN_UPDATED_EVENT = "petnotebook-subscription-plan-up
 export const FREE_HISTORY_MONTHS = 3;
 export const FREE_PET_LIMIT = 1;
 export const PLUS_PET_LIMIT = 99;
-export const FREE_MEDICAL_ATTACHMENT_LIMIT = 1;
+export const FREE_MEDICAL_ATTACHMENT_USE_LIMIT = 1;
 export const FREE_POTTY_IMAGE_LIMIT = 1;
 
 export const subscriptionPlans: SubscriptionPlan[] = [
@@ -84,6 +84,8 @@ export function activityAttachmentCounts(activityLogs: ActivityLog[], editingAct
     (counts, activity) => {
       if (activity.id === editingActivityId) return counts;
 
+      let hasMedicalAttachment = false;
+
       (activity.attachments ?? []).forEach((attachment) => {
         if (attachment.documentTypes.includes("Potty Image") || attachment.documentTypes.includes("Poop Photo")) {
           counts.pottyImages += 1;
@@ -91,10 +93,13 @@ export function activityAttachmentCounts(activityLogs: ActivityLog[], editingAct
         }
 
         counts.medicalAttachments += 1;
+        hasMedicalAttachment = true;
       });
+
+      if (hasMedicalAttachment) counts.medicalAttachmentUses += 1;
 
       return counts;
     },
-    { medicalAttachments: 0, pottyImages: 0 }
+    { medicalAttachments: 0, medicalAttachmentUses: 0, pottyImages: 0 }
   );
 }

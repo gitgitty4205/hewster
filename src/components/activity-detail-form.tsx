@@ -63,6 +63,10 @@ type Props = {
 
   attachmentLimitMessage?: string;
 
+  attachmentPickerBlocked?: boolean;
+
+  attachmentPickerBlockedMessage?: string;
+
   recordTags?: string[];
 
   onRecordTagsChange?: (tags: string[]) => void;
@@ -804,6 +808,10 @@ export function ActivityDetailForm({
 
   attachmentLimitMessage,
 
+  attachmentPickerBlocked = false,
+
+  attachmentPickerBlockedMessage = "Attachments are a PetNotebook Plus feature now.",
+
   onHappenedAtChange,
 
   onSave,
@@ -944,6 +952,9 @@ export function ActivityDetailForm({
 
   const attachmentLimitReached = attachmentNames.length + attachmentFiles.length >= maxAttachmentFiles;
   const attachmentLimitLabel = attachmentLimitMessage ?? "Attachment limit reached.";
+  const attachmentPickerDisabled = attachmentLimitReached || attachmentPickerBlocked;
+  const [attachmentUpgradeOpen, setAttachmentUpgradeOpen] = useState(false);
+  const openAttachmentUpgrade = () => setAttachmentUpgradeOpen(true);
 
 
 
@@ -1570,14 +1581,23 @@ export function ActivityDetailForm({
           <span className="mb-1 block font-medium text-zinc-700">{attachmentLabel}</span>
 
           {poopPhotoDetail ? (
-            <div className={`grid grid-cols-2 gap-2 rounded-2xl border border-dashed border-[#f0d27a]/70 bg-[#fff7dc]/70 px-3 py-3 ${attachmentLimitReached ? "opacity-55" : ""}`}>
-              <label aria-label="Take Picture" title="Take Picture" className={`flex min-h-11 items-center justify-center rounded-full bg-white/60 px-3 py-2 text-[#8a6200] ${attachmentLimitReached ? "cursor-not-allowed" : "cursor-pointer"}`}>
+            <div className={`grid grid-cols-2 gap-2 rounded-2xl border border-dashed border-[#f0d27a]/70 bg-[#fff7dc]/70 px-3 py-3 ${attachmentPickerDisabled ? "opacity-55" : ""}`}>
+              <label
+                aria-label="Take Picture"
+                title="Take Picture"
+                onClick={(event) => {
+                  if (!attachmentPickerBlocked) return;
+                  event.preventDefault();
+                  openAttachmentUpgrade();
+                }}
+                className={`flex min-h-11 items-center justify-center rounded-full bg-white/60 px-3 py-2 text-[#8a6200] ${attachmentPickerDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+              >
                 <Camera className="size-5" aria-hidden="true" />
                 <input
                   type="file"
                   accept="image/*"
                   capture="environment"
-                  disabled={attachmentLimitReached}
+                  disabled={attachmentPickerDisabled}
                   onChange={(event) => {
                     addAttachmentFiles(Array.from(event.target.files ?? []));
                     event.currentTarget.value = "";
@@ -1585,13 +1605,22 @@ export function ActivityDetailForm({
                   className="sr-only"
                 />
               </label>
-              <label aria-label="Add Photos" title="Add Photos" className={`flex min-h-11 items-center justify-center rounded-full bg-white/60 px-3 py-2 text-[#8a6200] ${attachmentLimitReached ? "cursor-not-allowed" : "cursor-pointer"}`}>
+              <label
+                aria-label="Add Photos"
+                title="Add Photos"
+                onClick={(event) => {
+                  if (!attachmentPickerBlocked) return;
+                  event.preventDefault();
+                  openAttachmentUpgrade();
+                }}
+                className={`flex min-h-11 items-center justify-center rounded-full bg-white/60 px-3 py-2 text-[#8a6200] ${attachmentPickerDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+              >
                 <Images className="size-5" aria-hidden="true" />
                 <input
                   type="file"
                   multiple
                   accept="image/*"
-                  disabled={attachmentLimitReached}
+                  disabled={attachmentPickerDisabled}
                   onChange={(event) => {
                     addAttachmentFiles(Array.from(event.target.files ?? []));
                     event.currentTarget.value = "";
@@ -1601,7 +1630,14 @@ export function ActivityDetailForm({
               </label>
             </div>
           ) : (
-            <label className={`flex w-full rounded-2xl border border-dashed border-sky-200 bg-sky-50/50 px-3 py-3 text-sm ${attachmentLimitReached ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}>
+            <label
+              onClick={(event) => {
+                if (!attachmentPickerBlocked) return;
+                event.preventDefault();
+                openAttachmentUpgrade();
+              }}
+              className={`flex w-full rounded-2xl border border-dashed border-sky-200 bg-sky-50/50 px-3 py-3 text-sm ${attachmentPickerDisabled ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}
+            >
               <span className="rounded-full bg-sky-100 px-3 py-1.5 text-sm font-semibold text-sky-700">
                 Add Files
               </span>
@@ -1609,7 +1645,7 @@ export function ActivityDetailForm({
                 type="file"
                 multiple
                 accept={attachmentAccept}
-                disabled={attachmentLimitReached}
+                disabled={attachmentPickerDisabled}
                 onChange={(event) => {
                   addAttachmentFiles(Array.from(event.target.files ?? []));
                   event.currentTarget.value = "";
@@ -1621,7 +1657,7 @@ export function ActivityDetailForm({
 
           {!poopPhotoDetail ? <p className="mt-1 text-xs text-zinc-500">{attachmentHelp} Up to {maxAttachmentFiles} {maxAttachmentFiles === 1 ? "file" : "files"}.</p> : null}
 
-          {attachmentLimitReached ? <p className="mt-1 text-xs font-medium text-amber-700">{attachmentLimitLabel}</p> : null}
+          {attachmentPickerBlocked ? <p className="mt-1 text-xs font-medium text-amber-700">{attachmentPickerBlockedMessage}</p> : attachmentLimitReached ? <p className="mt-1 text-xs font-medium text-amber-700">{attachmentLimitLabel}</p> : null}
 
           {displayedAttachments.length ? (
 
@@ -1655,6 +1691,45 @@ export function ActivityDetailForm({
 
         </div>
 
+      ) : null}
+
+      {attachmentUpgradeOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-end bg-zinc-950/35 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="attachment-upgrade-title">
+          <button type="button" aria-label="Close upgrade" className="absolute inset-0 cursor-default" onClick={() => setAttachmentUpgradeOpen(false)} />
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-5 shadow-xl ring-1 ring-zinc-200">
+            <button
+              type="button"
+              aria-label="Close upgrade"
+              className="absolute right-3 top-3 inline-flex size-6 items-center justify-center rounded-full bg-zinc-50 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:bg-white hover:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
+              onClick={() => setAttachmentUpgradeOpen(false)}
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+            <div className="pr-8">
+              <h3 id="attachment-upgrade-title" className="text-lg font-semibold text-zinc-900">Upgrade to PetNotebook Plus</h3>
+              <p className="mt-2 text-sm leading-5 text-zinc-600">{attachmentPickerBlockedMessage}</p>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button
+                type="button"
+                className="h-11 flex-1 rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-[var(--hewie-accent-text,#ffffff)]"
+                onClick={() => {
+                  window.location.href = "/hewie/account-settings?upgrade=plus";
+                }}
+              >
+                Upgrade to Plus
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-full px-4"
+                onClick={() => setAttachmentUpgradeOpen(false)}
+              >
+                Not now
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
 
