@@ -2679,11 +2679,12 @@ export default function HomeApp() {
                       ) : null}
                       {customCareSkipKey === occurrence.key ? (
                         <div className="mt-1.5 space-y-1">
+                          <p className="px-1 text-[10px] font-semibold text-current/55">Reason for skipping</p>
                           <textarea
                             value={customCareSkipNotes[occurrence.key] ?? ""}
                             onChange={(event) => updateCustomCareSkipNote(occurrence, clampText(event.target.value, TEXT_LIMITS.note))}
                             maxLength={TEXT_LIMITS.note}
-                            placeholder="Notes / reasons"
+                            placeholder="Optional reason for skipping"
                             rows={1}
                             className="h-8 w-full resize-none rounded-xl border border-current/15 bg-white/70 px-2 py-1 text-xs text-inherit outline-none placeholder:text-current/40 focus:ring-2 focus:ring-current/15"
                           />
