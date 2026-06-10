@@ -671,7 +671,7 @@ export default function LogPage() {
 
   const detailAttachmentPickerBlockedMessage =
     detailActivityType === "potty" || detailActivityType === "poop"
-      ? "Poop images are a PetNotebook Plus feature after your first free upload. Upgrade for $9.99/month to unlock more."
+      ? "Your first poop image is free. Upgrade to Plus to add more images."
       : "Your first attachment is free. Upgrade to Plus to add more files.";
 
   useEffect(() => {
