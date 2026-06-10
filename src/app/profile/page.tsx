@@ -236,7 +236,7 @@ export default function ProfilePage() {
   async function handleInvitePerson() {
     if (subscriptionPlan !== "plus") {
       setAccessStatus("error");
-      setAccessMessage("Shared access is a PetNotebook Plus feature. Upgrade for $9.99/month to invite people.");
+      setAccessMessage("Notebook sharing is included with PetNotebook Plus. Upgrade to invite co-owners, caretakers, and pet sitters.");
       return;
     }
 
@@ -275,6 +275,11 @@ export default function ProfilePage() {
       setAccessStatus("error");
       setAccessMessage(error instanceof Error ? error.message : "Could not add this person.");
     }
+  }
+
+  function openNotebookSharingUpgrade() {
+    if (typeof window === "undefined") return;
+    window.location.href = "/hewie/account-settings?upgrade=plus";
   }
 
   async function handleSaveMemberAccess(member: NotebookMember) {
@@ -947,7 +952,7 @@ export default function ProfilePage() {
                 {canManageNotebookAccess
                   ? "Invite people and choose how they can help with this notebook."
                   : canOwnNotebookAccess && !isNotebookSharingUnlocked
-                    ? "Notebook sharing is included with PetNotebook Plus."
+                    ? "Notebook sharing is included with PetNotebook Plus. Invite co-owners, caretakers, and pet sitters to help care for your pet."
                     : "View who has access to this notebook."}
               </p>
             </div>
@@ -1037,9 +1042,15 @@ export default function ProfilePage() {
             </>
           ) : null}
           {canOwnNotebookAccess && !isNotebookSharingUnlocked ? (
-            <div className="rounded-2xl bg-white/65 p-3 text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
-              Shared access is a PetNotebook Plus feature. Upgrade to invite family, caretakers, or pet sitters for $9.99/month.
-            </div>
+            <button
+              type="button"
+              onClick={openNotebookSharingUpgrade}
+              className="w-full rounded-2xl bg-white/65 p-3 text-left text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
+            >
+              Notebook sharing is included with PetNotebook Plus.
+              <br />
+              Invite co-owners, caretakers, and pet sitters to help care for your pet.
+            </button>
           ) : null}
           {canManageNotebookAccess && accessMessage ? (
             <p className={`mt-3 rounded-2xl p-3 text-xs leading-5 ring-1 ${accessStatus === "error" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-white/65 text-[var(--hewie-active-text,#334155)]/65 ring-[var(--hewie-ring,#cbd5e1)]/70"}`}>
