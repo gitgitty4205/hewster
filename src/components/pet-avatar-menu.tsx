@@ -520,7 +520,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                   {[
                     "Unlimited pets",
                     "Notebook sharing",
-                    "Unlimited PDF exports",
+                    "Unlimited PDF reports",
                     "Lifetime health history",
                   ].map((feature) => (
                     <div key={feature} className="flex items-start gap-2 text-xs font-medium leading-5 text-zinc-500">

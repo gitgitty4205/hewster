@@ -55,7 +55,7 @@ async function checkPetPlanLimits() {
     "PetNotebook Plus",
     "Notebook sharing",
     "Keep everyone in sync",
-    "Unlimited PDF exports",
+    "Unlimited PDF reports",
     "Unlimited photos and files",
     "Lifetime health history",
     "Meals, reminders, and alerts",
