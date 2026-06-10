@@ -488,7 +488,7 @@ export function CareSettingsPage({
                     {item.scheduleKind === "meal" ? (
                       <div className="text-sm">
                         <div className="mb-2 flex items-center gap-0 font-medium text-zinc-700">
-                          <span>Give with meal plan</span>
+                          <span>Give with meals</span>
                           {kind === "supplement" ? (
                             <button
                               type="button"
