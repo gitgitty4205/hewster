@@ -1358,7 +1358,7 @@ export default function AccountSettingsPage() {
               >
                 <X className="size-3" aria-hidden="true" />
               </button>
-              <div className="mb-4 flex items-start justify-between gap-3 pr-8">
+              <div className="mb-4 pr-8">
                 <div className="min-w-0">
                   <h3 id="plus-upgrade-title" className="flex flex-wrap items-center gap-2 text-lg font-semibold text-zinc-900">
                     <span>Upgrade to</span>
@@ -1370,7 +1370,10 @@ export default function AccountSettingsPage() {
                     Everything you need to care for your pet, all in one place.
                   </p>
                 </div>
-                <span className="relative mt-0.5 size-14 shrink-0 overflow-hidden rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)] shadow-md ring-2 ring-white">
+              </div>
+
+              <div className="relative mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 pr-20 ring-1 ring-zinc-200">
+                <span className="absolute right-3 top-3 size-14 overflow-hidden rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)] shadow-md ring-2 ring-white">
                   <Image
                     src={plusPetPhotoUrl}
                     alt="Pet profile"
@@ -1379,9 +1382,6 @@ export default function AccountSettingsPage() {
                     className="object-cover object-center"
                   />
                 </span>
-              </div>
-
-              <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
                 {[
                   "Unlimited pets",
                   "Notebook sharing",
