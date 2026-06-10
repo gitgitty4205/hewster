@@ -1006,7 +1006,7 @@ export function ActivityDetailForm({
 
           <div>
 
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Health Log Type</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Health Category</p>
 
             <div className="grid grid-cols-2 gap-2">
 
