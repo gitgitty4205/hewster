@@ -201,7 +201,7 @@ const groupedPresets: Partial<Record<ActivityType, Array<{ label: string; option
 
     {
 
-      label: "Care / Away From Home",
+      label: "Care Type",
 
       options: ["Daycare", "Drop-In Visit", "Pet Sitting", "Boarding", "Other"],
 
@@ -251,7 +251,7 @@ const notesPlaceholders: Record<ActivityType, string> = {
 
   outdoor: "Location, duration, behavior, or anything notable",
 
-  care: "Daycare/Boarding Details, Pickup/Dropoff Notes, Or Anything Notable",
+  care: "Pickup, drop-off, or care notes",
 
   wellness: "Optional Notes Or Anything Notable",
 
