@@ -169,6 +169,7 @@ export default function ProfilePage() {
   const [accessRoleHelp, setAccessRoleHelp] = useState<Exclude<NotebookAccessRole, "owner"> | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingAbout, setIsEditingAbout] = useState(false);
+  const [isEditingEmergencyContact, setIsEditingEmergencyContact] = useState(false);
   const [missingPetInfoFields, setMissingPetInfoFields] = useState<Set<RequiredPetInfoField>>(new Set());
   const [profileValidationMessage, setProfileValidationMessage] = useState("");
   const [profilePhotoMessage, setProfilePhotoMessage] = useState("");
@@ -380,6 +381,7 @@ export default function ProfilePage() {
   const canManageProfilePhoto = !user || (notebookRoleLoaded && activeNotebookRole === "owner" && activeNotebookOwnerId === user.id);
   const profileDetailsLocked = !canEditProfile || !isEditingProfile;
   const aboutDetailsLocked = !canEditProfile || !isEditingAbout;
+  const emergencyContactLocked = !canEditProfile || !isEditingEmergencyContact;
   const calculatedAge = displayPetAge(profile);
   const petFirstName = profile.petFirstName.trim() || profile.petName.split(/\s+/)[0] || "Pet";
   const rememberedDateLabel = formatRememberedDate(profile.passedAwayDate);
@@ -848,8 +850,39 @@ export default function ProfilePage() {
         </section>
 
         <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
-          <h2 className="mb-3 text-lg font-semibold">Emergency Contact</h2>
-          <fieldset disabled={profileDetailsLocked} className="grid grid-cols-2 gap-3 disabled:opacity-80">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Emergency Contact</h2>
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <p className="min-h-4 text-xs font-semibold text-emerald-600">{saveState === "saved" ? "Saved" : ""}</p>
+              {canEditProfile ? (
+                isEditingEmergencyContact ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingEmergencyContact(false)}
+                    className="inline-flex items-center rounded-full bg-white/75 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/75 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white"
+                  >
+                    Save
+                  </button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsEditingEmergencyContact(true)}
+                    className="size-9 shrink-0 rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/70 ring-[var(--hewie-ring,#cbd5e1)] hover:bg-white"
+                    aria-label="Edit emergency contact"
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                )
+              ) : (
+                <span className="rounded-full bg-white/65 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/55 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+                  View Only
+                </span>
+              )}
+            </div>
+          </div>
+          <fieldset disabled={emergencyContactLocked} className="grid grid-cols-2 gap-3 disabled:opacity-80">
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Name</span>
               <input
