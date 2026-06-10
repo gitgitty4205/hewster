@@ -119,7 +119,7 @@ const presets: Record<ActivityType, string[]> = {
 
   hike: ["Short Hiking", "Long Hike"],
 
-  treat: ["Common Treat", "New Treat", "Training Treats", "Dental Chew / Chew", "Other"],
+  treat: ["Regular Treat", "New Treat", "Training Treats", "Dental Chew / Chew", "Other"],
 
   food: [],
 
