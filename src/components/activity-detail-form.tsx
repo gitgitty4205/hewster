@@ -1453,7 +1453,7 @@ export function ActivityDetailForm({
 
         <label className="mb-3 block text-sm">
 
-          <span className="mb-1 block font-medium text-zinc-700">{activityType === "food" ? "Food Name/Details" : "Treat Name/Details"}</span>
+          <span className="mb-1 block font-medium text-zinc-700">{activityType === "food" ? "What was fed?" : "Treat Name/Details"}</span>
 
           <input
 
@@ -1462,7 +1462,7 @@ export function ActivityDetailForm({
             onChange={(event) => onNotesChange(clampText(event.target.value, TEXT_LIMITS.mediumText))}
             maxLength={TEXT_LIMITS.mediumText}
 
-            placeholder={activityType === "food" ? "Kibble, Wet Food, Toppers, Amount, Appetite, Etc." : "Beef Liver, Lucky Mat, Dental Chew, Amount, Etc."}
+            placeholder={activityType === "food" ? "What was fed?" : "Beef Liver, Lucky Mat, Dental Chew, Amount, Etc."}
 
             className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
 
@@ -1490,7 +1490,7 @@ export function ActivityDetailForm({
 
             rows={2}
 
-            placeholder={activityType === "food" ? "Optional Notes - Appetite, Reaction, Amount, Or Anything Unusual" : "Optional Notes - Why Given, Reaction, Amount, Or Anything Unusual"}
+            placeholder={activityType === "food" ? "Appetite, reaction, or anything unusual" : "Optional Notes - Why Given, Reaction, Amount, Or Anything Unusual"}
 
             className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
 
