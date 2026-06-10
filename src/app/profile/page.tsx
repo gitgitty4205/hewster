@@ -1053,9 +1053,14 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={openNotebookSharingUpgrade}
-              className="w-full rounded-2xl bg-white/65 p-3 text-left text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
+              className="w-full rounded-2xl bg-white/65 p-4 text-left text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
             >
-              Notebook sharing is included with <PetNotebookPlusBadge />. Invite co-owners, caretakers, and pet sitters to help care for your pet.
+              <span className="block">
+                Notebook sharing is included with <PetNotebookPlusBadge />.
+              </span>
+              <span className="mt-1.5 block">
+                Invite co-owners, caretakers, and pet sitters to help care for your pet.
+              </span>
             </button>
           ) : null}
           {canManageNotebookAccess && accessMessage ? (
