@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { CircleHelp, Heart, Pencil, ShieldCheck } from "lucide-react";
+import { ChevronRight, CircleHelp, Heart, Pencil, ShieldCheck } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
 
@@ -1042,18 +1042,22 @@ export default function ProfilePage() {
             </>
           ) : null}
           {canOwnNotebookAccess && !isNotebookSharingUnlocked ? (
-            <button
-              type="button"
-              onClick={openNotebookSharingUpgrade}
-              className="w-full rounded-2xl bg-white/65 p-4 text-left text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
-            >
+            <div className="w-full rounded-2xl bg-white/65 p-4 text-sm leading-5 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
               <span className="block">
                 Notebook sharing is included with <strong className="font-bold text-[var(--hewie-active-text,#334155)]">Plus</strong>.
               </span>
               <span className="mt-1.5 block">
                 Invite co-owners, caretakers, and pet sitters to help care for your pet.
               </span>
-            </button>
+              <button
+                type="button"
+                onClick={openNotebookSharingUpgrade}
+                className="ml-auto mt-3 flex w-fit items-center gap-1 rounded-full px-1 py-0.5 text-xs font-semibold text-[var(--hewie-accent,#64748b)] transition hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
+              >
+                View Plus benefits
+                <ChevronRight className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
+              </button>
+            </div>
           ) : null}
           {canManageNotebookAccess && accessMessage ? (
             <p className={`mt-3 rounded-2xl p-3 text-xs leading-5 ring-1 ${accessStatus === "error" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-white/65 text-[var(--hewie-active-text,#334155)]/65 ring-[var(--hewie-ring,#cbd5e1)]/70"}`}>
