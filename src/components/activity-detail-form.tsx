@@ -3,7 +3,7 @@
 
 
 import { useEffect, useState } from "react";
-import { Camera, Images } from "lucide-react";
+import { Camera, Check, ChevronRight, Images } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -955,6 +955,9 @@ export function ActivityDetailForm({
   const attachmentPickerDisabled = attachmentLimitReached || attachmentPickerBlocked;
   const [attachmentUpgradeOpen, setAttachmentUpgradeOpen] = useState(false);
   const openAttachmentUpgrade = () => setAttachmentUpgradeOpen(true);
+  const openPlusFeatures = () => {
+    window.location.href = "/hewie/account-settings?upgrade=plus";
+  };
 
 
 
@@ -1657,7 +1660,7 @@ export function ActivityDetailForm({
 
           {!poopPhotoDetail ? <p className="mt-1 text-xs text-zinc-500">{attachmentHelp} Up to {maxAttachmentFiles} {maxAttachmentFiles === 1 ? "file" : "files"}.</p> : null}
 
-          {attachmentPickerBlocked ? <p className="mt-1 text-xs font-medium text-amber-700">{attachmentPickerBlockedMessage}</p> : attachmentLimitReached ? <p className="mt-1 text-xs font-medium text-amber-700">{attachmentLimitLabel}</p> : null}
+          {!attachmentPickerBlocked && attachmentLimitReached ? <p className="mt-1 text-xs font-medium text-amber-700">{attachmentLimitLabel}</p> : null}
 
           {displayedAttachments.length ? (
 
@@ -1696,37 +1699,59 @@ export function ActivityDetailForm({
       {attachmentUpgradeOpen ? (
         <div className="fixed inset-0 z-[80] flex items-end bg-zinc-950/35 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="attachment-upgrade-title">
           <button type="button" aria-label="Close upgrade" className="absolute inset-0 cursor-default" onClick={() => setAttachmentUpgradeOpen(false)} />
-          <div className="relative w-full max-w-md rounded-3xl bg-white p-5 shadow-xl ring-1 ring-zinc-200">
-            <button
-              type="button"
-              aria-label="Close upgrade"
-              className="absolute right-3 top-3 inline-flex size-6 items-center justify-center rounded-full bg-zinc-50 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:bg-white hover:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
-              onClick={() => setAttachmentUpgradeOpen(false)}
-            >
-              <span aria-hidden="true">×</span>
-            </button>
-            <div className="pr-8">
-              <h3 id="attachment-upgrade-title" className="text-lg font-semibold text-zinc-900">Upgrade to PetNotebook Plus</h3>
-              <p className="mt-2 text-sm leading-5 text-zinc-600">{attachmentPickerBlockedMessage}</p>
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-5 text-zinc-900 shadow-xl ring-1 ring-zinc-200">
+            <div className="mb-4">
+              <h3 id="attachment-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
+                <span>{poopPhotoDetail ? "Add more poop images with" : "Add more files with"}</span>
+                <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+                  Plus
+                </span>
+              </h3>
+              <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                {attachmentPickerBlockedMessage}
+              </p>
             </div>
-            <div className="mt-4 flex gap-2">
-              <Button
+
+            <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
+              {[
+                poopPhotoDetail ? "More poop photo uploads" : "More medical file uploads",
+                "Up to 5 files per log",
+                "Lifetime health history",
+                "Unlimited PDF reports",
+              ].map((feature) => (
+                <div key={feature} className="flex items-start gap-2 text-xs font-medium leading-5 text-zinc-500">
+                  <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                  <span>{feature}</span>
+                </div>
+              ))}
+              <button
                 type="button"
-                className="h-11 flex-1 rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-[var(--hewie-accent-text,#ffffff)]"
-                onClick={() => {
-                  window.location.href = "/hewie/account-settings?upgrade=plus";
-                }}
+                onClick={openPlusFeatures}
+                className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text,#334155)]"
               >
-                Upgrade to Plus
-              </Button>
-              <Button
+                <span className="flex items-start gap-2">
+                  <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                  <span>View all Plus features</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
                 type="button"
-                variant="outline"
-                className="h-11 rounded-full px-4"
                 onClick={() => setAttachmentUpgradeOpen(false)}
+                className="h-11 rounded-full border border-zinc-200 bg-white px-4 text-sm font-bold text-zinc-700"
               >
                 Not now
-              </Button>
+              </button>
+              <button
+                type="button"
+                onClick={openPlusFeatures}
+                className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
+              >
+                Upgrade to Plus
+              </button>
             </div>
           </div>
         </div>
