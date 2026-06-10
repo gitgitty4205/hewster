@@ -467,7 +467,7 @@ export default function ProfilePage() {
           <fieldset disabled={profileDetailsLocked} className="space-y-3 disabled:opacity-80">
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
-                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">First Name <RequiredMark show={isEditingProfile} /></span>
+                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Pet Name <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.petFirstName}
                   onChange={(event) => updateProfile({ petFirstName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
@@ -477,7 +477,7 @@ export default function ProfilePage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Last Name <RequiredMark show={isEditingProfile} /></span>
+                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Family Name <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.petLastName}
                   onChange={(event) => updateProfile({ petLastName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
