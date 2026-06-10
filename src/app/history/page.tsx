@@ -49,7 +49,7 @@ import { getSupabaseBrowserClient, getSupabaseCurrentSession, isSupabaseConfigur
 import { canExportNotebook, resolveActiveNotebookAccess, type NotebookAccessRole } from "@/lib/notebook-access";
 import { displayPetAge, loadPetProfile, type PetProfile } from "@/lib/pet-profile";
 import { formatManualAlertTimelineDetail } from "@/lib/alerts";
-import { FREE_HISTORY_MONTHS, loadStoredSubscriptionPlan, type SubscriptionPlanId } from "@/lib/subscription-plan";
+import { FREE_HISTORY_MONTHS, FREE_HISTORY_REPORT_USE_LIMIT, loadFreeHistoryReportUses, loadStoredSubscriptionPlan, saveFreeHistoryReportUses, type SubscriptionPlanId } from "@/lib/subscription-plan";
 
 
 
@@ -1516,6 +1516,7 @@ export default function HistoryPage() {
   const [activeNotebookRole, setActiveNotebookRole] = useState<NotebookAccessRole | null>(null);
   const [activeNotebookOwnerId, setActiveNotebookOwnerId] = useState<string | null>(null);
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
+  const [freeHistoryReportUses, setFreeHistoryReportUses] = useState(0);
   const [profile, setProfile] = useState<PetProfile>(() => loadPetProfile());
   const supabaseReady = isSupabaseConfigured();
   const canIncludeLogDetails = activeNotebookRole ? canExportNotebook(activeNotebookRole) : false;
@@ -1541,6 +1542,17 @@ export default function HistoryPage() {
     return () => {
       window.removeEventListener("storage", refreshPlan);
       window.removeEventListener("focus", refreshPlan);
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshFreeReportUses = () => setFreeHistoryReportUses(loadFreeHistoryReportUses());
+    refreshFreeReportUses();
+    window.addEventListener("storage", refreshFreeReportUses);
+    window.addEventListener("focus", refreshFreeReportUses);
+    return () => {
+      window.removeEventListener("storage", refreshFreeReportUses);
+      window.removeEventListener("focus", refreshFreeReportUses);
     };
   }, []);
 
@@ -2288,12 +2300,18 @@ export default function HistoryPage() {
 
   const handleSendCopy = async () => {
 
-    if (subscriptionPlan !== "plus") {
+    const canUseFreeHistoryReport =
+      subscriptionPlan !== "plus" && freeHistoryReportUses < FREE_HISTORY_REPORT_USE_LIMIT;
+
+    if (subscriptionPlan !== "plus" && !canUseFreeHistoryReport) {
       setSendCopyStatus("");
       setShowHistoryCopyUpgradeDialog(true);
       return;
     }
 
+    const reportHistoryDays = subscriptionPlan === "plus" || canUseFreeHistoryReport
+      ? filterHistoryDays(historyDays, activeFilter, startDate, endDate)
+      : filteredHistoryDays;
     const dateRange = historyCopyDateRange(startDate, endDate);
     const generatedDate = historyCopyGeneratedDate();
 
@@ -2321,12 +2339,12 @@ export default function HistoryPage() {
       const includeLogDetailsInReport = includeLogDetails && Boolean(activeNotebookAccess?.role && canExportNotebook(activeNotebookAccess.role));
       const reportDays = includeLogDetailsInReport
         ? await Promise.all([
-            loadActivityAuditInfoForReport(reportActivityIds(filteredHistoryDays)),
-            loadMealAuditInfoForReport(reportMealLogIds(filteredHistoryDays)),
+            loadActivityAuditInfoForReport(reportActivityIds(reportHistoryDays)),
+            loadMealAuditInfoForReport(reportMealLogIds(reportHistoryDays)),
           ]).then(([activityAuditInfo, mealAuditInfo]) =>
-            withReportMealAuditInfo(withReportActivityAuditInfo(filteredHistoryDays, activityAuditInfo), mealAuditInfo)
+            withReportMealAuditInfo(withReportActivityAuditInfo(reportHistoryDays, activityAuditInfo), mealAuditInfo)
           )
-        : filteredHistoryDays;
+        : reportHistoryDays;
       const text = buildHistoryCopyText(reportDays, activeFilter, dateRange, profile, ownerName, generatedDate, includeLogDetailsInReport);
       const reportImages = reportImagesForDays(reportDays);
 
@@ -2341,7 +2359,7 @@ export default function HistoryPage() {
           filterLabel: historyFilterLabels.get(activeFilter) ?? "All",
           dateRange,
           generatedDate,
-          matchingDays: filteredHistoryDays.length,
+          matchingDays: reportHistoryDays.length,
           profile: {
             petName: displayPetName(profile),
             petFirstName: profile.petFirstName,
@@ -2368,6 +2386,11 @@ export default function HistoryPage() {
       }
 
       setSendCopyStatus(`History report sent: ${result.email || "your account email"}.`);
+      if (canUseFreeHistoryReport) {
+        const nextUses = freeHistoryReportUses + 1;
+        saveFreeHistoryReportUses(nextUses);
+        setFreeHistoryReportUses(nextUses);
+      }
     } catch {
       setSendCopyStatus("Could not email the history report.");
     } finally {
@@ -3574,7 +3597,7 @@ export default function HistoryPage() {
                   </span>
                 </h3>
                 <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
-                  Create and email PDF reports from your pet&apos;s history.
+                  Your first PDF report is free. Upgrade to Plus for unlimited reports.
                 </p>
               </div>
 

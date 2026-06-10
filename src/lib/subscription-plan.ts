@@ -18,6 +18,8 @@ export const FREE_PET_LIMIT = 1;
 export const PLUS_PET_LIMIT = 99;
 export const FREE_MEDICAL_ATTACHMENT_USE_LIMIT = 1;
 export const FREE_POTTY_IMAGE_USE_LIMIT = 1;
+export const FREE_HISTORY_REPORT_USE_LIMIT = 1;
+export const FREE_HISTORY_REPORT_USES_STORAGE_KEY = "petnotebook.freeHistoryReportUses";
 
 export const subscriptionPlans: SubscriptionPlan[] = [
   {
@@ -29,6 +31,7 @@ export const subscriptionPlans: SubscriptionPlan[] = [
       "Track everyday pet care",
       "1 pet",
       "3 months of history",
+      "1 PDF report",
     ],
   },
   {
@@ -77,6 +80,18 @@ export function subscriptionPlanById(planId: SubscriptionPlanId) {
 
 export function petLimitForSubscriptionPlan(planId: SubscriptionPlanId) {
   return planId === "plus" ? PLUS_PET_LIMIT : FREE_PET_LIMIT;
+}
+
+export function loadFreeHistoryReportUses() {
+  if (typeof window === "undefined") return 0;
+
+  const stored = Number(window.localStorage.getItem(FREE_HISTORY_REPORT_USES_STORAGE_KEY) ?? "0");
+  return Number.isFinite(stored) ? Math.max(0, stored) : 0;
+}
+
+export function saveFreeHistoryReportUses(count: number) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(FREE_HISTORY_REPORT_USES_STORAGE_KEY, String(Math.max(0, count)));
 }
 
 export function activityAttachmentCounts(activityLogs: ActivityLog[], editingActivityId?: string | null) {
