@@ -15,6 +15,8 @@ export type PetProfile = {
   birthday: string;
   manualAge: string;
   microchipNumber: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
   color: string;
   sex: "" | "female" | "male";
   spayNeuterStatus: "" | "spayed" | "neutered" | "intact";
@@ -66,6 +68,8 @@ export const defaultPetProfile: PetProfile = {
   birthday: "",
   manualAge: "",
   microchipNumber: "",
+  emergencyContactName: "",
+  emergencyContactPhone: "",
   color: "",
   sex: "",
   spayNeuterStatus: "",
@@ -174,6 +178,8 @@ export function normalizePetProfile(value: unknown): PetProfile {
     birthday: typeof profile.birthday === "string" ? profile.birthday : defaultPetProfile.birthday,
     manualAge: clampText(typeof profile.manualAge === "string" ? profile.manualAge : defaultPetProfile.manualAge, 24),
     microchipNumber: clampText(typeof profile.microchipNumber === "string" ? profile.microchipNumber : defaultPetProfile.microchipNumber, TEXT_LIMITS.shortName),
+    emergencyContactName: clampText(typeof profile.emergencyContactName === "string" ? profile.emergencyContactName : defaultPetProfile.emergencyContactName, TEXT_LIMITS.shortName),
+    emergencyContactPhone: clampText(typeof profile.emergencyContactPhone === "string" ? profile.emergencyContactPhone : defaultPetProfile.emergencyContactPhone, TEXT_LIMITS.shortName),
     color: clampText(typeof profile.color === "string" ? profile.color : defaultPetProfile.color, TEXT_LIMITS.shortName),
     sex: profile.sex === "female" || profile.sex === "male" ? profile.sex : defaultPetProfile.sex,
     spayNeuterStatus:
