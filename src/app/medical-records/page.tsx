@@ -26,7 +26,7 @@ import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { HEWSTER_PROFILE_SLUG, getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 import {
   FREE_MEDICAL_ATTACHMENT_USE_LIMIT,
-  FREE_POTTY_IMAGE_LIMIT,
+  FREE_POTTY_IMAGE_USE_LIMIT,
   activityAttachmentCounts,
   loadStoredSubscriptionPlan,
   type SubscriptionPlanId,
@@ -521,25 +521,20 @@ export default function MedicalRecordsPage() {
 
   const detailAttachmentLimit = useMemo(() => {
     if (subscriptionPlan === "plus") return 5;
-    if (detailActivityType === "potty" || detailActivityType === "poop") {
-      return Math.max(0, FREE_POTTY_IMAGE_LIMIT - freeAttachmentCounts.pottyImages);
-    }
     return 5;
-  }, [detailActivityType, freeAttachmentCounts.pottyImages, subscriptionPlan]);
+  }, [subscriptionPlan]);
 
   const detailAttachmentPickerBlocked =
-    subscriptionPlan !== "plus" &&
-    detailActivityType !== "potty" &&
-    detailActivityType !== "poop" &&
-    freeAttachmentCounts.medicalAttachmentUses >= FREE_MEDICAL_ATTACHMENT_USE_LIMIT;
+    subscriptionPlan !== "plus" && (
+      detailActivityType === "potty" || detailActivityType === "poop"
+        ? freeAttachmentCounts.pottyImageUses >= FREE_POTTY_IMAGE_USE_LIMIT
+        : freeAttachmentCounts.medicalAttachmentUses >= FREE_MEDICAL_ATTACHMENT_USE_LIMIT
+    );
 
-  const detailAttachmentLimitMessage =
-    subscriptionPlan === "plus"
-      ? undefined
-      : detailActivityType === "potty" || detailActivityType === "poop"
-        ? "Potty images are a PetNotebook Plus feature after your first free image. Upgrade for $9.99/month to unlock more."
-        : undefined;
-  const detailAttachmentPickerBlockedMessage = "Attachments are a PetNotebook Plus feature after your first free upload. Upgrade for $9.99/month to unlock more.";
+  const detailAttachmentPickerBlockedMessage =
+    detailActivityType === "potty" || detailActivityType === "poop"
+      ? "Poop images are a PetNotebook Plus feature after your first free upload. Upgrade for $9.99/month to unlock more."
+      : "Attachments are a PetNotebook Plus feature after your first free upload. Upgrade for $9.99/month to unlock more.";
 
   useEffect(() => {
     let mounted = true;
@@ -1036,7 +1031,6 @@ export default function MedicalRecordsPage() {
                         }
                         onAttachmentsChange={setAttachmentFiles}
                         maxAttachmentFiles={detailAttachmentLimit}
-                        attachmentLimitMessage={detailAttachmentLimitMessage}
                         attachmentPickerBlocked={detailAttachmentPickerBlocked}
                         attachmentPickerBlockedMessage={detailAttachmentPickerBlockedMessage}
                         onHappenedAtChange={setHappenedAtValue}
