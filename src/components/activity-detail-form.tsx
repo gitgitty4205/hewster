@@ -247,9 +247,9 @@ const notesPlaceholders: Record<ActivityType, string> = {
 
   poop: "Optional Poop Notes, Location, Quality, Or Anything Unusual",
 
-  activity: "Location/Details - Park, Beach, Trail, Neighborhood, Backyard, Duration, Behavior, Or Anything Notable",
+  activity: "Location, duration, behavior, or anything notable",
 
-  outdoor: "Location/Details - Park, Beach, Trail, Neighborhood, Backyard, Duration, Behavior, Or Anything Notable",
+  outdoor: "Location, duration, behavior, or anything notable",
 
   care: "Daycare/Boarding Details, Pickup/Dropoff Notes, Or Anything Notable",
 
