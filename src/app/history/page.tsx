@@ -2483,7 +2483,7 @@ export default function HistoryPage() {
 
           <header className="mb-6">
 
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
 
               <div>
 
@@ -2535,7 +2535,7 @@ export default function HistoryPage() {
 
         <header className="mb-6">
 
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
 
             <div>
 

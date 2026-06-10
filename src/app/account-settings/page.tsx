@@ -726,7 +726,7 @@ export default function AccountSettingsPage() {
     <main className="min-h-[100dvh] bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-6">
         <header className="mb-5">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Account Settings</h1>

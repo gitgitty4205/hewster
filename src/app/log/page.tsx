@@ -1377,9 +1377,9 @@ export default function LogPage() {
 
           <header className="mb-5 px-1 pb-2">
 
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
 
-              <div className="min-w-0 flex-1 pt-1">
+              <div className="min-w-0 flex-1">
 
                 <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
 
@@ -1423,9 +1423,9 @@ export default function LogPage() {
 
         <header className="mb-5 px-1 pb-2">
 
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
 
-            <div className="min-w-0 flex-1 pt-1">
+            <div className="min-w-0 flex-1">
 
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Manage Events</h1>
