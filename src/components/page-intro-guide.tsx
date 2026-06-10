@@ -13,7 +13,7 @@ const introPages = [
     description: "See today's meals, care reminders, alerts, potty notes, and recent events in one place.",
   },
   {
-    title: "Event Details",
+    title: "Manage Events",
     href: "/hewie/log",
     description: "Log meals, potty breaks, treats, symptoms, notes, medication, supplements, and attachments.",
   },

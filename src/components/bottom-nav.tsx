@@ -44,7 +44,7 @@ type PagesBackgroundMode = "soft" | "full";
 
 const pages = [
   { label: "Today", href: `${APP_BASE}`, iconKind: "bookmark" },
-  { label: "Event Details", href: `${APP_BASE}/log`, iconKind: "pencil" },
+  { label: "Manage Events", href: `${APP_BASE}/log`, iconKind: "pencil" },
   { label: "History", href: `${APP_BASE}/history`, icon: History },
   { label: "Health Records", href: `${APP_BASE}/medical-records`, icon: FileHeart },
   { label: "Weight", href: `${APP_BASE}/weight`, iconKind: "weight" },
