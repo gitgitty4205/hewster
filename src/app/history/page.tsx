@@ -2,7 +2,7 @@
 
 
 
-import { Check, ChevronLeft, ChevronRight, Droplets, Ellipsis, ImageIcon, Lock, LockOpen, Paperclip, SlidersHorizontal, Tablets, TriangleAlert } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, CircleHelp, Droplets, Ellipsis, ImageIcon, Lock, LockOpen, Paperclip, SlidersHorizontal, Tablets, TriangleAlert } from "lucide-react";
 
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
@@ -121,6 +121,8 @@ type HistoryTimelineItem = HistoryDay["timelineItems"][number];
 type HistoryTimelineEntry =
   | { type: "item"; item: HistoryTimelineItem }
   | { type: "group"; id: string; items: HistoryTimelineItem[] };
+
+const LOGGING_DETAILS_HELP_TEXT = "Includes who logged the event, who updated it, and when changes were made.";
 
 
 
@@ -2865,17 +2867,29 @@ export default function HistoryPage() {
                 </div>
 
                 {canIncludeLogDetails ? (
-                  <label className="flex items-start gap-2 rounded-2xl bg-white/80 px-3 py-2 text-xs font-semibold text-zinc-600 ring-1 ring-zinc-200/80">
+                  <div className="flex items-start gap-2 rounded-2xl bg-white/80 px-3 py-2 text-xs font-semibold text-zinc-600 ring-1 ring-zinc-200/80">
                     <input
+                      id="include-logging-details"
                       type="checkbox"
                       checked={includeLogDetails}
                       onChange={(event) => setIncludeLogDetails(event.target.checked)}
                       className="mt-0.5 size-4 rounded border-zinc-300 accent-[var(--hewie-accent,#64748b)]"
                     />
-                    <span>
+                    <label htmlFor="include-logging-details">
                       Include logging details
-                    </span>
-                  </label>
+                    </label>
+                    <button
+                      type="button"
+                      aria-label={LOGGING_DETAILS_HELP_TEXT}
+                      title={LOGGING_DETAILS_HELP_TEXT}
+                      className="group relative -mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[var(--hewie-active-text,#334155)]/50 transition hover:bg-[var(--hewie-active-bg,#f1f5f9)] hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-ring,#cbd5e1)]"
+                    >
+                      <CircleHelp className="size-3.5" strokeWidth={2.4} />
+                      <span className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-64 -translate-x-1/2 rounded-2xl bg-zinc-900 px-3 py-2 text-left text-xs font-medium leading-5 text-white shadow-lg group-hover:block group-focus:block">
+                        {LOGGING_DETAILS_HELP_TEXT}
+                      </span>
+                    </button>
+                  </div>
                 ) : null}
 
                 <div className="flex flex-wrap gap-2">
