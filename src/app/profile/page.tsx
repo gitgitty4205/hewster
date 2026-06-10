@@ -589,33 +589,33 @@ export default function ProfilePage() {
                 />
               </label>
             </div>
+          </fieldset>
+        </section>
 
-            <div className="rounded-2xl bg-white/55 p-3 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
-              <h3 className="mb-3 text-sm font-semibold text-[var(--hewie-active-text,#334155)]/85">Emergency Contact</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm">
-                  <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Emergency Contact Name</span>
-                  <input
-                    value={profile.emergencyContactName}
-                    onChange={(event) => updateProfile({ emergencyContactName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
-                    maxLength={TEXT_LIMITS.shortName}
-                    placeholder="Optional"
-                    className={petInfoInputClass()}
-                  />
-                </label>
-                <label className="block text-sm">
-                  <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Emergency Contact Phone</span>
-                  <input
-                    type="tel"
-                    value={profile.emergencyContactPhone}
-                    onChange={(event) => updateProfile({ emergencyContactPhone: clampText(event.target.value, TEXT_LIMITS.shortName) })}
-                    maxLength={TEXT_LIMITS.shortName}
-                    placeholder="Optional"
-                    className={petInfoInputClass()}
-                  />
-                </label>
-              </div>
-            </div>
+        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+          <h2 className="mb-3 text-lg font-semibold">Emergency Contact</h2>
+          <fieldset disabled={profileDetailsLocked} className="grid grid-cols-2 gap-3 disabled:opacity-80">
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Emergency Contact Name</span>
+              <input
+                value={profile.emergencyContactName}
+                onChange={(event) => updateProfile({ emergencyContactName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                maxLength={TEXT_LIMITS.shortName}
+                placeholder="Optional"
+                className={petInfoInputClass()}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Emergency Contact Phone</span>
+              <input
+                type="tel"
+                value={profile.emergencyContactPhone}
+                onChange={(event) => updateProfile({ emergencyContactPhone: clampText(event.target.value, TEXT_LIMITS.shortName) })}
+                maxLength={TEXT_LIMITS.shortName}
+                placeholder="Optional"
+                className={petInfoInputClass()}
+              />
+            </label>
           </fieldset>
         </section>
 
