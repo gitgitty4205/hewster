@@ -265,7 +265,7 @@ const notesPlaceholders: Record<ActivityType, string> = {
 
   medication: "Medication name, dose, schedule, skip reason, or vet instructions",
 
-  sick: "Symptoms, vet notes, medication, prevention, follow-up, records, or invoice details",
+  sick: "Symptoms, changes, observations, or anything unusual",
 
   other: "Add any details or context you want to remember",
 
