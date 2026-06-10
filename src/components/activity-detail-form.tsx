@@ -119,7 +119,7 @@ const presets: Record<ActivityType, string[]> = {
 
   hike: ["Short Hiking", "Long Hike"],
 
-  treat: ["Regular Treat", "New Treat", "Training Treats", "Dental Chew / Chew", "Other"],
+  treat: ["Regular Treat", "New Treat", "Training Treats", "Other"],
 
   food: [],
 
@@ -257,7 +257,7 @@ const notesPlaceholders: Record<ActivityType, string> = {
 
   hike: "Route, Weather, Duration, Behavior, Or Anything Notable",
 
-  treat: "Treat Name/Details - Beef Liver, Lucky Mat, Bully Stick, Kong, Dental Chew, Amount, Or Reason",
+  treat: "Treat Name/Details - beef liver, licky mat, Bully Stick, Kong, Amount, Or Reason",
 
   food: "Food Details, Amount, Appetite, Or Anything Unusual",
 
@@ -1462,7 +1462,7 @@ export function ActivityDetailForm({
             onChange={(event) => onNotesChange(clampText(event.target.value, TEXT_LIMITS.mediumText))}
             maxLength={TEXT_LIMITS.mediumText}
 
-            placeholder={activityType === "food" ? "What was fed?" : "Beef Liver, Lucky Mat, Dental Chew, Amount, Etc."}
+            placeholder={activityType === "food" ? "What was fed?" : "beef liver, licky mat, Amount, Etc."}
 
             className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
 
@@ -1490,7 +1490,7 @@ export function ActivityDetailForm({
 
             rows={2}
 
-            placeholder={activityType === "food" ? "Appetite, reaction, or anything unusual" : "Optional Notes - Why Given, Reaction, Amount, Or Anything Unusual"}
+            placeholder={activityType === "food" ? "Appetite, reaction, or anything unusual" : "Why given, reaction, amount, or anything unusual"}
 
             className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
 
