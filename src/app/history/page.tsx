@@ -2596,17 +2596,6 @@ export default function HistoryPage() {
 
         </header>
 
-
-        {subscriptionPlan === "free" ? (
-          <div className="mb-4 rounded-3xl bg-white/92 p-4 text-sm leading-5 text-zinc-600 shadow-sm ring-1 ring-zinc-200">
-            <p className="font-semibold text-zinc-900">View the latest 3 months of history.</p>
-            <p className="mt-1">
-              Older records are available with PetNotebook Plus.
-            </p>
-          </div>
-        ) : null}
-
-
         <section className="mb-4 overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
 
           <div className="bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)]">
