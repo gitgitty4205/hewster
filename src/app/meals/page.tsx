@@ -278,7 +278,7 @@ export default function MealsPage() {
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">Saved Meal Plan</h2>
-              <p className="text-sm text-zinc-500">Your Saved Data Stays The Same, This Is Just The New Home For It.</p>
+              <p className="text-sm text-zinc-500">Templates used for future daily meal plans.</p>
             </div>
             <div className="text-right text-xs text-zinc-500">
               <div className="flex items-center justify-end gap-1.5 text-emerald-600">
