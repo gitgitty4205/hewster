@@ -31,7 +31,6 @@ export const subscriptionPlans: SubscriptionPlan[] = [
       "Track everyday pet care",
       "1 pet",
       "3 months of history",
-      "1 PDF report",
     ],
   },
   {
