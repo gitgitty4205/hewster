@@ -1059,7 +1059,7 @@ export default function ProfilePage() {
           ) : null}
 
           <div className="mt-5 space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Current users</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Notebook members</h3>
             {members.filter((member) => member.status !== "revoked").map((member) => {
               const pendingAccess = pendingMemberAccess[member.id] ?? member.role;
               const hasPendingChange = member.role !== "owner" && pendingAccess !== member.role;
