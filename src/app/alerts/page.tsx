@@ -72,6 +72,10 @@ function alertRepeats(scope: ManualAlert["scope"]) {
   return ["ongoing", "every-other-day", "certain-days"].includes(scope ?? "today");
 }
 
+function reminderActionLabel(eventType: ReminderAlertEvent) {
+  return reminderEventLabel(eventType).replace(" / ", "/").toLowerCase();
+}
+
 function repeatHelperText(scope: ManualAlert["scope"]) {
   if (scope === "ongoing") return "Repeats every day. If today's time already passed, it starts tomorrow.";
   if (scope === "every-other-day") return "Repeats every other day. If today's time already passed, it starts tomorrow.";
@@ -1211,7 +1215,7 @@ export default function AlertsPage() {
                       <div>
                         <div>
                           <p className="font-medium text-[var(--hewie-active-text,#334155)]">
-                            {reminderEventLabel(rule.eventType)} by {formatReminderTime(rule.time)}
+                            Remind if {reminderActionLabel(rule.eventType)} not logged by {formatReminderTime(rule.time)}
                           </p>
                           <p className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/65">Every Day</p>
                         </div>
