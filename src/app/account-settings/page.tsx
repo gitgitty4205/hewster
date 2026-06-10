@@ -20,7 +20,6 @@ import { getStoredSupabaseSession, getSupabaseBrowserClient, PASSWORD_RESET_REQU
 import {
   PET_THEME_UPDATED_EVENT,
   PET_PROFILE_UPDATED_EVENT,
-  DEFAULT_PET_PHOTO_URL,
   appThemes,
   applyPetTheme,
   defaultPetProfile,
@@ -43,6 +42,7 @@ const PASSWORD_MAX_LENGTH = 128;
 
 const ACCOUNT_INFO_STORAGE_KEY = "petnotebook.accountInfoSnapshot";
 const NOTIFICATION_SETTINGS_STORAGE_KEY = "petnotebook.notificationSettings";
+const PLUS_PET_TILE_FALLBACK_URL = "/paw-notes-transparent.svg";
 const ADD_PET_UPGRADE_RETURN_PATH_KEY = "petnotebook.addPetUpgradeReturnPath";
 const OPEN_ADD_PET_UPGRADE_DIALOG_KEY = "petnotebook.openAddPetUpgradeDialog";
 type TwoFactorMethod = "email" | "sms";
@@ -272,7 +272,7 @@ export default function AccountSettingsPage() {
   const [twoFactorMessage, setTwoFactorMessage] = useState("");
   const [membershipExpanded, setMembershipExpanded] = useState(false);
   const [themeId, setThemeId] = useState<ThemeId>(defaultPetProfile.themeId);
-  const [plusPetPhotoUrl, setPlusPetPhotoUrl] = useState(DEFAULT_PET_PHOTO_URL);
+  const [plusPetPhotoUrl, setPlusPetPhotoUrl] = useState(PLUS_PET_TILE_FALLBACK_URL);
 
   useEffect(() => {
     const refreshTheme = () => setThemeId(loadUserTheme(user?.id));
@@ -360,7 +360,7 @@ export default function AccountSettingsPage() {
     let active = true;
 
     const refreshPlusPetPhoto = () => {
-      const localPhotoUrl = loadPetProfile().photoUrl || DEFAULT_PET_PHOTO_URL;
+      const localPhotoUrl = loadPetProfile().photoUrl || PLUS_PET_TILE_FALLBACK_URL;
       setPlusPetPhotoUrl(localPhotoUrl);
 
       const supabase = getSupabaseBrowserClient();
@@ -368,10 +368,10 @@ export default function AccountSettingsPage() {
 
       loadSharedPetProfile(supabase, displayUser)
         .then((profile) => {
-          if (active) setPlusPetPhotoUrl(profile.photoUrl || DEFAULT_PET_PHOTO_URL);
+          if (active) setPlusPetPhotoUrl(profile.photoUrl || PLUS_PET_TILE_FALLBACK_URL);
         })
         .catch(() => {
-          if (active) setPlusPetPhotoUrl(loadPetProfile().photoUrl || DEFAULT_PET_PHOTO_URL);
+          if (active) setPlusPetPhotoUrl(loadPetProfile().photoUrl || PLUS_PET_TILE_FALLBACK_URL);
         });
     };
 
