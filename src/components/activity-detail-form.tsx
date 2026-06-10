@@ -859,9 +859,10 @@ export function ActivityDetailForm({
   const hasSickDetail = activityType !== "sick" || Boolean(detail.trim());
   const showCoreFields = activityType !== "sick" || hasSickDetail;
   const poopPhotoDetail = activityType === "poop" || (activityType === "potty" && /\bpoop\b/i.test(detail) && !/\bno poop\b/i.test(detail));
+  const showMedicalAttachmentField = activityType === "sick" && (detail === "Vet Visit" || isOtherMedicalDetail(detail));
   const showAttachmentField = Boolean(
     onAttachmentsChange &&
-      ((activityType === "sick" && detail === "Vet Visit") ||
+      (showMedicalAttachmentField ||
         poopPhotoDetail ||
         (isEditing && (attachmentNames.length > 0 || attachmentFiles.length > 0)))
   );
