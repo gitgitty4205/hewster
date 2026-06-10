@@ -3553,19 +3553,19 @@ export default function HistoryPage() {
             <div className="relative w-full max-w-md rounded-3xl bg-white p-5 text-zinc-900 shadow-xl ring-1 ring-zinc-200">
               <div className="mb-4">
                 <h3 id="history-copy-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
-                  <span>Send history copies with</span>
+                  <span>Create History Reports</span>
                   <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
                     Plus
                   </span>
                 </h3>
                 <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
-                  Upgrade to export and send filtered PDF reports from your pet&apos;s history.
+                  Export and email filtered PDF reports from your pet&apos;s history.
                 </p>
               </div>
 
               <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
                 {[
-                  "Unlimited PDF exports",
+                  "Unlimited PDF reports",
                   "Lifetime health history",
                   "Notebook sharing",
                 ].map((feature) => (
