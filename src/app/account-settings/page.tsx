@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import { Bell, Check, ChevronDown, Crown, KeyRound, Pencil, UserRound, X } from "lucide-react";
@@ -18,9 +19,13 @@ import {
 import { getStoredSupabaseSession, getSupabaseBrowserClient, PASSWORD_RESET_REQUIRED_STORAGE_KEY, refreshSupabaseCurrentSession } from "@/lib/supabase";
 import {
   PET_THEME_UPDATED_EVENT,
+  PET_PROFILE_UPDATED_EVENT,
+  DEFAULT_PET_PHOTO_URL,
   appThemes,
   applyPetTheme,
   defaultPetProfile,
+  loadPetProfile,
+  loadSharedPetProfile,
   loadUserTheme,
   type ThemeId,
 } from "@/lib/pet-profile";
@@ -267,6 +272,7 @@ export default function AccountSettingsPage() {
   const [twoFactorMessage, setTwoFactorMessage] = useState("");
   const [membershipExpanded, setMembershipExpanded] = useState(false);
   const [themeId, setThemeId] = useState<ThemeId>(defaultPetProfile.themeId);
+  const [plusPetPhotoUrl, setPlusPetPhotoUrl] = useState(DEFAULT_PET_PHOTO_URL);
 
   useEffect(() => {
     const refreshTheme = () => setThemeId(loadUserTheme(user?.id));
@@ -349,6 +355,38 @@ export default function AccountSettingsPage() {
   }, []);
 
   const displayUser = user ?? storedUser;
+
+  useEffect(() => {
+    let active = true;
+
+    const refreshPlusPetPhoto = () => {
+      const localPhotoUrl = loadPetProfile().photoUrl || DEFAULT_PET_PHOTO_URL;
+      setPlusPetPhotoUrl(localPhotoUrl);
+
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase || !displayUser) return;
+
+      loadSharedPetProfile(supabase, displayUser)
+        .then((profile) => {
+          if (active) setPlusPetPhotoUrl(profile.photoUrl || DEFAULT_PET_PHOTO_URL);
+        })
+        .catch(() => {
+          if (active) setPlusPetPhotoUrl(loadPetProfile().photoUrl || DEFAULT_PET_PHOTO_URL);
+        });
+    };
+
+    refreshPlusPetPhoto();
+    window.addEventListener(PET_PROFILE_UPDATED_EVENT, refreshPlusPetPhoto);
+    window.addEventListener("petnotebook-active-notebook-updated", refreshPlusPetPhoto);
+    window.addEventListener("storage", refreshPlusPetPhoto);
+
+    return () => {
+      active = false;
+      window.removeEventListener(PET_PROFILE_UPDATED_EVENT, refreshPlusPetPhoto);
+      window.removeEventListener("petnotebook-active-notebook-updated", refreshPlusPetPhoto);
+      window.removeEventListener("storage", refreshPlusPetPhoto);
+    };
+  }, [displayUser]);
 
   const completePlusUpgrade = () => {
     setSelectedPlan("plus");
@@ -1320,16 +1358,27 @@ export default function AccountSettingsPage() {
               >
                 <X className="size-3" aria-hidden="true" />
               </button>
-              <div className="mb-4 pr-8">
-                <h3 id="plus-upgrade-title" className="flex flex-wrap items-center gap-2 text-lg font-semibold text-zinc-900">
-                  <span>Upgrade to</span>
-                  <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-sm font-bold text-[var(--hewie-active-text,#334155)]">
-                    PetNotebook Plus
-                  </span>
-                </h3>
-                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
-                  Everything you need to care for your pet, all in one place.
-                </p>
+              <div className="mb-4 flex items-start justify-between gap-3 pr-8">
+                <div className="min-w-0">
+                  <h3 id="plus-upgrade-title" className="flex flex-wrap items-center gap-2 text-lg font-semibold text-zinc-900">
+                    <span>Upgrade to</span>
+                    <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-sm font-bold text-[var(--hewie-active-text,#334155)]">
+                      PetNotebook Plus
+                    </span>
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                    Everything you need to care for your pet, all in one place.
+                  </p>
+                </div>
+                <span className="relative mt-0.5 size-14 shrink-0 overflow-hidden rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)] shadow-md ring-2 ring-white">
+                  <Image
+                    src={plusPetPhotoUrl}
+                    alt="Pet profile"
+                    fill
+                    sizes="56px"
+                    className="object-cover object-center"
+                  />
+                </span>
               </div>
 
               <div className="mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
