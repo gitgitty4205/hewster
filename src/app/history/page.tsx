@@ -2875,20 +2875,22 @@ export default function HistoryPage() {
                       onChange={(event) => setIncludeLogDetails(event.target.checked)}
                       className="mt-0.5 size-4 rounded border-zinc-300 accent-[var(--hewie-accent,#64748b)]"
                     />
-                    <label htmlFor="include-logging-details">
-                      Include logging details
-                    </label>
-                    <button
-                      type="button"
-                      aria-label={LOGGING_DETAILS_HELP_TEXT}
-                      title={LOGGING_DETAILS_HELP_TEXT}
-                      className="group relative -mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[var(--hewie-active-text,#334155)]/50 transition hover:bg-[var(--hewie-active-bg,#f1f5f9)] hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-ring,#cbd5e1)]"
-                    >
-                      <CircleHelp className="size-3.5" strokeWidth={2.4} />
-                      <span className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-64 -translate-x-1/2 rounded-2xl bg-zinc-900 px-3 py-2 text-left text-xs font-medium leading-5 text-white shadow-lg group-hover:block group-focus:block">
-                        {LOGGING_DETAILS_HELP_TEXT}
-                      </span>
-                    </button>
+                    <span className="inline-flex min-w-0 items-center gap-1">
+                      <label htmlFor="include-logging-details">
+                        Include logging details
+                      </label>
+                      <button
+                        type="button"
+                        aria-label={LOGGING_DETAILS_HELP_TEXT}
+                        title={LOGGING_DETAILS_HELP_TEXT}
+                        className="group relative inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[var(--hewie-active-text,#334155)]/50 transition hover:bg-[var(--hewie-active-bg,#f1f5f9)] hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-ring,#cbd5e1)]"
+                      >
+                        <CircleHelp className="size-3.5" strokeWidth={2.4} />
+                        <span className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-64 -translate-x-1/2 rounded-2xl bg-zinc-900 px-3 py-2 text-left text-xs font-medium leading-5 text-white shadow-lg group-hover:block group-focus:block">
+                          {LOGGING_DETAILS_HELP_TEXT}
+                        </span>
+                      </button>
+                    </span>
                   </div>
                 ) : null}
 
