@@ -377,7 +377,7 @@ export default function ProfilePage() {
   const canManageNotebookAccess = activeNotebookRole === "owner" && activeNotebookOwnerId === user?.id && isNotebookSharingUnlocked;
   const canOwnNotebookAccess = activeNotebookRole === "owner" && activeNotebookOwnerId === user?.id;
   const notebookRoleLoaded = !user || Boolean(activeNotebookOwnerId);
-  const canEditProfile = !user || (notebookRoleLoaded && (activeNotebookRole === "owner" || activeNotebookRole === "co-owner"));
+  const canEditProfile = !user || canOwnNotebookAccess;
   const canManageProfilePhoto = !user || (notebookRoleLoaded && activeNotebookRole === "owner" && activeNotebookOwnerId === user.id);
   const profileDetailsLocked = !canEditProfile || !isEditingProfile;
   const aboutDetailsLocked = !canEditProfile || !isEditingAbout;

@@ -44,7 +44,7 @@ type PetProfileRow = {
 };
 
 function canSyncSharedPetProfile(role: string) {
-  return role === "owner" || role === "co-owner";
+  return role === "owner";
 }
 
 async function upsertSharedPetProfile(supabase: SupabaseClient, ownerId: string, profile: PetProfile) {
@@ -279,8 +279,8 @@ export async function loadSharedPetProfile(supabase: SupabaseClient, user: User)
 
 export async function saveSharedPetProfile(supabase: SupabaseClient, user: User, profile: PetProfile) {
   const access = await resolveActiveNotebookAccess(supabase, user);
-  if (access.role !== "owner" && access.role !== "co-owner") {
-    throw new Error("Only owners and co-owners can edit the pet profile.");
+  if (access.role !== "owner") {
+    throw new Error("Only owners can edit the pet profile.");
   }
 
   const { error } = await upsertSharedPetProfile(supabase, access.notebookOwnerId, profile);
