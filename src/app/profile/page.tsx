@@ -1049,7 +1049,7 @@ export default function ProfilePage() {
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--hewie-active-text,#334155)] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:scale-[1.01] hover:opacity-90"
             >
               <Plus className="size-4" />
-              Invite Notebook Members
+              Invite Members
             </button>
           ) : null}
           {canManageNotebookAccess && accessMessage ? (
