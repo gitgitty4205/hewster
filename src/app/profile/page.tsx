@@ -811,7 +811,7 @@ export default function ProfilePage() {
                 onChange={(event) => updateProfile({ personality: clampText(event.target.value, TEXT_LIMITS.note) })}
                 maxLength={TEXT_LIMITS.note}
                 rows={2}
-                placeholder="e.g. Shy at first, playful once comfortable"
+                placeholder="e.g. shy at first, playful once comfortable"
                 className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
               />
             </label>

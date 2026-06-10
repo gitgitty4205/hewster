@@ -332,7 +332,7 @@ export default function MealsPage() {
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="break-words font-medium text-zinc-900 [overflow-wrap:anywhere]">{displayedMeal.name || "New Meal"}</h3>
-                      <p className="text-sm text-zinc-500">Template Used For Future Daily Checklists.</p>
+                      <p className="text-sm text-zinc-500">Template used for future daily checklists.</p>
                     </div>
                     {isEditing ? null : (
                       <Button

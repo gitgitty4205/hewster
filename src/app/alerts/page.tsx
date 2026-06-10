@@ -772,7 +772,7 @@ export default function AlertsPage() {
                   value={titleValue}
                   onChange={(event) => setTitleValue(clampText(event.target.value, TEXT_LIMITS.shortName))}
                   maxLength={TEXT_LIMITS.shortName}
-                  placeholder="Care Alert Title"
+                  placeholder="Care alert title"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                 />
                 <div className="grid grid-cols-[1fr_auto] gap-3">
@@ -835,7 +835,7 @@ export default function AlertsPage() {
                   onChange={(event) => setMessageValue(event.target.value.slice(0, 100))}
                   maxLength={100}
                   rows={3}
-                  placeholder="Care Alert Details / Message For Myself And Other Caretakers"
+                  placeholder="Care alert details / message for myself and other caretakers"
                   className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                 />
                 {newAlertError ? <p className="text-sm font-medium text-[#8f1739]">{newAlertError}</p> : null}
@@ -1011,7 +1011,7 @@ export default function AlertsPage() {
                         value={editingTitleValue}
                         onChange={(event) => setEditingTitleValue(clampText(event.target.value, TEXT_LIMITS.shortName))}
                         maxLength={TEXT_LIMITS.shortName}
-                        placeholder="Care Alert Title"
+                        placeholder="Care alert title"
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                       />
                       <div className="grid grid-cols-[1fr_auto] gap-3">
@@ -1074,7 +1074,7 @@ export default function AlertsPage() {
                         onChange={(event) => setEditingMessageValue(event.target.value.slice(0, 100))}
                         maxLength={100}
                         rows={3}
-                        placeholder="Care Alert Details / Message For Myself And Other Caretakers"
+                        placeholder="Care alert details / message for myself and other caretakers"
                         className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                       />
                       {editingAlertError ? <p className="text-sm font-medium text-[#8f1739]">{editingAlertError}</p> : null}
@@ -1217,7 +1217,7 @@ export default function AlertsPage() {
                           <p className="font-medium text-[var(--hewie-active-text,#334155)]">
                             Remind if {reminderActionLabel(rule.eventType)} not logged by {formatReminderTime(rule.time)}
                           </p>
-                          <p className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/65">Every Day</p>
+                          <p className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/65">Every day</p>
                         </div>
                       </div>
                     )}

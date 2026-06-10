@@ -664,7 +664,7 @@ export function ActivityFeed({
           </div>
           <div className="space-y-3">
             {visibleTimelineItems.length === 0 ? (
-              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No Events Logged Yet.</p>
+              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No events logged yet.</p>
             ) : (
               visibleTimelineItems.map((item, index) => {
                 if (item.activity) {
@@ -763,7 +763,7 @@ export function ActivityFeed({
         </div>
         <div className="space-y-5">
           {dayEntries.length === 0 ? (
-            <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No Events Logged Yet.</p>
+            <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No events logged yet.</p>
           ) : (
             dayEntries.map(([day, logs]) => (
               <div key={day} className="space-y-3">
@@ -902,7 +902,7 @@ export function ActivityFeed({
         {visibleTimelineItems?.length ? (
           visibleTimelineItems.map((item, index) => renderTimelineRow(item, `${item.activityType ?? "item"}-${item.time}-${item.label}-${item.detail}-${index}`))
         ) : (
-          <p className="text-sm text-zinc-500">No Events Logged Yet.</p>
+          <p className="text-sm text-zinc-500">No events logged yet.</p>
         )}
       </div>
     </section>

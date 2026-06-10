@@ -464,7 +464,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                       value={newPetSpecies}
                       onChange={(event) => setNewPetSpecies(clampText(event.target.value, TEXT_LIMITS.shortName))}
                       maxLength={TEXT_LIMITS.shortName}
-                      placeholder="Dog, Cat, Rabbit..."
+                      placeholder="Dog, cat, rabbit..."
                       className="mt-1 w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm font-medium outline-none focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
                     />
                   </label>

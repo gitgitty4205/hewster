@@ -241,11 +241,11 @@ const groupedPresets: Partial<Record<ActivityType, Array<{ label: string; option
 
 const notesPlaceholders: Record<ActivityType, string> = {
 
-  potty: "Optional Potty Notes, Location, Quality, Or Anything Unusual",
+  potty: "Optional potty notes, location, quality, or anything unusual",
 
-  pee: "Optional Note",
+  pee: "Optional note",
 
-  poop: "Optional Poop Notes, Location, Quality, Or Anything Unusual",
+  poop: "Optional poop notes, location, quality, or anything unusual",
 
   activity: "Location, duration, behavior, or anything notable",
 
@@ -253,19 +253,19 @@ const notesPlaceholders: Record<ActivityType, string> = {
 
   care: "Pickup, drop-off, or care notes",
 
-  wellness: "Optional Notes Or Anything Notable",
+  wellness: "Optional notes or anything notable",
 
-  hike: "Route, Weather, Duration, Behavior, Or Anything Notable",
+  hike: "Route, weather, duration, behavior, or anything notable",
 
-  treat: "Treat Name/Details - Beef Liver, Licky Mat, Bully Stick, Kong, Amount, Or Reason",
+  treat: "Treat name/details - beef liver, licky mat, bully stick, Kong, amount, or reason",
 
-  food: "Food Details, Amount, Appetite, Or Anything Unusual",
+  food: "Food details, amount, appetite, or anything unusual",
 
-  supplement: "Supplement Name, Dose, Frequency, Given/Missed, Reminder Timing, And Refill Date If Needed",
+  supplement: "Supplement name, dose, frequency, given/missed, reminder timing, and refill date if needed",
 
-  medication: "Medication Name, Dose, Schedule, Skip Reason, Or Vet Instructions",
+  medication: "Medication name, dose, schedule, skip reason, or vet instructions",
 
-  sick: "Symptoms, Vet Notes, Medication, Prevention, Follow-Up, Records, Or Invoice Details",
+  sick: "Symptoms, vet notes, medication, prevention, follow-up, records, or invoice details",
 
   other: "Add any details or context you want to remember",
 
@@ -1462,7 +1462,7 @@ export function ActivityDetailForm({
             onChange={(event) => onNotesChange(clampText(event.target.value, TEXT_LIMITS.mediumText))}
             maxLength={TEXT_LIMITS.mediumText}
 
-            placeholder={activityType === "food" ? "What was fed?" : "Beef Liver, Licky Mat, Amount"}
+            placeholder={activityType === "food" ? "What was fed?" : "Beef liver, licky mat, amount"}
 
             className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
 

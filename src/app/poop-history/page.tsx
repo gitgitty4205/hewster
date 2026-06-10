@@ -142,7 +142,7 @@ export default function PoopHistoryPage() {
             ))
           ) : (
             <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
-              <p className="text-sm text-zinc-500">No Poop Records Logged Yet.</p>
+              <p className="text-sm text-zinc-500">No poop records logged yet.</p>
             </section>
           )}
         </div>

@@ -93,7 +93,7 @@ function summarizeSchedule(item: CareItemTemplate, meals: MealTemplate[]) {
   }
 
   const mealNames = meals.filter((meal) => item.mealIds.includes(meal.id)).map((meal) => meal.name);
-  const mealSummary = mealNames.length ? mealNames.join(", ") : "No Meal Selected";
+  const mealSummary = mealNames.length ? mealNames.join(", ") : "No meal selected";
   return mealSummary;
 }
 

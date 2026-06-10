@@ -361,7 +361,7 @@ export default function WeightPage() {
                 value={editingNoteValue}
                 onChange={(event) => setEditingNoteValue(clampText(event.target.value, TEXT_LIMITS.note))}
                 maxLength={TEXT_LIMITS.note}
-                placeholder="Optional Notes"
+                placeholder="Optional notes"
                 className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
               />
           </label>
@@ -485,7 +485,7 @@ export default function WeightPage() {
                 value={noteValue}
                 onChange={(event) => setNoteValue(clampText(event.target.value, TEXT_LIMITS.note))}
                 maxLength={TEXT_LIMITS.note}
-                placeholder="Optional Notes"
+                placeholder="Optional notes"
                 className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
               />
             </label>
@@ -537,7 +537,7 @@ export default function WeightPage() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No Weight Entries Yet.</p>
+              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No weight entries yet.</p>
             )}
           </div>
         </section>

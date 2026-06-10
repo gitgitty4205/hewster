@@ -2683,7 +2683,7 @@ export default function HomeApp() {
                             value={customCareSkipNotes[occurrence.key] ?? ""}
                             onChange={(event) => updateCustomCareSkipNote(occurrence, clampText(event.target.value, TEXT_LIMITS.note))}
                             maxLength={TEXT_LIMITS.note}
-                            placeholder="Notes / Reasons"
+                            placeholder="Notes / reasons"
                             rows={1}
                             className="h-8 w-full resize-none rounded-xl border border-current/15 bg-white/70 px-2 py-1 text-xs text-inherit outline-none placeholder:text-current/40 focus:ring-2 focus:ring-current/15"
                           />
@@ -2881,7 +2881,7 @@ export default function HomeApp() {
                 </article>
               ))
             ) : (
-              <p className="text-sm text-[#765313]/65">No Poop Records Logged Yet.</p>
+              <p className="text-sm text-[#765313]/65">No poop records logged yet.</p>
             )}
           </div>
         </section>

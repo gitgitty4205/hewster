@@ -97,7 +97,7 @@ export function formatManualAlertTimelineDetail(alert: Pick<ManualAlert, "title"
 
 export function reminderFrequencyLabel(rule: Pick<ReminderAlertRule, "frequency" | "weekdays">) {
   void rule;
-  return "Every Day";
+  return "Every day";
 }
 
 function isReminderAlertRuleArray(value: unknown): value is ReminderAlertRule[] {
