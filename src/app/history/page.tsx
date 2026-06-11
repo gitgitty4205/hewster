@@ -479,8 +479,16 @@ function isReportImageActivity(activity: ActivityLog, filter: HistoryFilter) {
   return (filter === "all" || filter === "potty" || filter === "poopRecords") && isPottyAttachmentRecord(activity) && Boolean(activity.attachments?.length);
 }
 
+function isReportAttachmentActivity(activity: ActivityLog, filter: HistoryFilter) {
+  if (!activity.attachments?.length) return false;
+  if (isReportImageActivity(activity, filter)) return true;
+  return (filter === "all" || filter === "medical" || filter === "wellness" || filter === "medicalAttachments") && hasMedicalAttachmentRecord(activity);
+}
+
 function shouldAttachReportFile(activity: ActivityLog, attachment: ActivityAttachment, filter: HistoryFilter) {
-  if (filter === "medicalAttachments") return hasMedicalAttachmentRecord(activity) && isMedicalAttachment(attachment);
+  if ((filter === "all" || filter === "medical" || filter === "wellness" || filter === "medicalAttachments") && hasMedicalAttachmentRecord(activity)) {
+    return isMedicalAttachment(attachment);
+  }
   return isReportImageActivity(activity, filter) && isPottyImageAttachment(attachment);
 }
 
@@ -2372,7 +2380,7 @@ export default function HistoryPage() {
 
       day.activities.forEach((activity) => {
         lines.push(...reportActivityLines(activity));
-        if (isReportImageActivity(activity, copyFilter)) {
+        if (isReportAttachmentActivity(activity, copyFilter)) {
           lines.push(`__REPORT_IMAGES__:${activity.id}`);
         }
 

@@ -320,8 +320,32 @@ function isJpegContentType(value: string) {
   return normalized === "image/jpeg" || normalized === "image/jpg";
 }
 
+function isPdfAttachment(value: ReportImage) {
+  return value.contentType.toLowerCase().includes("pdf") || value.fileName.toLowerCase().endsWith(".pdf");
+}
+
+function reportAttachmentKind(value: ReportImage) {
+  if (isJpegContentType(value.contentType)) return "Image";
+  if (isPdfAttachment(value)) return "PDF";
+  return "File";
+}
+
 function pdfImageDraw(name: string, x: number, y: number, width: number, height: number) {
   return `q ${width} 0 0 ${height} ${x} ${y} cm /${name} Do Q`;
+}
+
+function pdfAttachmentCard(attachment: ReportImage, x: number, y: number, width: number, height: number, theme: ReturnType<typeof pdfReportTheme>) {
+  const nameLines = wrapPdfLine(attachment.fileName || "Attachment", 22).slice(0, 2);
+  const kind = reportAttachmentKind(attachment);
+
+  return [
+    `${theme.cardFill} ${pdfRoundedRect(x, y, width, height, 10, "f")}`,
+    `${theme.cardStroke} ${pdfRoundedRect(x, y, width, height, 10, "S")}`,
+    theme.accent,
+    pdfText(kind, x + 10, y + height - 18, 8, "F2"),
+    theme.neutral,
+    pdfTextLines(nameLines, x + 10, y + height - 34, 7.5, 9),
+  ].join("\n");
 }
 
 function buildHistoryPdf(text: string, options: {
@@ -439,31 +463,35 @@ endstream`);
   historyEntries.split("\n").forEach((rawLine) => {
     const reportImageMatch = rawLine.match(/^__REPORT_IMAGES__:(.+)$/);
     if (reportImageMatch) {
-      const images = reportImagesByActivityId.get(reportImageMatch[1]) ?? [];
-      const embeddedImages = images.filter((image) => pdfImageObjects.has(image.id));
-      if (!embeddedImages.length) return;
+      const attachments = reportImagesByActivityId.get(reportImageMatch[1]) ?? [];
+      if (!attachments.length) return;
 
       const thumbnailWidth = 98;
       const gap = 10;
-      const rows = Math.ceil(embeddedImages.length / 4);
+      const rows = Math.ceil(attachments.length / 4);
       const blockHeight = rows * 86 + 10;
 
       if (y - blockHeight < 54) finishPage();
 
-      embeddedImages.forEach((image, index) => {
+      attachments.forEach((image, index) => {
         const objectId = pdfImageObjects.get(image.id);
-        if (!objectId || !image.width || !image.height) return;
-
         const column = index % 4;
         const row = Math.floor(index / 4);
-        const aspect = image.width / image.height;
-        const drawWidth = aspect >= 1 ? thumbnailWidth : Math.min(thumbnailWidth, 74 * aspect);
-        const drawHeight = aspect >= 1 ? Math.min(74, thumbnailWidth / aspect) : 74;
-        const x = 74 + column * (thumbnailWidth + gap) + (thumbnailWidth - drawWidth) / 2;
+        const tileX = 74 + column * (thumbnailWidth + gap);
         const imageTop = y - row * 86;
-        const imageY = imageTop - drawHeight;
 
-        pageCommands.push(pdfImageDraw(image.pdfName, x, imageY, drawWidth, drawHeight));
+        if (objectId && image.width && image.height) {
+          const aspect = image.width / image.height;
+          const drawWidth = aspect >= 1 ? thumbnailWidth : Math.min(thumbnailWidth, 74 * aspect);
+          const drawHeight = aspect >= 1 ? Math.min(74, thumbnailWidth / aspect) : 74;
+          const x = tileX + (thumbnailWidth - drawWidth) / 2;
+          const imageY = imageTop - drawHeight;
+
+          pageCommands.push(pdfImageDraw(image.pdfName, x, imageY, drawWidth, drawHeight));
+          return;
+        }
+
+        pageCommands.push(pdfAttachmentCard(image, tileX, imageTop - 58, thumbnailWidth, 52, reportTheme));
       });
 
       y -= blockHeight;
@@ -556,7 +584,7 @@ async function fetchReportImages(supabase: SupabaseClient, references: ReportIma
     if (error || !data) continue;
 
     const bytes = Buffer.from(await data.arrayBuffer());
-    const contentType = (data.type || reference.contentType || "image/jpeg").toLowerCase();
+    const contentType = (data.type || reference.contentType || "application/octet-stream").toLowerCase();
     const dimensions = jpegDimensions(bytes);
 
     images.push({
