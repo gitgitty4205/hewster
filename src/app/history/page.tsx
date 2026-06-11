@@ -3676,7 +3676,7 @@ export default function HistoryPage() {
                   </span>
                 </h3>
                 <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
-                  Your first PDF report is free. Upgrade to Plus for unlimited reports.
+                  Upgrade to Plus for unlimited PDF reports.
                 </p>
               </div>
 
