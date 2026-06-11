@@ -2236,6 +2236,53 @@ export default function HistoryPage() {
     return lines;
   };
 
+  const reportMealLines = (meal: HistoryDay["meals"][number]) => {
+    const lines = [`- ${meal.actualTime} Meal: ${meal.name}`];
+    const statuses = [
+      isMissedMealRecord(meal) ? "Missed" : null,
+      isSkippedMealRecord(meal) ? "Skipped" : null,
+    ].filter(Boolean).join(", ");
+
+    if (meal.food) {
+      lines.push(`  Food: ${meal.food}`);
+    }
+    if (meal.fedNotes && !isMissedMealRecord(meal) && !isSkippedMealRecord(meal)) {
+      lines.push(`  Notes: ${meal.fedNotes}`);
+    }
+    if (statuses) {
+      lines.push(`  Status: ${statuses}`);
+    }
+
+    meal.careItems.forEach((item) => {
+      lines.push(`  ${careKindLabel(item.kind)}: ${item.name}`);
+      if (item.dose) {
+        lines.push(`    Dose: ${item.dose}`);
+      }
+      if (item.skipped) {
+        lines.push("    Status: Skipped");
+      }
+      if (!item.skipped && item.notes) {
+        lines.push(`    Notes: ${item.notes}`);
+      }
+    });
+
+    return lines;
+  };
+
+  const reportTimelineItemLines = (item: HistoryTimelineItem) => {
+    const lines = [`- ${item.time} ${item.label}`];
+    const [detailSummary, detailNotes] = item.detail.split(" • Notes: ", 2);
+
+    if (detailSummary) {
+      lines.push(`  Detail: ${detailSummary}`);
+    }
+    if (detailNotes) {
+      lines.push(`  Notes: ${detailNotes}`);
+    }
+
+    return lines;
+  };
+
   const buildHistoryCopyText = (copyDays: HistoryDay[], copyFilter: HistoryFilter, dateRange: string, reportProfile: PetProfile, ownerName: string, generatedDate: string, withLogDetails: boolean) => {
 
     const lines = [
@@ -2272,21 +2319,7 @@ export default function HistoryPage() {
       lines.push(formatDayLabel(day.day));
 
       day.meals.forEach((meal) => {
-        const statuses = [
-          isMissedMealRecord(meal) ? "Missed" : null,
-          isSkippedMealRecord(meal) ? "Skipped" : null,
-        ].filter(Boolean).join(", ");
-        const details = [
-          meal.food,
-          meal.fedNotes && !isMissedMealRecord(meal) && !isSkippedMealRecord(meal) ? `Notes: ${meal.fedNotes}` : null,
-          statuses ? `Status: ${statuses}` : null,
-        ].filter(Boolean).join(" | ");
-
-        lines.push(`- ${meal.actualTime} Meal: ${meal.name}${details ? ` - ${details}` : ""}`);
-
-        meal.careItems.forEach((item) => {
-          lines.push(`  - ${careKindLabel(item.kind)}: ${item.name}${item.dose ? `, ${item.dose}` : ""}${item.skipped ? " (Skipped)" : ""}`);
-        });
+        lines.push(...reportMealLines(meal));
 
         if (withLogDetails) {
           const audit = meal.auditInfo;
@@ -2297,7 +2330,7 @@ export default function HistoryPage() {
             audit?.lastEditedAt ? `Updated: ${formatReportDateTime(audit.lastEditedAt)}` : null,
           ].filter(Boolean);
 
-          lines.push(`  - Log details: ${auditParts.join(" | ")}`);
+          lines.push(`  Log details: ${auditParts.join(" | ")}`);
         }
       });
 
@@ -2316,17 +2349,21 @@ export default function HistoryPage() {
             audit?.lastEditedAt ? `Last edited time: ${formatReportDateTime(audit.lastEditedAt)}` : null,
           ].filter(Boolean);
 
-          lines.push(`  - Log details: ${auditParts.join(" | ")}`);
+          lines.push(`  Log details: ${auditParts.join(" | ")}`);
         }
       });
 
       day.weights.forEach((weight) => {
-        lines.push(`- Weight: ${weight.weight}${weight.note ? ` - ${weight.note}` : ""}`);
+        lines.push("- Weight");
+        lines.push(`  Value: ${weight.weight}`);
+        if (weight.note) {
+          lines.push(`  Notes: ${weight.note}`);
+        }
       });
 
       if (!day.meals.length && !day.activities.length && !day.weights.length) {
         day.timelineItems.forEach((item) => {
-          lines.push(`- ${item.time} ${item.label}${item.detail ? ` - ${item.detail}` : ""}`);
+          lines.push(...reportTimelineItemLines(item));
         });
       }
 
