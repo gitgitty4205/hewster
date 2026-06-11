@@ -370,7 +370,7 @@ function mealCareGroupLabel() {
 
 function mealExpandedDetailText(careTemplates: CareItemTemplate[], meal: MealTemplate, meals: MealTemplate[], dayKey: string) {
   const mealCareItems = mealCareItemsWithDoseBadges(careTemplates, meal, meals, dayKey);
-  const mealCareItemDetails = mealCareItems.map((item) => [item.name, mealPlanCareDetailParts(item), item.notes.trim()].filter(Boolean).join(" - "));
+  const mealCareItemDetails = mealCareItems.map((item) => [item.name, mealPlanCareDetailParts(item), item.notes.trim()].filter(Boolean).join(" — "));
 
   return [
     meal.food.trim() ? `Food: ${meal.food.trim()}` : null,

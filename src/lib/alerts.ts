@@ -375,7 +375,7 @@ function mealExpandedDetail(meal: MealTemplate, templates: MealTemplate[], today
     .map((item) => {
       const giveText = careItemGiveText(item);
       const notes = item.notes.trim();
-      return [item.name, giveText, notes].filter(Boolean).join(" - ");
+      return [item.name, giveText, notes].filter(Boolean).join(" — ");
     });
 
   return [
