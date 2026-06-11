@@ -37,7 +37,7 @@ export const subscriptionPlans: SubscriptionPlan[] = [
     id: "plus",
     name: "PetNotebook Plus",
     priceLabel: "",
-    summary: "Track every pet, share with caregivers, and keep records forever.",
+    summary: "Track every pet, share with family and pet sitters, and keep your pet's history forever.",
     features: [
       "Unlimited pets",
       "Notebook sharing",
