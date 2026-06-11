@@ -37,6 +37,7 @@ type ReportImage = ReportImageReference & {
   bytes: Buffer;
   width: number | null;
   height: number | null;
+  orientation: number;
   pdfName: string;
 };
 
@@ -288,10 +289,46 @@ function pdfReportHeader(petName: string, theme = pdfReportTheme("slate")) {
   ];
 }
 
-function jpegDimensions(bytes: Buffer) {
+function readExifOrientation(segment: Buffer) {
+  if (segment.length < 14 || segment.toString("ascii", 0, 6) !== "Exif\0\0") return null;
+
+  const tiffStart = 6;
+  const endian = segment.toString("ascii", tiffStart, tiffStart + 2);
+  const littleEndian = endian === "II";
+  if (!littleEndian && endian !== "MM") return null;
+
+  const readUInt16 = (offset: number) => littleEndian ? segment.readUInt16LE(offset) : segment.readUInt16BE(offset);
+  const readUInt32 = (offset: number) => littleEndian ? segment.readUInt32LE(offset) : segment.readUInt32BE(offset);
+  const magic = readUInt16(tiffStart + 2);
+  if (magic !== 42) return null;
+
+  const ifdOffset = readUInt32(tiffStart + 4);
+  const ifdStart = tiffStart + ifdOffset;
+  if (ifdStart < tiffStart || ifdStart + 2 > segment.length) return null;
+
+  const entryCount = readUInt16(ifdStart);
+  for (let index = 0; index < entryCount; index += 1) {
+    const entryOffset = ifdStart + 2 + index * 12;
+    if (entryOffset + 12 > segment.length) break;
+    const tag = readUInt16(entryOffset);
+    const type = readUInt16(entryOffset + 2);
+    const count = readUInt32(entryOffset + 4);
+    if (tag !== 0x0112 || type !== 3 || count < 1) continue;
+    const value = readUInt16(entryOffset + 8);
+    return value >= 1 && value <= 8 ? value : null;
+  }
+
+  return null;
+}
+
+function jpegMetadata(bytes: Buffer) {
   if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
 
   let offset = 2;
+  let width: number | null = null;
+  let height: number | null = null;
+  let orientation = 1;
+
   while (offset + 9 < bytes.length) {
     if (bytes[offset] !== 0xff) {
       offset += 1;
@@ -299,20 +336,22 @@ function jpegDimensions(bytes: Buffer) {
     }
 
     const marker = bytes[offset + 1];
-    if (marker >= 0xc0 && marker <= 0xc3) {
-      return {
-        height: bytes.readUInt16BE(offset + 5),
-        width: bytes.readUInt16BE(offset + 7),
-      };
-    }
-
     if (marker === 0xd9 || marker === 0xda) break;
     const segmentLength = bytes.readUInt16BE(offset + 2);
     if (!segmentLength) break;
+
+    if (marker === 0xe1 && offset + 2 + segmentLength <= bytes.length) {
+      orientation = readExifOrientation(bytes.subarray(offset + 4, offset + 2 + segmentLength)) ?? orientation;
+    } else if (marker >= 0xc0 && marker <= 0xc3) {
+      height = bytes.readUInt16BE(offset + 5);
+      width = bytes.readUInt16BE(offset + 7);
+    }
+
+    if (width && height && orientation !== 1) break;
     offset += 2 + segmentLength;
   }
 
-  return null;
+  return width && height ? { width, height, orientation } : null;
 }
 
 function isJpegContentType(value: string) {
@@ -330,21 +369,26 @@ function reportAttachmentKind(value: ReportImage) {
   return "File";
 }
 
-function pdfImageDraw(name: string, x: number, y: number, width: number, height: number) {
+function pdfImageDraw(name: string, x: number, y: number, width: number, height: number, orientation = 1) {
+  if (orientation === 3) return `q ${-width} 0 0 ${-height} ${x + width} ${y + height} cm /${name} Do Q`;
+  if (orientation === 6) return `q 0 ${height} ${-width} 0 ${x + width} ${y} cm /${name} Do Q`;
+  if (orientation === 8) return `q 0 ${-height} ${width} 0 ${x} ${y + height} cm /${name} Do Q`;
   return `q ${width} 0 0 ${height} ${x} ${y} cm /${name} Do Q`;
 }
 
 function pdfAttachmentCard(attachment: ReportImage, x: number, y: number, width: number, height: number, theme: ReturnType<typeof pdfReportTheme>) {
-  const nameLines = wrapPdfLine(attachment.fileName || "Attachment", 22).slice(0, 2);
+  const nameLines = wrapPdfLine(attachment.fileName || "Attachment", 28).slice(0, 2);
   const kind = reportAttachmentKind(attachment);
+  const iconSize = 24;
 
   return [
     `${theme.cardFill} ${pdfRoundedRect(x, y, width, height, 10, "f")}`,
     `${theme.cardStroke} ${pdfRoundedRect(x, y, width, height, 10, "S")}`,
+    `${theme.cardStroke} ${pdfRoundedRect(x + 8, y + height - iconSize - 10, iconSize, iconSize, 6, "S")}`,
     theme.accent,
-    pdfText(kind, x + 10, y + height - 18, 8, "F2"),
+    pdfText(kind, x + 12, y + height - 25, 7, "F2"),
     theme.neutral,
-    pdfTextLines(nameLines, x + 10, y + height - 34, 7.5, 9),
+    pdfTextLines(nameLines, x + 40, y + height - 21, 7.5, 9),
   ].join("\n");
 }
 
@@ -466,32 +510,38 @@ endstream`);
       const attachments = reportImagesByActivityId.get(reportImageMatch[1]) ?? [];
       if (!attachments.length) return;
 
-      const thumbnailWidth = 98;
-      const gap = 10;
-      const rows = Math.ceil(attachments.length / 4);
-      const blockHeight = rows * 86 + 10;
+      const tileWidth = 132;
+      const tileHeight = 76;
+      const imageMaxWidth = 112;
+      const imageMaxHeight = 76;
+      const gap = 12;
+      const rows = Math.ceil(attachments.length / 3);
+      const blockHeight = rows * (tileHeight + gap) + 8;
 
       if (y - blockHeight < 54) finishPage();
 
       attachments.forEach((image, index) => {
         const objectId = pdfImageObjects.get(image.id);
-        const column = index % 4;
-        const row = Math.floor(index / 4);
-        const tileX = 74 + column * (thumbnailWidth + gap);
-        const imageTop = y - row * 86;
+        const column = index % 3;
+        const row = Math.floor(index / 3);
+        const tileX = 74 + column * (tileWidth + gap);
+        const imageTop = y - row * (tileHeight + gap);
 
         if (objectId && image.width && image.height) {
-          const aspect = image.width / image.height;
-          const drawWidth = aspect >= 1 ? thumbnailWidth : Math.min(thumbnailWidth, 74 * aspect);
-          const drawHeight = aspect >= 1 ? Math.min(74, thumbnailWidth / aspect) : 74;
-          const x = tileX + (thumbnailWidth - drawWidth) / 2;
+          const rotated = image.orientation >= 5 && image.orientation <= 8;
+          const displayWidth = rotated ? image.height : image.width;
+          const displayHeight = rotated ? image.width : image.height;
+          const aspect = displayWidth / displayHeight;
+          const drawWidth = aspect >= 1 ? imageMaxWidth : Math.min(imageMaxWidth, imageMaxHeight * aspect);
+          const drawHeight = aspect >= 1 ? Math.min(imageMaxHeight, imageMaxWidth / aspect) : imageMaxHeight;
+          const x = tileX + (tileWidth - drawWidth) / 2;
           const imageY = imageTop - drawHeight;
 
-          pageCommands.push(pdfImageDraw(image.pdfName, x, imageY, drawWidth, drawHeight));
+          pageCommands.push(pdfImageDraw(image.pdfName, x, imageY, drawWidth, drawHeight, image.orientation));
           return;
         }
 
-        pageCommands.push(pdfAttachmentCard(image, tileX, imageTop - 58, thumbnailWidth, 52, reportTheme));
+        pageCommands.push(pdfAttachmentCard(image, tileX, imageTop - 62, tileWidth, 56, reportTheme));
       });
 
       y -= blockHeight;
@@ -585,14 +635,15 @@ async function fetchReportImages(supabase: SupabaseClient, references: ReportIma
 
     const bytes = Buffer.from(await data.arrayBuffer());
     const contentType = (data.type || reference.contentType || "application/octet-stream").toLowerCase();
-    const dimensions = jpegDimensions(bytes);
+    const metadata = jpegMetadata(bytes);
 
     images.push({
       ...reference,
       contentType,
       bytes,
-      width: dimensions?.width ?? null,
-      height: dimensions?.height ?? null,
+      width: metadata?.width ?? null,
+      height: metadata?.height ?? null,
+      orientation: metadata?.orientation ?? 1,
       pdfName: `Im${index + 1}`,
     });
   }
