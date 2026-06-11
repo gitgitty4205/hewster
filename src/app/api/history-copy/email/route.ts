@@ -182,8 +182,9 @@ function escapePdfString(value: string) {
   return value
     .replaceAll("💩", "Poop")
     .replaceAll("💧", "Pee")
-    .replace(/[^\x20-\x7E]/g, "")
     .replaceAll("\\", "\\\\")
+    .replaceAll("•", "\\225")
+    .replace(/[^\x20-\x7E]/g, "")
     .replaceAll("(", "\\(")
     .replaceAll(")", "\\)")
     .replaceAll("\r", "");
@@ -413,8 +414,8 @@ function buildHistoryPdf(text: string, options: {
 
   const catalogObjectId = addObject("<< /Type /Catalog /Pages 2 0 R >>");
   const pagesObjectId = addObject("");
-  const fontObjectId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-  const boldFontObjectId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+  const fontObjectId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+  const boldFontObjectId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
   const reportImages = options.reportImages ?? [];
   const reportImagesByActivityId = new Map<string, ReportImage[]>();
   const pdfImageObjects = new Map<string, number>();
