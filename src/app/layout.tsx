@@ -32,10 +32,12 @@ const themeBootstrapScript = `
     if (themes[guestTheme]) themeId = guestTheme;
     for (let index = 0; index < localStorage.length; index += 1) {
       const key = localStorage.key(index);
-      if (!key || !key.startsWith("hewster.userTheme:") || key === "hewster.userTheme:guest") continue;
+      if (!key || !key.startsWith("hewster.userTheme:") || key === "hewster.userTheme:guest" || key === "hewster.userTheme:latest") continue;
       const storedTheme = localStorage.getItem(key);
       if (themes[storedTheme]) themeId = storedTheme;
     }
+    const latestTheme = localStorage.getItem("hewster.userTheme:latest");
+    if (themes[latestTheme]) themeId = latestTheme;
     const theme = themes[themeId || "slate"];
     const root = document.documentElement;
     root.style.setProperty("--hewie-bg", theme[0]);
@@ -44,6 +46,7 @@ const themeBootstrapScript = `
     root.style.setProperty("--hewie-accent", theme[3]);
     root.style.setProperty("--hewie-accent-text", theme[4]);
     root.style.setProperty("--hewie-ring", theme[5]);
+    localStorage.setItem("hewster.userTheme:latest", themeId || "slate");
   } catch {}
 })();
 `;
@@ -59,7 +62,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
       <body
-        className="min-h-full flex flex-col bg-stone-50 text-zinc-900"
+        className="min-h-full flex flex-col bg-[var(--hewie-bg,#999b96)] text-zinc-900"
         style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
         suppressHydrationWarning
       >

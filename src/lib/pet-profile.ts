@@ -35,6 +35,7 @@ export type PetProfile = {
 
 export const PET_PROFILE_STORAGE_KEY = "hewster.petProfile";
 export const USER_THEME_STORAGE_KEY = "hewster.userTheme";
+export const LATEST_USER_THEME_STORAGE_KEY = "hewster.userTheme:latest";
 export const PET_THEME_UPDATED_EVENT = "pet-theme-updated";
 export const PET_PROFILE_UPDATED_EVENT = "pet-profile-updated";
 export const DEFAULT_PET_PHOTO_URL = "/paw-print.svg";
@@ -307,6 +308,9 @@ export function loadUserTheme(userId?: string | null) {
   const storedTheme = normalizeThemeId(window.localStorage.getItem(userThemeStorageKey(activeUserThemeId(userId))));
   if (storedTheme) return storedTheme;
 
+  const latestTheme = normalizeThemeId(window.localStorage.getItem(LATEST_USER_THEME_STORAGE_KEY));
+  if (latestTheme) return latestTheme;
+
   return loadPetProfile().themeId;
 }
 
@@ -314,6 +318,7 @@ export function saveUserTheme(themeId: ThemeId, userId?: string | null) {
   if (typeof window === "undefined") return;
 
   window.localStorage.setItem(userThemeStorageKey(activeUserThemeId(userId)), themeId);
+  window.localStorage.setItem(LATEST_USER_THEME_STORAGE_KEY, themeId);
   window.dispatchEvent(new Event(PET_THEME_UPDATED_EVENT));
 }
 
