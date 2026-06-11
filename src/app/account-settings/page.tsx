@@ -1367,7 +1367,7 @@ export default function AccountSettingsPage() {
                     </span>
                   </h3>
                   <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
-                    Everything you need to care for your pet, all in one place.
+                    A shared notebook for everyone who cares for your pet.
                   </p>
                 </div>
               </div>
