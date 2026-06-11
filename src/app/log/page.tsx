@@ -119,20 +119,31 @@ function isValidDayKey(value: string | null) {
 
 function LogPencilIcon() {
   return (
-    <svg
-      className="size-6"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.6"
-      aria-hidden="true"
-    >
-      <path d="M5.2 18.8 6.4 14 15.8 4.6a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 0 2.8L10 17.6l-4.8 1.2Z" />
-      <path d="m14.3 6.1 3.6 3.6" />
-      <path d="m6.4 14 3.6 3.6" />
-    </svg>
+    <span className="flex size-8 items-center justify-center rounded-full bg-[var(--hewie-accent-text,#ffffff)]/13 text-[var(--hewie-accent-text,#ffffff)]/88 shadow-[0_1px_3px_rgba(15,23,42,0.12),0_1px_2px_rgba(255,255,255,0.2)_inset] ring-1 ring-[var(--hewie-accent-text,#ffffff)]/20">
+      <svg
+        className="size-[1.18rem]"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.75"
+        aria-hidden="true"
+      >
+        <path d="M5.2 18.8 6.4 14 15.8 4.6a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 0 2.8L10 17.6l-4.8 1.2Z" />
+        <path d="m14.3 6.1 3.6 3.6" />
+        <path d="m6.4 14 3.6 3.6" />
+      </svg>
+    </span>
+  );
+}
+
+function LogTitle() {
+  return (
+    <span className="inline-flex items-center justify-center gap-2.5 text-[var(--hewie-accent-text,#ffffff)]/92 drop-shadow-[0_1px_1px_rgba(15,23,42,0.16)]">
+      <LogPencilIcon />
+      <span className="font-semibold">Log</span>
+    </span>
   );
 }
 
@@ -1426,7 +1437,7 @@ export default function LogPage() {
             <QuickLogCard
               activityState={activityState}
               onQuickLog={quickLogActivity}
-              title={<span className="inline-flex items-center justify-center gap-2"><LogPencilIcon />Log</span>}
+              title={<LogTitle />}
               accentBackground
               onHeaderClick={collapseLogEvent}
               headerClickLabel="Collapse Log"
@@ -1499,7 +1510,7 @@ export default function LogPage() {
             onClick={openLogEvent}
             className="group relative mb-7 flex w-full cursor-pointer items-center justify-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-center text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition duration-200 ease-out hover:opacity-95 active:translate-y-0.5 active:scale-[0.985]"
           >
-            <h2 className="inline-flex items-center justify-center gap-2 text-lg font-semibold"><LogPencilIcon />Log</h2>
+            <h2 className="text-lg"><LogTitle /></h2>
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
               <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90 group-active:translate-y-1">
                 <ChevronDown className="log-event-handle-sheen size-7 opacity-80" strokeWidth={3} aria-hidden="true" />
