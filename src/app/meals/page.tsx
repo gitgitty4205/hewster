@@ -4,6 +4,7 @@ import { Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { CenteredLoadingIcon } from "@/components/centered-loading-icon";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
@@ -234,34 +235,7 @@ export default function MealsPage() {
   if (!hydrated) {
     return (
       <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
-        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-          <header className="mb-6">
-            <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]"><PetNotebookTitle /></p>
-            <div className="skeleton-pulse mt-1 h-7 w-24 rounded-xl bg-white/45" />
-            <div className="skeleton-pulse mt-2 h-4 w-64 rounded-xl bg-white/35" />
-          </header>
-
-          <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <div className="skeleton-pulse h-6 w-36 rounded-xl bg-zinc-100" />
-                <div className="skeleton-pulse mt-2 h-4 w-56 rounded-xl bg-zinc-100" />
-              </div>
-              <div className="skeleton-pulse h-5 w-20 rounded-xl bg-zinc-100" />
-            </div>
-            <div className="mb-4 flex gap-2">
-              <div className="skeleton-pulse h-10 w-28 rounded-full bg-zinc-100" />
-              <div className="skeleton-pulse h-10 w-36 rounded-full bg-zinc-100" />
-            </div>
-            <div className="space-y-4">
-              <div className="skeleton-pulse h-48 rounded-2xl bg-zinc-100" />
-              <div className="skeleton-pulse h-48 rounded-2xl bg-zinc-100" />
-              <div className="skeleton-pulse h-48 rounded-2xl bg-zinc-100" />
-            </div>
-          </section>
-
-          <BottomNav />
-        </div>
+        <CenteredLoadingIcon className="min-h-screen" />
       </main>
     );
   }

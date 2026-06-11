@@ -13,6 +13,7 @@ import { ActivityDetailForm } from "@/components/activity-detail-form";
 import { ActivityFeed } from "@/components/activity-feed";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { CenteredLoadingIcon } from "@/components/centered-loading-icon";
 import { ExpandableNoteText } from "@/components/expandable-note-text";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 
@@ -1384,39 +1385,7 @@ export default function LogPage() {
 
       <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
 
-        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-
-          <header className="mb-5 px-1 pb-2">
-
-            <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
-
-              <div className="min-w-0 flex-1">
-
-                <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-
-              </div>
-
-              <PetAvatarMenu shape="tile" />
-
-            </div>
-
-          </header>
-
-
-
-          <div className="space-y-4">
-
-            <div className="skeleton-pulse h-48 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
-
-            <div className="skeleton-pulse h-64 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
-
-          </div>
-
-
-
-          <BottomNav />
-
-        </div>
+        <CenteredLoadingIcon className="min-h-screen" />
 
       </main>
 

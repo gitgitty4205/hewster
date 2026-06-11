@@ -14,6 +14,7 @@ import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRe
 import { ActivityDetailForm } from "@/components/activity-detail-form";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useAuth } from "@/components/auth-provider";
+import { CenteredLoadingIcon } from "@/components/centered-loading-icon";
 import { PottyDetailBadges } from "@/components/potty-detail-badges";
 import { BottomNav } from "@/components/bottom-nav";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
@@ -2163,27 +2164,7 @@ export default function HomeApp() {
   if (!hydrated) {
     return (
       <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
-        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-          <header className="relative mb-6 min-h-[72px]">
-            <div className="flex min-h-[4.5rem] items-center pr-24">
-              <div>
-                <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-                <div className="skeleton-pulse mt-2 h-10 w-32 rounded-xl bg-white/40" />
-              </div>
-            </div>
-            <div className="absolute right-0 top-0">
-              <PetAvatarMenu shape="tile" />
-            </div>
-          </header>
-
-          <div className="space-y-4">
-            <div className="skeleton-pulse h-64 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
-            <div className="skeleton-pulse h-52 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
-            <div className="skeleton-pulse h-40 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
-          </div>
-
-          <BottomNav />
-        </div>
+        <CenteredLoadingIcon className="min-h-screen" />
       </main>
     );
   }

@@ -5,6 +5,7 @@ import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { type MouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { CenteredLoadingIcon } from "@/components/centered-loading-icon";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import {
@@ -719,24 +720,7 @@ export default function AlertsPage() {
   if (!hydrated) {
     return (
       <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
-        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-          <header className="mb-6">
-            <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
-              <div>
-                <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-                <div className="skeleton-pulse mt-1 h-10 w-32 rounded-xl bg-white/40" />
-              </div>
-              <PetAvatarMenu shape="tile" />
-            </div>
-          </header>
-
-          <div className="space-y-4">
-            <div className="skeleton-pulse h-64 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
-            <div className="skeleton-pulse h-40 rounded-3xl bg-white/60 shadow-sm ring-1 ring-white/50" />
-          </div>
-
-          <BottomNav />
-        </div>
+        <CenteredLoadingIcon className="min-h-screen" />
       </main>
     );
   }
