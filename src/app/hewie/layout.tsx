@@ -10,6 +10,7 @@ import { checkSupabaseAuthReachable, PASSWORD_RESET_REQUIRED_STORAGE_KEY } from 
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 const HEWIE_AUTH_GATE_TIMEOUT_MS = 5_000;
+const HEWIE_STARTUP_LOADER_MIN_MS = 2_000;
 const PASSWORD_RESET_PATH = "/hewie/account-settings?resetPassword=1";
 
 export default function HewieLayout({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,7 @@ export default function HewieLayout({ children }: { children: React.ReactNode })
   const [authReachable, setAuthReachable] = useState<boolean | null>(null);
   const [browserHostname, setBrowserHostname] = useState<string | null>(null);
   const [passwordResetRequired, setPasswordResetRequired] = useState(false);
+  const [startupLoaderElapsed, setStartupLoaderElapsed] = useState(false);
   const shouldBypassAuthGate =
     process.env.NODE_ENV === "development" &&
     browserHostname !== null &&
@@ -27,10 +29,22 @@ export default function HewieLayout({ children }: { children: React.ReactNode })
   const shouldProbeAuth = !shouldBypassAuthGate && configured && !user && (!loading || authGateTimedOut);
   const shouldRequireLogin = shouldProbeAuth && authReachable === true;
   const shouldUseLocalMode = shouldProbeAuth && authReachable === false;
-  const shouldShowAuthGate = !shouldBypassAuthGate && configured && !shouldUseLocalMode && !shouldRequireLogin && (loading || !user);
+  const shouldShowStartupLoader =
+    !shouldBypassAuthGate && configured && !shouldUseLocalMode && !shouldRequireLogin && !startupLoaderElapsed;
+  const shouldShowAuthGate =
+    !shouldBypassAuthGate &&
+    configured &&
+    !shouldUseLocalMode &&
+    !shouldRequireLogin &&
+    (loading || !user || shouldShowStartupLoader);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setBrowserHostname(window.location.hostname), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setStartupLoaderElapsed(true), HEWIE_STARTUP_LOADER_MIN_MS);
     return () => window.clearTimeout(timeoutId);
   }, []);
 
