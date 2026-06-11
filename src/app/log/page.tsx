@@ -120,7 +120,7 @@ function isValidDayKey(value: string | null) {
 function LogPencilIcon() {
   return (
     <svg
-      className="size-6"
+      className="size-4.5"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -138,9 +138,11 @@ function LogPencilIcon() {
 
 function LogTitleBadge() {
   return (
-    <span className="mx-auto inline-flex w-fit items-center justify-center gap-2 rounded-full border border-[var(--hewie-accent-text,#ffffff)]/28 bg-[color-mix(in_srgb,var(--hewie-accent,#64748b)_78%,black)] px-4 py-1.5 text-[var(--hewie-accent-text,#ffffff)] shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(15,23,42,0.14)] backdrop-blur-[1px]">
-      <LogPencilIcon />
-      <span>Log</span>
+    <span className="mx-auto inline-flex w-fit items-center justify-center gap-2 rounded-full border border-white/20 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--hewie-accent,#64748b)_64%,black)_0%,color-mix(in_srgb,var(--hewie-accent,#64748b)_86%,black)_100%)] px-3.5 py-1.5 text-[var(--hewie-accent-text,#ffffff)] shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(15,23,42,0.18),0_8px_18px_rgba(15,23,42,0.16)] ring-1 ring-white/10">
+      <span className="grid size-6 place-items-center rounded-full bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]">
+        <LogPencilIcon />
+      </span>
+      <span className="text-[0.95rem] font-semibold leading-none tracking-normal">Log</span>
     </span>
   );
 }
