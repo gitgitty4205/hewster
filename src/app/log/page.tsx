@@ -2,7 +2,7 @@
 
 
 
-import { Check, Clock3, Tablets } from "lucide-react";
+import { Check, ChevronDown, Clock3, Tablets } from "lucide-react";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -1490,7 +1490,7 @@ export default function LogPage() {
               className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/90 active:translate-y-1 active:scale-95"
               aria-label="Collapse Log"
             >
-              <span className="log-event-handle-sheen h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
+              <ChevronDown className="log-event-handle-sheen size-7 opacity-80" strokeWidth={3} aria-hidden="true" />
             </button>
           </div>
         ) : (
@@ -1502,7 +1502,7 @@ export default function LogPage() {
             <h2 className="inline-flex items-center justify-center gap-2 text-lg font-semibold"><LogPencilIcon />Log</h2>
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
               <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90 group-active:translate-y-1">
-                <span className="log-event-handle-sheen h-1 w-9 rounded-full bg-current opacity-70" aria-hidden="true" />
+                <ChevronDown className="log-event-handle-sheen size-7 opacity-80" strokeWidth={3} aria-hidden="true" />
               </div>
             </div>
           </button>
