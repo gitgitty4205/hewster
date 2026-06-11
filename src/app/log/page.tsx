@@ -117,7 +117,7 @@ function isValidDayKey(value: string | null) {
   return !Number.isNaN(date.getTime()) && currentTodayKeyFromDate(date) === value;
 }
 
-function LogPencilIcon() {
+function LogPlusIcon() {
   return (
     <svg
       className="size-5 text-[color-mix(in_srgb,var(--hewie-accent,#64748b)_34%,white)]"
@@ -129,9 +129,8 @@ function LogPencilIcon() {
       strokeWidth="1.6"
       aria-hidden="true"
     >
-      <path d="M5.2 18.8 6.4 14 15.8 4.6a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 0 2.8L10 17.6l-4.8 1.2Z" />
-      <path d="m14.3 6.1 3.6 3.6" />
-      <path d="m6.4 14 3.6 3.6" />
+      <path d="M12 5.25v13.5" />
+      <path d="M5.25 12h13.5" />
     </svg>
   );
 }
@@ -140,7 +139,7 @@ function LogTitleBadge() {
   return (
     <span className="mx-auto inline-flex w-fit items-center justify-center gap-2 rounded-full border border-[var(--hewie-accent-text,#ffffff)]/28 bg-[color-mix(in_srgb,var(--hewie-accent,#64748b)_78%,black)] px-4 py-1.5 text-[var(--hewie-accent-text,#ffffff)] shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(15,23,42,0.14)] backdrop-blur-[1px]">
       <span className="grid size-7 place-items-center rounded-full border border-[color-mix(in_srgb,var(--hewie-accent,#64748b)_58%,white)]/45 bg-[color-mix(in_srgb,var(--hewie-accent,#64748b)_88%,black)] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-        <LogPencilIcon />
+        <LogPlusIcon />
       </span>
       <span className="text-[0.95rem] font-semibold leading-none tracking-normal">Log New Event</span>
     </span>
