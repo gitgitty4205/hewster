@@ -2259,7 +2259,7 @@ export default function HistoryPage() {
         lines.push(`  Detail: ${detail}`);
       }
     } else if (detail) {
-      lines.push(`  Record type: ${detail}`);
+      lines.push(`  Type: ${detail}`);
     }
 
     if (cleanNotes) {
@@ -2307,7 +2307,7 @@ export default function HistoryPage() {
     const [detailSummary, detailNotes] = item.detail.split(" • Notes: ", 2);
 
     if (detailSummary) {
-      lines.push(`  Record type: ${detailSummary}`);
+      lines.push(`  Type: ${detailSummary}`);
     }
     if (detailNotes) {
       lines.push(`  Notes: ${detailNotes}`);
@@ -2357,9 +2357,9 @@ export default function HistoryPage() {
         if (withLogDetails) {
           const audit = meal.auditInfo;
           const auditParts = [
-            `Logged by: ${audit?.loggedBy ?? "Not recorded"}, on ${formatReportDateTime(audit?.loggedAt ?? meal.createdAt)}`,
+            `Logged by: ${audit?.loggedBy ?? "Not recorded"} • ${formatReportDateTime(audit?.loggedAt ?? meal.createdAt)}`,
             audit?.lastEditedAt
-              ? `Updated by: ${audit.lastEditedBy ?? "Not recorded"}, on ${formatReportDateTime(audit.lastEditedAt)}`
+              ? `Updated by: ${audit.lastEditedBy ?? "Not recorded"} • ${formatReportDateTime(audit.lastEditedAt)}`
               : null,
           ].filter(Boolean);
 
@@ -2379,9 +2379,9 @@ export default function HistoryPage() {
         if (withLogDetails) {
           const audit = activity.auditInfo;
           const auditParts = [
-            `Logged by: ${audit?.loggedBy ?? "Not recorded"}, on ${formatReportDateTime(audit?.loggedAt ?? activity.createdAt ?? activity.happenedAt)}`,
+            `Logged by: ${audit?.loggedBy ?? "Not recorded"} • ${formatReportDateTime(audit?.loggedAt ?? activity.createdAt ?? activity.happenedAt)}`,
             audit?.lastEditedAt
-              ? `Last edited by: ${audit.lastEditedBy ?? "Not recorded"}, on ${formatReportDateTime(audit.lastEditedAt)}`
+              ? `Last edited by: ${audit.lastEditedBy ?? "Not recorded"} • ${formatReportDateTime(audit.lastEditedAt)}`
               : null,
           ].filter(Boolean);
 
