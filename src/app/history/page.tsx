@@ -1539,6 +1539,7 @@ export default function HistoryPage() {
   const [hydrated, setHydrated] = useState(false);
 
   const [sendCopyStatus, setSendCopyStatus] = useState("");
+  const [sentCopyEmail, setSentCopyEmail] = useState("");
   const [isSendingCopy, setIsSendingCopy] = useState(false);
   const [showHistoryCopyUpgradeDialog, setShowHistoryCopyUpgradeDialog] = useState(false);
   const [showHistoryAccessUpgradeDialog, setShowHistoryAccessUpgradeDialog] = useState(false);
@@ -2182,6 +2183,7 @@ export default function HistoryPage() {
     setShowFilters(false);
 
     setSendCopyStatus("");
+    setSentCopyEmail("");
 
   };
 
@@ -2201,6 +2203,7 @@ export default function HistoryPage() {
 
     setShowFilters(false);
     setSendCopyStatus("");
+    setSentCopyEmail("");
 
     const latestDay = availableHistoryDays[0]?.day;
 
@@ -2411,6 +2414,7 @@ export default function HistoryPage() {
 
   const handleSendCopy = async () => {
     setSendCopyStatus("");
+    setSentCopyEmail("");
     setIsSendingCopy(true);
 
     try {
@@ -2499,7 +2503,7 @@ export default function HistoryPage() {
         return;
       }
 
-      setSendCopyStatus(`History report sent: ${result.email || "your account email"}.`);
+      setSentCopyEmail(result.email || "your account email");
       if (canUseFreeHistoryReport) {
         const nextUses = currentFreeHistoryReportUses + 1;
         saveFreeHistoryReportUses(nextUses);
@@ -2970,9 +2974,17 @@ export default function HistoryPage() {
 
                   ) : null}
 
+                  {sentCopyEmail ? (
+
+                    <p className="mt-1 text-xs font-bold text-[var(--hewie-active-text,#334155)]">
+                      PDF report emailed to {sentCopyEmail}
+                    </p>
+
+                  ) : null}
+
                 </div>
 
-                {canIncludeLogDetails ? (
+                {canIncludeLogDetails && !sentCopyEmail ? (
                   <div className="flex items-start gap-2 rounded-2xl bg-white/80 px-3 py-2 text-xs font-semibold text-zinc-600 ring-1 ring-zinc-200/80">
                     <input
                       id="include-logging-details"
@@ -3002,11 +3014,15 @@ export default function HistoryPage() {
 
                 <div className="flex flex-wrap gap-2">
 
-                  <Button type="button" className="h-8 rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60" onClick={() => void handleSendCopy()} disabled={isSendingCopy}>
+                  {!sentCopyEmail ? (
 
-                    {isSendingCopy ? "Sending..." : "Email History Report"}
+                    <Button type="button" className="h-8 rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60" onClick={() => void handleSendCopy()} disabled={isSendingCopy}>
 
-                  </Button>
+                      {isSendingCopy ? "Sending..." : "Email History Report"}
+
+                    </Button>
+
+                  ) : null}
 
                   <Button type="button" variant="outline" className="h-8 rounded-full px-3 text-xs font-bold" onClick={clearFilters}>
 
