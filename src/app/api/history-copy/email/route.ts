@@ -473,7 +473,7 @@ endstream`);
     const trimmedLine = rawLine.trim();
     const isDateLine = /^[A-Z][a-z]{2},/.test(rawLine);
     const isLoggingDetailsHeader = trimmedLine === "Logging details:";
-    const isLoggingMetadata = /^(Logged by|Logged on|Updated by|Updated on|Last edited by|Last edited on):/.test(trimmedLine);
+    const isLoggingMetadata = /^(Logged by|Updated by|Last edited by):/.test(trimmedLine);
     const fontSize = isDateLine ? 12 : isLoggingMetadata ? 8.5 : isLoggingDetailsHeader ? 9 : 10;
     const lineHeight = isDateLine ? 16 : isLoggingMetadata ? 11 : isLoggingDetailsHeader ? 12 : 13;
     const wrappedLines = wrapPdfLine(rawLine, isDateLine ? 70 : isLoggingMetadata ? 96 : 86);

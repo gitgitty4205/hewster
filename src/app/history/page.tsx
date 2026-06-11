@@ -2357,10 +2357,10 @@ export default function HistoryPage() {
         if (withLogDetails) {
           const audit = meal.auditInfo;
           const auditParts = [
-            `Logged by: ${audit?.loggedBy ?? "Not recorded"}`,
-            `Logged on: ${formatReportDateTime(audit?.loggedAt ?? meal.createdAt)}`,
-            audit?.lastEditedAt ? `Updated by: ${audit.lastEditedBy ?? "Not recorded"}` : null,
-            audit?.lastEditedAt ? `Updated on: ${formatReportDateTime(audit.lastEditedAt)}` : null,
+            `Logged by: ${audit?.loggedBy ?? "Not recorded"}, on ${formatReportDateTime(audit?.loggedAt ?? meal.createdAt)}`,
+            audit?.lastEditedAt
+              ? `Updated by: ${audit.lastEditedBy ?? "Not recorded"}, on ${formatReportDateTime(audit.lastEditedAt)}`
+              : null,
           ].filter(Boolean);
 
           if (auditParts.length) {
@@ -2379,10 +2379,10 @@ export default function HistoryPage() {
         if (withLogDetails) {
           const audit = activity.auditInfo;
           const auditParts = [
-            `Logged by: ${audit?.loggedBy ?? "Not recorded"}`,
-            `Logged on: ${formatReportDateTime(audit?.loggedAt ?? activity.createdAt ?? activity.happenedAt)}`,
-            audit?.lastEditedAt ? `Last edited by: ${audit.lastEditedBy ?? "Not recorded"}` : null,
-            audit?.lastEditedAt ? `Last edited on: ${formatReportDateTime(audit.lastEditedAt)}` : null,
+            `Logged by: ${audit?.loggedBy ?? "Not recorded"}, on ${formatReportDateTime(audit?.loggedAt ?? activity.createdAt ?? activity.happenedAt)}`,
+            audit?.lastEditedAt
+              ? `Last edited by: ${audit.lastEditedBy ?? "Not recorded"}, on ${formatReportDateTime(audit.lastEditedAt)}`
+              : null,
           ].filter(Boolean);
 
           if (auditParts.length) {
