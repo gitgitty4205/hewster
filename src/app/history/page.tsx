@@ -123,6 +123,7 @@ type HistoryTimelineEntry =
   | { type: "group"; id: string; items: HistoryTimelineItem[] };
 
 const LOGGING_DETAILS_HELP_TEXT = "Includes who logged the event, who updated it, and when changes were made.";
+const FREE_HISTORY_REPORT_USES_METADATA_KEY = "petnotebook_free_history_report_uses";
 
 
 
@@ -326,6 +327,15 @@ function formatReportDateTime(value: string | null | undefined) {
   }).format(new Date(value));
 }
 
+function normalizeFreeHistoryReportUses(value: unknown) {
+  const count = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(count) ? Math.max(0, count) : 0;
+}
+
+function freeHistoryReportUsesFromMetadata(metadata: Record<string, unknown> | null | undefined) {
+  return normalizeFreeHistoryReportUses(metadata?.[FREE_HISTORY_REPORT_USES_METADATA_KEY]);
+}
+
 function timelineClockMinutes(item: HistoryDay["timelineItems"][number]) {
   const displayMinutes = parseClockMinutes(item.time);
   return displayMinutes === Number.MAX_SAFE_INTEGER ? item.sortMinutes : displayMinutes;
@@ -456,18 +466,31 @@ function reportMealLogIds(days: HistoryDay[]) {
 
 type ReportImage = Pick<ActivityAttachment, "id" | "activityId" | "fileName" | "filePath" | "contentType">;
 
-function isReportImageActivity(activity: ActivityLog) {
-  return ["pee", "poop", "potty"].includes(activity.activityType) && Boolean(activity.attachments?.length);
+function isPottyImageAttachment(attachment: ActivityAttachment) {
+  return attachment.documentTypes.includes("Potty Image") || attachment.documentTypes.includes("Poop Photo");
 }
 
-function reportImagesForDays(days: HistoryDay[]) {
+function isMedicalAttachment(attachment: ActivityAttachment) {
+  return !isPottyImageAttachment(attachment);
+}
+
+function isReportImageActivity(activity: ActivityLog, filter: HistoryFilter) {
+  return (filter === "all" || filter === "potty" || filter === "poopRecords") && isPottyAttachmentRecord(activity) && Boolean(activity.attachments?.length);
+}
+
+function shouldAttachReportFile(activity: ActivityLog, attachment: ActivityAttachment, filter: HistoryFilter) {
+  if (filter === "medicalAttachments") return hasMedicalAttachmentRecord(activity) && isMedicalAttachment(attachment);
+  return isReportImageActivity(activity, filter) && isPottyImageAttachment(attachment);
+}
+
+function reportImagesForDays(days: HistoryDay[], filter: HistoryFilter) {
   const imagesById = new Map<string, ReportImage>();
 
   days.forEach((day) => {
     day.activities.forEach((activity) => {
-      if (!isReportImageActivity(activity)) return;
-
       activity.attachments?.forEach((attachment) => {
+        if (!shouldAttachReportFile(activity, attachment, filter)) return;
+
         imagesById.set(attachment.id, {
           id: attachment.id,
           activityId: attachment.activityId,
@@ -1366,11 +1389,17 @@ function isSkippedMealRecord(meal: { fedNotes: string | null }) {
   return meal.fedNotes === "Skipped";
 }
 
+function isPottyAttachmentRecord(activity: ActivityLog) {
+  return ["pee", "poop", "potty"].includes(activity.activityType);
+}
+
 function hasMedicalAttachmentRecord(activity: ActivityLog) {
+
+  if (isPottyAttachmentRecord(activity)) return false;
 
   const notes = activity.notes ?? "";
 
-  return Boolean(activity.attachments?.length) || notes.includes("Attachments:");
+  return Boolean(activity.attachments?.some(isMedicalAttachment)) || notes.includes("Attachments:");
 
 }
 
@@ -2330,13 +2359,16 @@ export default function HistoryPage() {
             audit?.lastEditedAt ? `Updated: ${formatReportDateTime(audit.lastEditedAt)}` : null,
           ].filter(Boolean);
 
-          lines.push(`  Log details: ${auditParts.join(" | ")}`);
+          if (auditParts.length) {
+            lines.push("  Log details:");
+            auditParts.forEach((part) => lines.push(`    ${part}`));
+          }
         }
       });
 
       day.activities.forEach((activity) => {
         lines.push(...reportActivityLines(activity));
-        if (isReportImageActivity(activity)) {
+        if (isReportImageActivity(activity, copyFilter)) {
           lines.push(`__REPORT_IMAGES__:${activity.id}`);
         }
 
@@ -2349,7 +2381,10 @@ export default function HistoryPage() {
             audit?.lastEditedAt ? `Last edited time: ${formatReportDateTime(audit.lastEditedAt)}` : null,
           ].filter(Boolean);
 
-          lines.push(`  Log details: ${auditParts.join(" | ")}`);
+          if (auditParts.length) {
+            lines.push("  Log details:");
+            auditParts.forEach((part) => lines.push(`    ${part}`));
+          }
         }
       });
 
@@ -2375,22 +2410,6 @@ export default function HistoryPage() {
   };
 
   const handleSendCopy = async () => {
-
-    const canUseFreeHistoryReport =
-      subscriptionPlan !== "plus" && freeHistoryReportUses < FREE_HISTORY_REPORT_USE_LIMIT;
-
-    if (subscriptionPlan !== "plus" && !canUseFreeHistoryReport) {
-      setSendCopyStatus("");
-      setShowHistoryCopyUpgradeDialog(true);
-      return;
-    }
-
-    const reportHistoryDays = subscriptionPlan === "plus" || canUseFreeHistoryReport
-      ? filterHistoryDays(historyDays, activeFilter, startDate, endDate)
-      : filteredHistoryDays;
-    const dateRange = historyCopyDateRange(startDate, endDate);
-    const generatedDate = historyCopyGeneratedDate();
-
     setSendCopyStatus("");
     setIsSendingCopy(true);
 
@@ -2404,7 +2423,26 @@ export default function HistoryPage() {
         return;
       }
 
-      const metadata = session.user.user_metadata ?? {};
+      const metadata = (session.user.user_metadata ?? {}) as Record<string, unknown>;
+      const currentFreeHistoryReportUses = Math.max(freeHistoryReportUses, freeHistoryReportUsesFromMetadata(metadata));
+      const canUseFreeHistoryReport =
+        subscriptionPlan !== "plus" && currentFreeHistoryReportUses < FREE_HISTORY_REPORT_USE_LIMIT;
+
+      if (subscriptionPlan !== "plus" && !canUseFreeHistoryReport) {
+        if (currentFreeHistoryReportUses !== freeHistoryReportUses) {
+          saveFreeHistoryReportUses(currentFreeHistoryReportUses);
+          setFreeHistoryReportUses(currentFreeHistoryReportUses);
+        }
+        setSendCopyStatus("");
+        setShowHistoryCopyUpgradeDialog(true);
+        return;
+      }
+
+      const reportHistoryDays = subscriptionPlan === "plus" || canUseFreeHistoryReport
+        ? filterHistoryDays(historyDays, activeFilter, startDate, endDate)
+        : filteredHistoryDays;
+      const dateRange = historyCopyDateRange(startDate, endDate);
+      const generatedDate = historyCopyGeneratedDate();
       const metadataFirstName = typeof metadata.first_name === "string" ? metadata.first_name.trim() : "";
       const metadataLastName = typeof metadata.last_name === "string" ? metadata.last_name.trim() : "";
       const metadataFullName = typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
@@ -2422,7 +2460,7 @@ export default function HistoryPage() {
           )
         : reportHistoryDays;
       const text = buildHistoryCopyText(reportDays, activeFilter, dateRange, profile, ownerName, generatedDate, includeLogDetailsInReport);
-      const reportImages = reportImagesForDays(reportDays);
+      const reportImages = reportImagesForDays(reportDays, activeFilter);
 
       const response = await fetch("/api/history-copy/email", {
         method: "POST",
@@ -2463,9 +2501,14 @@ export default function HistoryPage() {
 
       setSendCopyStatus(`History report sent: ${result.email || "your account email"}.`);
       if (canUseFreeHistoryReport) {
-        const nextUses = freeHistoryReportUses + 1;
+        const nextUses = currentFreeHistoryReportUses + 1;
         saveFreeHistoryReportUses(nextUses);
         setFreeHistoryReportUses(nextUses);
+        await supabase?.auth.updateUser({
+          data: {
+            [FREE_HISTORY_REPORT_USES_METADATA_KEY]: nextUses,
+          },
+        }).catch(() => undefined);
       }
     } catch {
       setSendCopyStatus("Could not email the history report.");

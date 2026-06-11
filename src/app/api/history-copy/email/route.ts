@@ -83,19 +83,18 @@ function normalizeReportImages(value: unknown): ReportImageReference[] {
     const record = item as Record<string, unknown>;
     const id = normalizeText(record.id);
     const activityId = normalizeText(record.activityId);
-    const fileName = normalizeText(record.fileName, "poop-photo.jpg") || "poop-photo.jpg";
+    const fileName = normalizeText(record.fileName, "attachment") || "attachment";
     const filePath = normalizeText(record.filePath);
     const contentType = normalizeText(record.contentType);
 
     if (!id || !activityId || !filePath) return;
-    if (contentType && !contentType.toLowerCase().startsWith("image/")) return;
 
     images.set(id, {
       id,
       activityId,
       fileName,
       filePath,
-      contentType: contentType || "image/jpeg",
+      contentType: contentType || "application/octet-stream",
     });
   });
 
@@ -653,7 +652,7 @@ export async function POST(request: Request) {
           content: pdf.toString("base64"),
         },
         ...reportImages.map((image, index) => ({
-          filename: image.fileName || `poop-photo-${index + 1}.jpg`,
+          filename: image.fileName || `attachment-${index + 1}`,
           content: image.bytes.toString("base64"),
           content_type: image.contentType,
         })),
