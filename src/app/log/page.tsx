@@ -140,7 +140,7 @@ function LogPencilIcon() {
 
 function LogTitle() {
   return (
-    <span className="inline-flex items-center justify-center gap-2.5 text-[var(--hewie-accent-text,#ffffff)]/92 drop-shadow-[0_1px_1px_rgba(15,23,42,0.16)]">
+    <span className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--hewie-accent-text,#ffffff)]/10 px-3.5 py-1.5 text-[var(--hewie-accent-text,#ffffff)]/92 shadow-[0_1px_5px_rgba(15,23,42,0.12),0_1px_2px_rgba(255,255,255,0.18)_inset] ring-1 ring-[var(--hewie-accent-text,#ffffff)]/18 drop-shadow-[0_1px_1px_rgba(15,23,42,0.14)]">
       <LogPencilIcon />
       <span className="font-semibold">Log</span>
     </span>
