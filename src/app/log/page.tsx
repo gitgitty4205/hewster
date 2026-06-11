@@ -119,9 +119,9 @@ function isValidDayKey(value: string | null) {
 
 function LogPencilIcon() {
   return (
-    <span className="flex size-8 items-center justify-center rounded-full bg-[var(--hewie-accent-text,#ffffff)]/13 text-[var(--hewie-accent-text,#ffffff)]/88 shadow-[0_1px_3px_rgba(15,23,42,0.12),0_1px_2px_rgba(255,255,255,0.2)_inset] ring-1 ring-[var(--hewie-accent-text,#ffffff)]/20">
+    <span className="flex size-5 items-center justify-center text-[var(--hewie-accent-text,#ffffff)]/88">
       <svg
-        className="size-[1.18rem]"
+        className="size-full"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
