@@ -138,7 +138,7 @@ function LogPencilIcon() {
 
 function LogTitleBadge() {
   return (
-    <span className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--hewie-accent-text,#ffffff)]/35 bg-[var(--hewie-accent-text,#ffffff)]/10 px-4 py-1.5 text-[var(--hewie-accent-text,#ffffff)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_18px_rgba(15,23,42,0.08)] backdrop-blur-[1px]">
+    <span className="mx-auto inline-flex w-fit items-center justify-center gap-2 rounded-full border border-[var(--hewie-accent-text,#ffffff)]/28 bg-[color-mix(in_srgb,var(--hewie-accent,#64748b)_78%,black)] px-4 py-1.5 text-[var(--hewie-accent-text,#ffffff)] shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(15,23,42,0.14)] backdrop-blur-[1px]">
       <LogPencilIcon />
       <span>Log</span>
     </span>
@@ -1508,7 +1508,7 @@ export default function LogPage() {
             onClick={openLogEvent}
             className="group relative mb-7 flex w-full cursor-pointer items-center justify-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-center text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition duration-200 ease-out hover:opacity-95 active:translate-y-0.5 active:scale-[0.985]"
           >
-            <h2 className="inline-flex items-center justify-center text-lg font-semibold"><LogTitleBadge /></h2>
+            <h2 className="flex w-full items-center justify-center text-lg font-semibold"><LogTitleBadge /></h2>
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
               <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90 group-active:translate-y-1">
                 <ChevronDown className="log-event-handle-sheen size-7 opacity-80" strokeWidth={3} aria-hidden="true" />
