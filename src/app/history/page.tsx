@@ -2210,6 +2210,32 @@ export default function HistoryPage() {
     return displayMedicalDetail(activity.detail ?? "");
   };
 
+  const reportActivityLines = (activity: ActivityLog) => {
+    const lines = [`- ${formatActivityTime(activity.happenedAt)} ${displayActivityLabel(activity)}`];
+    const detail = reportActivityDetail(activity);
+    const cleanNotes = reportActivityNotes(activity.notes);
+
+    if (["pee", "poop", "potty"].includes(activity.activityType)) {
+      const { event, bristol, bristolType, bristolDescription } = parsePottyDetail(activity.detail);
+      if (event && event !== "Poop") {
+        lines.push(`  Detail: ${event}`);
+      }
+      if (bristol) {
+        lines.push(`  Poop Type: ${[bristolType, bristolDescription].filter(Boolean).join(" - ")}`);
+      } else if (detail && detail !== event) {
+        lines.push(`  Detail: ${detail}`);
+      }
+    } else if (detail) {
+      lines.push(`  Detail: ${detail}`);
+    }
+
+    if (cleanNotes) {
+      lines.push(`  Notes: ${cleanNotes}`);
+    }
+
+    return lines;
+  };
+
   const buildHistoryCopyText = (copyDays: HistoryDay[], copyFilter: HistoryFilter, dateRange: string, reportProfile: PetProfile, ownerName: string, generatedDate: string, withLogDetails: boolean) => {
 
     const lines = [
@@ -2276,10 +2302,7 @@ export default function HistoryPage() {
       });
 
       day.activities.forEach((activity) => {
-        const detail = reportActivityDetail(activity);
-        const cleanNotes = reportActivityNotes(activity.notes);
-        const notes = cleanNotes ? ` | Notes: ${cleanNotes}` : "";
-        lines.push(`- ${formatActivityTime(activity.happenedAt)} ${displayActivityLabel(activity)}${detail ? ` - ${detail}` : ""}${notes}`);
+        lines.push(...reportActivityLines(activity));
         if (isReportImageActivity(activity)) {
           lines.push(`__REPORT_IMAGES__:${activity.id}`);
         }
