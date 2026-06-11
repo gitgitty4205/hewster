@@ -2197,6 +2197,19 @@ export default function HistoryPage() {
     new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date())
   );
 
+  const reportActivityNotes = (notes: string | null) => {
+    const { notesText } = splitActivityNotes(notes);
+    return notesText.replace(/\n/g, " ").trim();
+  };
+
+  const reportActivityDetail = (activity: ActivityLog) => {
+    if (["pee", "poop", "potty"].includes(activity.activityType)) {
+      return displayMedicalDetail(renderActivityDetail({ ...activity, notes: null }));
+    }
+
+    return displayMedicalDetail(activity.detail ?? "");
+  };
+
   const buildHistoryCopyText = (copyDays: HistoryDay[], copyFilter: HistoryFilter, dateRange: string, reportProfile: PetProfile, ownerName: string, generatedDate: string, withLogDetails: boolean) => {
 
     const lines = [
@@ -2263,8 +2276,9 @@ export default function HistoryPage() {
       });
 
       day.activities.forEach((activity) => {
-        const detail = displayMedicalDetail(renderActivityDetail(activity));
-        const notes = activity.notes ? ` | Notes: ${activity.notes.replace(/\n/g, " ")}` : "";
+        const detail = reportActivityDetail(activity);
+        const cleanNotes = reportActivityNotes(activity.notes);
+        const notes = cleanNotes ? ` | Notes: ${cleanNotes}` : "";
         lines.push(`- ${formatActivityTime(activity.happenedAt)} ${displayActivityLabel(activity)}${detail ? ` - ${detail}` : ""}${notes}`);
         if (isReportImageActivity(activity)) {
           lines.push(`__REPORT_IMAGES__:${activity.id}`);
