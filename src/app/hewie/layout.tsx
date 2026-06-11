@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -120,10 +121,22 @@ export default function HewieLayout({ children }: { children: React.ReactNode })
   if (shouldShowAuthGate) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--hewie-bg,#999b96)] px-4 text-zinc-900">
-        <section className="w-full max-w-sm rounded-[2rem] bg-white p-6 text-center shadow-sm ring-1 ring-zinc-200">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-400">PetNoteBook</p>
-          <h1 className="mt-2 text-xl font-bold text-zinc-800">Opening PetNoteBook...</h1>
-          <p className="mt-2 text-sm leading-6 text-zinc-500">Getting the notebook ready.</p>
+        <section className="flex size-32 items-center justify-center" aria-label="Loading PetNoteBook" role="status">
+          <div className="relative flex size-24 items-center justify-center">
+            <span
+              className="absolute inset-0 rounded-full border-2 border-white/35 border-t-white/95 shadow-[0_0_22px_rgba(255,255,255,0.35)] animate-spin"
+              aria-hidden="true"
+            />
+            <Image
+              src="/paw-notes-transparent.svg"
+              alt=""
+              width={64}
+              height={64}
+              draggable={false}
+              className="relative h-16 w-16 object-contain drop-shadow-[0_8px_12px_rgba(15,23,42,0.28)] contrast-[1.04] saturate-[1.06]"
+              aria-hidden="true"
+            />
+          </div>
         </section>
       </main>
     );
