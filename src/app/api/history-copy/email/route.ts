@@ -271,6 +271,7 @@ function pdfReportTheme(themeId: ThemeId) {
     cardFill: pdfColor(theme.activeBg, "rg"),
     cardStroke: pdfColor(theme.ring, "RG"),
     neutral: "0.15 0.15 0.17 rg",
+    metadata: "0.45 0.45 0.48 rg",
   };
 }
 
@@ -469,9 +470,13 @@ endstream`);
       return;
     }
 
+    const trimmedLine = rawLine.trim();
     const isDateLine = /^[A-Z][a-z]{2},/.test(rawLine);
-    const wrappedLines = wrapPdfLine(rawLine, isDateLine ? 70 : 86);
-    const lineHeight = isDateLine ? 16 : 13;
+    const isLoggingDetailsHeader = trimmedLine === "Logging details:";
+    const isLoggingMetadata = /^(Logged by|Logged on|Updated by|Updated on|Last edited by|Last edited on):/.test(trimmedLine);
+    const fontSize = isDateLine ? 12 : isLoggingMetadata ? 8.5 : isLoggingDetailsHeader ? 9 : 10;
+    const lineHeight = isDateLine ? 16 : isLoggingMetadata ? 11 : isLoggingDetailsHeader ? 12 : 13;
+    const wrappedLines = wrapPdfLine(rawLine, isDateLine ? 70 : isLoggingMetadata ? 96 : 86);
     const blockHeight = wrappedLines.length * lineHeight + (isDateLine ? 6 : 2);
 
     if (y - blockHeight < 54) finishPage();
@@ -480,8 +485,16 @@ endstream`);
       pageCommands.push(reportTheme.neutral);
       pageCommands.push(pdfTextLines(wrappedLines, 50, y, 12, lineHeight, "F2"));
       pageCommands.push(reportTheme.neutral);
+    } else if (isLoggingDetailsHeader) {
+      pageCommands.push(reportTheme.metadata);
+      pageCommands.push(pdfTextLines(wrappedLines, 64, y, fontSize, lineHeight, "F2"));
+      pageCommands.push(reportTheme.neutral);
+    } else if (isLoggingMetadata) {
+      pageCommands.push(reportTheme.metadata);
+      pageCommands.push(pdfTextLines(wrappedLines, 76, y, fontSize, lineHeight));
+      pageCommands.push(reportTheme.neutral);
     } else if (rawLine.trim()) {
-      pageCommands.push(pdfTextLines(wrappedLines, 64, y, 10, lineHeight));
+      pageCommands.push(pdfTextLines(wrappedLines, 64, y, fontSize, lineHeight));
     }
     y -= blockHeight;
   });

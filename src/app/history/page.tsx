@@ -2259,7 +2259,7 @@ export default function HistoryPage() {
         lines.push(`  Detail: ${detail}`);
       }
     } else if (detail) {
-      lines.push(`  Detail: ${detail}`);
+      lines.push(`  Record type: ${detail}`);
     }
 
     if (cleanNotes) {
@@ -2307,7 +2307,7 @@ export default function HistoryPage() {
     const [detailSummary, detailNotes] = item.detail.split(" • Notes: ", 2);
 
     if (detailSummary) {
-      lines.push(`  Detail: ${detailSummary}`);
+      lines.push(`  Record type: ${detailSummary}`);
     }
     if (detailNotes) {
       lines.push(`  Notes: ${detailNotes}`);
@@ -2337,7 +2337,7 @@ export default function HistoryPage() {
       `Date Range: ${dateRange}`,
       `Matching Days: ${copyDays.length}`,
       `Report Generated: ${generatedDate}`,
-      `Log Details: ${withLogDetails ? "Included" : "Not included"}`,
+      `Logging Details: ${withLogDetails ? "Included" : "Not included"}`,
       "",
       "History",
       "",
@@ -2358,13 +2358,13 @@ export default function HistoryPage() {
           const audit = meal.auditInfo;
           const auditParts = [
             `Logged by: ${audit?.loggedBy ?? "Not recorded"}`,
-            `Logged time: ${formatReportDateTime(audit?.loggedAt ?? meal.createdAt)}`,
+            `Logged on: ${formatReportDateTime(audit?.loggedAt ?? meal.createdAt)}`,
             audit?.lastEditedAt ? `Updated by: ${audit.lastEditedBy ?? "Not recorded"}` : null,
-            audit?.lastEditedAt ? `Updated: ${formatReportDateTime(audit.lastEditedAt)}` : null,
+            audit?.lastEditedAt ? `Updated on: ${formatReportDateTime(audit.lastEditedAt)}` : null,
           ].filter(Boolean);
 
           if (auditParts.length) {
-            lines.push("  Log details:");
+            lines.push("  Logging details:");
             auditParts.forEach((part) => lines.push(`    ${part}`));
           }
         }
@@ -2380,13 +2380,13 @@ export default function HistoryPage() {
           const audit = activity.auditInfo;
           const auditParts = [
             `Logged by: ${audit?.loggedBy ?? "Not recorded"}`,
-            `Logged time: ${formatReportDateTime(audit?.loggedAt ?? activity.createdAt ?? activity.happenedAt)}`,
+            `Logged on: ${formatReportDateTime(audit?.loggedAt ?? activity.createdAt ?? activity.happenedAt)}`,
             audit?.lastEditedAt ? `Last edited by: ${audit.lastEditedBy ?? "Not recorded"}` : null,
-            audit?.lastEditedAt ? `Last edited time: ${formatReportDateTime(audit.lastEditedAt)}` : null,
+            audit?.lastEditedAt ? `Last edited on: ${formatReportDateTime(audit.lastEditedAt)}` : null,
           ].filter(Boolean);
 
           if (auditParts.length) {
-            lines.push("  Log details:");
+            lines.push("  Logging details:");
             auditParts.forEach((part) => lines.push(`    ${part}`));
           }
         }
