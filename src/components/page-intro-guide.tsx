@@ -25,6 +25,7 @@ const guideSteps: GuideStep[] = [
   { title: "Edit Mode", href: "/hewie/history", target: "history-edit-mode", text: "Unlock to edit today's events and past records." },
   { title: "Health Records", href: "/hewie/medical-records", target: "medical-records", text: "Quickly find health records, medications, and documents." },
   { title: "Notebook Sharing", href: "/hewie/profile", target: "profile-sharing", text: "Invite family, caretakers, and pet sitters to help care for your pet and log events together." },
+  { title: "Settings", href: "/hewie/settings", target: "settings-schedules", text: "Create meal, supplement, and medication schedules. PetNotebook uses them to generate reminders and upcoming items automatically." },
 ];
 
 function currentPathMatches(pathname: string, href: string) {

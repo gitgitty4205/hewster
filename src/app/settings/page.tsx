@@ -97,6 +97,38 @@ export default function SettingsPage() {
   }, [themeId]);
 
   const theme = appThemes[themeId];
+  const profileItem = settingsItems[0];
+  const scheduleItems = settingsItems.slice(1, 4);
+  const accountItem = settingsItems[4];
+
+  const renderSettingsItem = (item: (typeof settingsItems)[number]) => {
+    const Icon = item.icon;
+    const usesPetTheme = item.iconKind === "paw";
+    const usesThemeAccent = usesPetTheme || item.iconKind === "theme";
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={`flex min-h-[112px] items-center justify-between gap-4 rounded-3xl p-5 shadow-sm transition hover:scale-[1.01] ${usesThemeAccent ? "" : item.accent}`}
+        style={usesThemeAccent ? { backgroundColor: theme.activeBg, color: theme.activeText } : undefined}
+      >
+        <span className="flex min-w-0 items-center gap-4">
+          <span
+            className={`flex size-14 shrink-0 items-center justify-center rounded-full ${usesThemeAccent ? "" : item.iconAccent}`}
+            style={usesThemeAccent ? { backgroundColor: theme.accent, color: theme.accentText } : undefined}
+          >
+            {usesPetTheme ? <CutePawIcon /> : Icon ? <Icon className="size-6" /> : <span className="text-2xl leading-none">{item.iconText}</span>}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-base font-semibold">{item.title}</span>
+            <span className="mt-1 line-clamp-2 block text-sm leading-5 opacity-70">{item.description}</span>
+          </span>
+        </span>
+        <ChevronRight className="size-5 shrink-0 opacity-60" />
+      </Link>
+    );
+  };
 
   return (
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
@@ -113,33 +145,11 @@ export default function SettingsPage() {
 
         <section className="mb-4 rounded-3xl bg-white/70 p-5 shadow-sm ring-1 ring-white/60">
           <div className="space-y-4">
-            {settingsItems.map((item) => {
-              const Icon = item.icon;
-              const usesPetTheme = item.iconKind === "paw";
-              const usesThemeAccent = usesPetTheme || item.iconKind === "theme";
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex min-h-[112px] items-center justify-between gap-4 rounded-3xl p-5 shadow-sm transition hover:scale-[1.01] ${usesThemeAccent ? "" : item.accent}`}
-                  style={usesThemeAccent ? { backgroundColor: theme.activeBg, color: theme.activeText } : undefined}
-                >
-                  <span className="flex min-w-0 items-center gap-4">
-                    <span
-                      className={`flex size-14 shrink-0 items-center justify-center rounded-full ${usesThemeAccent ? "" : item.iconAccent}`}
-                      style={usesThemeAccent ? { backgroundColor: theme.accent, color: theme.accentText } : undefined}
-                    >
-                      {usesPetTheme ? <CutePawIcon /> : Icon ? <Icon className="size-6" /> : <span className="text-2xl leading-none">{item.iconText}</span>}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-base font-semibold">{item.title}</span>
-                      <span className="mt-1 line-clamp-2 block text-sm leading-5 opacity-70">{item.description}</span>
-                    </span>
-                  </span>
-                  <ChevronRight className="size-5 shrink-0 opacity-60" />
-                </Link>
-              );
-            })}
+            {profileItem ? renderSettingsItem(profileItem) : null}
+            <div data-guide="settings-schedules" className="space-y-4">
+              {scheduleItems.map(renderSettingsItem)}
+            </div>
+            {accountItem ? renderSettingsItem(accountItem) : null}
           </div>
         </section>
 
