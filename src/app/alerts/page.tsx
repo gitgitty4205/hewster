@@ -730,9 +730,12 @@ export default function AlertsPage() {
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
-            <div>
+            <div data-guide="alerts-reminders">
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Care Alerts</h1>
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Alerts &amp; Reminders</h1>
+              <p className="mt-1 text-sm leading-5 text-[#3b2832]/65">
+                Keep everyone on the same page with alerts, reminders, and important care notes.
+              </p>
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
@@ -743,10 +746,6 @@ export default function AlertsPage() {
             <TriangleAlert className="size-5 text-[#8f1739]" />
             <h2 className="text-lg font-semibold text-[#8f1739]">Care Alerts</h2>
           </div>
-          <p className="mb-4 text-sm leading-5 text-[#b71f48]/70">
-            Custom alerts for important care notes.
-          </p>
-
           <div className="space-y-3">
             {!showAlertForm ? (
               <Button onClick={() => setShowAlertForm(true)} className="rounded-full bg-[#8f1739] text-white hover:bg-[#7c1431]">Add Care Alert</Button>
@@ -1111,10 +1110,6 @@ export default function AlertsPage() {
             <Bell className="size-5 text-[var(--hewie-active-text,#334155)]" />
             <h2 className="text-lg font-semibold text-[var(--hewie-active-text,#334155)]">Reminders</h2>
           </div>
-          <p className="mb-4 text-sm leading-5 text-[var(--hewie-active-text,#334155)]/65">
-            Reminders for tasks that haven&apos;t been logged.
-          </p>
-
           <div className="space-y-3">
             {!showReminderForm ? (
               <Button onClick={() => setShowReminderForm(true)} className="rounded-full bg-[var(--hewie-active-text,#334155)] text-white hover:opacity-90">Add Reminder</Button>

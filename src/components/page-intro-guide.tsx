@@ -33,6 +33,7 @@ const guideSteps: GuideStep[] = [
   { title: "History", href: "/hewie/history", target: "history-calendar", text: "Review past records, filter results, and create PDF reports." },
   { title: "Edit Mode", href: "/hewie/history", target: "history-edit-mode", text: "Unlock to edit today's events and past records." },
   { title: "Health Records", href: "/hewie/medical-records", target: "medical-records", text: "Quickly find health records, medications, and documents." },
+  { title: "Alerts & Reminders", href: "/hewie/alerts", target: "alerts-reminders", text: "Keep everyone on the same page with alerts, reminders, and important care notes." },
   { title: "Notebook Sharing", href: "/hewie/profile", target: "profile-sharing", text: "Invite family, caretakers, and pet sitters to help care for your pet and log events together." },
   { title: "Settings", href: "/hewie/settings", target: "settings-schedules", text: "Create meal, supplement, and medication schedules. PetNotebook uses them to generate reminders and upcoming items automatically." },
 ];
