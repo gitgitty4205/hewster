@@ -730,7 +730,7 @@ export default function AlertsPage() {
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
-            <div data-guide="alerts-reminders">
+            <div>
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Alerts &amp; Reminders</h1>
             </div>
@@ -738,7 +738,8 @@ export default function AlertsPage() {
           </div>
         </header>
 
-        <section className="mb-4 rounded-3xl bg-[#fff0f1] p-5 text-[#d91f56] shadow-sm ring-1 ring-[#e6c8ce]/80">
+        <div data-guide="alerts-reminders" className="mb-4 space-y-4">
+        <section className="rounded-3xl bg-[#fff0f1] p-5 text-[#d91f56] shadow-sm ring-1 ring-[#e6c8ce]/80">
           <div className="mb-4 flex items-center gap-2">
             <TriangleAlert className="size-5 text-[#8f1739]" />
             <h2 className="text-lg font-semibold text-[#8f1739]">Care Alerts</h2>
@@ -1105,7 +1106,7 @@ export default function AlertsPage() {
           </div>
         </section>
 
-        <section className="mb-4 rounded-3xl bg-white/75 p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/70">
+        <section className="rounded-3xl bg-white/75 p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/70">
           <div className="mb-4 flex items-center gap-2">
             <Bell className="size-5 text-[var(--hewie-active-text,#334155)]" />
             <h2 className="text-lg font-semibold text-[var(--hewie-active-text,#334155)]">Reminders</h2>
@@ -1209,6 +1210,7 @@ export default function AlertsPage() {
             ) : null}
           </div>
         </section>
+        </div>
 
         <BottomNav alertsCount={alertCards.length} />
       </div>
