@@ -426,7 +426,6 @@ export default function ProfilePage() {
                   <Heart className="size-4 fill-current" />
                 </button>
               </div>
-              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">Shared with everyone who has notebook access.</p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
               <p className="min-h-4 text-xs font-semibold text-emerald-600">{saveState === "saved" ? "Saved" : ""}</p>
@@ -737,7 +736,6 @@ export default function ProfilePage() {
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">About {petFirstName}</h2>
-              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">Helpful notes for anyone caring for this pet.</p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
               <p className="min-h-4 text-xs font-semibold text-emerald-600">{saveState === "saved" ? "Saved" : ""}</p>
@@ -913,7 +911,6 @@ export default function ProfilePage() {
         <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">App Theme Color</h2>
-            <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">This only changes how the notebook looks for you.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
