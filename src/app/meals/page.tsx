@@ -266,19 +266,19 @@ export default function MealsPage() {
         </header>
 
         <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
-          <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#8a5a35]/75 text-xl text-white ring-1 ring-[#caa57f]">
                 🥩
               </span>
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-lg font-semibold">Saved Meal Plan</h2>
                 <p className="text-sm text-zinc-500">Create meal schedules, reminders, and daily logs.</p>
                 <p className="text-sm text-zinc-500">{`${templates.length} Saved • ${activeCount} Active`}</p>
               </div>
             </div>
-            <div className="text-right text-xs text-zinc-500">
-              <div className="flex items-center justify-end gap-1.5 text-emerald-600">
+            <div className="text-xs text-zinc-500 sm:text-right">
+              <div className="flex items-center gap-1.5 text-emerald-600 sm:justify-end">
                 <Save className="size-3.5" />
                 {saveState === "saving"
                   ? "Saving..."
@@ -292,7 +292,7 @@ export default function MealsPage() {
                         ? "Ready"
                         : "Loading"}
               </div>
-              <p className="mt-1">
+              <p className="mt-1 max-w-52">
                 {storageMode === "supabase"
                   ? "Shared Database Is Active"
                   : supabaseReady
