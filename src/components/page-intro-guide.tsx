@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CircleHelp, X } from "lucide-react";
+import { X } from "lucide-react";
 
 const PAGE_GUIDE_STORAGE_KEY = "hewster.pageIntro.completed";
 const PAGE_GUIDE_STEP_STORAGE_KEY = "hewster.pageIntro.step";
@@ -140,13 +140,6 @@ export function PageIntroGuide() {
     return { left, top, width: cardWidth };
   }, [targetRect]);
 
-  const startGuide = () => {
-    window.localStorage.removeItem(PAGE_GUIDE_STORAGE_KEY);
-    window.localStorage.setItem(PAGE_GUIDE_STEP_STORAGE_KEY, "0");
-    setStep(0);
-    router.push(guideSteps[0].href);
-  };
-
   const finishGuide = () => {
     window.localStorage.setItem(PAGE_GUIDE_STORAGE_KEY, "true");
     window.localStorage.removeItem(PAGE_GUIDE_STEP_STORAGE_KEY);
@@ -161,16 +154,7 @@ export function PageIntroGuide() {
   };
 
   if (step === null || !currentStep) {
-    return (
-      <button
-        type="button"
-        onClick={startGuide}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] left-4 z-[65] inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-2 text-xs font-bold text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] backdrop-blur"
-      >
-        <CircleHelp className="size-4" />
-        Guide
-      </button>
-    );
+    return null;
   }
 
   const activeStepIndex = step;
