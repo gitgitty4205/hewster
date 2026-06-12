@@ -55,7 +55,7 @@ const settingsItems = [
   },
   {
     title: "Account Settings",
-    description: "Notebook sharing, access, and account settings.",
+    description: "Account information, notifications, security, and membership.",
     href: "/hewie/account-settings",
     icon: UserRound,
     iconKind: "theme",
