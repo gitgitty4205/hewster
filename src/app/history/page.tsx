@@ -3103,13 +3103,13 @@ export default function HistoryPage() {
 
 
 
-        <section data-guide="history-records" className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
+        <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
 
           <div className="mb-4 flex items-start justify-between gap-3">
 
             <div>
 
-              <h2 className="text-lg font-semibold">{isFilteredView ? "Filtered Results" : selectedHistoryDay ? formatDayLabel(selectedHistoryDay.day) : selectedEmptyDay ? formatDayLabel(selectedEmptyDay) : "Select A Day"}</h2>
+              <h2 className="text-lg font-semibold">{isFilteredView ? "Filtered Results" : selectedHistoryDay ? formatDayLabel(selectedHistoryDay.day) : selectedEmptyDay ? formatDayLabel(selectedEmptyDay) : "History"}</h2>
 
               {isFilteredView ? (
 
@@ -3153,7 +3153,7 @@ export default function HistoryPage() {
 
                     : selectedEmptyDay
                       ? "No records logged yet."
-                      : "Days with records have dots on the calendar."}
+                      : "Past records will appear here as you log events."}
 
                 </p>
 
