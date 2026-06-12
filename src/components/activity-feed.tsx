@@ -27,7 +27,7 @@ type TimelineItem = {
 type Props = {
   activityLogs: ActivityLog[];
   timelineItems?: TimelineItem[];
-  title?: string;
+  title?: React.ReactNode;
   subtitle?: string;
   grouped?: boolean;
   notebookOwnerId?: string | null;

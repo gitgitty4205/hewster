@@ -1346,7 +1346,20 @@ export default function LogPage() {
       activityLogs={selectedDayActivityLogs}
       timelineItems={selectedDayEventItems}
       grouped
-      title={isTodayLog ? "Today's Events" : `${formatLogDayLabel(logDayKey)} Events`}
+      title={
+        logDayKey < currentTodayKey() ? (
+          <span className="flex flex-wrap items-center gap-2">
+            <span>{formatLogDayLabel(logDayKey)}</span>
+            <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold text-[var(--hewie-active-text,#334155)]/70 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+              Past Entries
+            </span>
+          </span>
+        ) : isTodayLog ? (
+          "Today's Events"
+        ) : (
+          formatLogDayLabel(logDayKey)
+        )
+      }
       onSelectActivity={canEditEntries ? openEditorForActivity : undefined}
       careTemplates={careTemplates}
       renderInlineEditor={(activity) =>
