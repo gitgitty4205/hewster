@@ -357,12 +357,12 @@ export function CareSettingsPage({
               </span>
               <div>
                 <h2 className="text-lg font-semibold">{kind === "supplement" ? "Saved Supplements" : "Saved Medications"}</h2>
+                <p className="mt-1 text-sm leading-5 text-zinc-500">{description}</p>
                 {kind === "supplement" ? (
-                  <p className="mt-1 text-sm leading-5 text-zinc-500">{description}</p>
+                  <p className="text-sm text-zinc-500">
+                    {isHydrating ? "Loading saved items..." : `${items.length} Saved • ${activeCount} Active`}
+                  </p>
                 ) : null}
-                <p className="text-sm text-zinc-500">
-                  {isHydrating ? "Loading saved items..." : `${items.length} Saved • ${activeCount} Active`}
-                </p>
               </div>
             </div>
             <div className="text-right text-xs text-zinc-500">
