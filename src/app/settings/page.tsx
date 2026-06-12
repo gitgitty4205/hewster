@@ -21,7 +21,7 @@ import {
 const settingsItems = [
   {
     title: "Pet Profile",
-    description: "Pet information, photos, and profile details.",
+    description: "Pet information, notebook sharing, and profile photo.",
     href: "/hewie/profile",
     icon: null,
     iconKind: "paw",
