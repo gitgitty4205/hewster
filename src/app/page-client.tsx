@@ -2422,7 +2422,7 @@ export default function HomeApp() {
         ) : null}
 
         {upcomingScheduleCards.length ? (
-          <section className="mb-4 space-y-2">
+          <section data-guide="today-upcoming" className="mb-4 space-y-2">
             <section className="rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-2 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
               <div className="grid grid-cols-2 gap-2">
                 {upcomingScheduleCards.map((card) => {
@@ -2792,32 +2792,34 @@ export default function HomeApp() {
           </div>
         ) : null}
 
-        <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title={null} iconOnly>
-          {detailActivityType ? (
-            <ActivityDetailForm
-              activityType={detailActivityType}
-              detail={detailValue}
-              notes={notesValue}
-              extraNotes={extraNotesValue}
-              happenedAt={happenedAtValue}
-              embedded
-              saveLabel="Save"
-              onDetailChange={setDetailValue}
-              onNotesChange={setNotesValue}
-              onExtraNotesChange={setExtraNotesValue}
-              attachmentFiles={attachmentFiles}
-              onAttachmentsChange={setAttachmentFiles}
-              recordTags={recordTags}
-              onRecordTagsChange={setRecordTags}
-              onHappenedAtChange={setHappenedAtValue}
-              onSave={saveDetailedActivity}
-              onCancel={resetActivityEditor}
-              onDelete={editingActivityId && canDeleteEntries ? deleteActivity : undefined}
-              saving={activityState === "saving"}
-              savedCareItems={careTemplates.filter((item) => item.asNeeded && (item.kind === detailActivityType || (detailActivityType === "sick" && item.kind === "medication") || (detailActivityType === "wellness" && item.kind === "supplement")))}
-            />
-          ) : null}
-        </QuickLogCard>
+        <div data-guide="today-quick-log">
+          <QuickLogCard activityState={activityState} onQuickLog={quickLogActivity} title={null} iconOnly>
+            {detailActivityType ? (
+              <ActivityDetailForm
+                activityType={detailActivityType}
+                detail={detailValue}
+                notes={notesValue}
+                extraNotes={extraNotesValue}
+                happenedAt={happenedAtValue}
+                embedded
+                saveLabel="Save"
+                onDetailChange={setDetailValue}
+                onNotesChange={setNotesValue}
+                onExtraNotesChange={setExtraNotesValue}
+                attachmentFiles={attachmentFiles}
+                onAttachmentsChange={setAttachmentFiles}
+                recordTags={recordTags}
+                onRecordTagsChange={setRecordTags}
+                onHappenedAtChange={setHappenedAtValue}
+                onSave={saveDetailedActivity}
+                onCancel={resetActivityEditor}
+                onDelete={editingActivityId && canDeleteEntries ? deleteActivity : undefined}
+                saving={activityState === "saving"}
+                savedCareItems={careTemplates.filter((item) => item.asNeeded && (item.kind === detailActivityType || (detailActivityType === "sick" && item.kind === "medication") || (detailActivityType === "wellness" && item.kind === "supplement")))}
+              />
+            ) : null}
+          </QuickLogCard>
+        </div>
 
         <ActivityFeed
           activityLogs={todayActivityLogs}
@@ -2827,7 +2829,7 @@ export default function HomeApp() {
           careTemplates={careTemplates}
         />
 
-        <section className="mb-4 rounded-3xl bg-[#fff5d8] p-5 text-[#765313] shadow-sm ring-1 ring-[#ead28a]/80">
+        <section data-guide="today-poop-records" className="mb-4 rounded-3xl bg-[#fff5d8] p-5 text-[#765313] shadow-sm ring-1 ring-[#ead28a]/80">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-[#6f4c0f]">Poop Records</h2>

@@ -2688,7 +2688,7 @@ export default function HistoryPage() {
 
         </header>
 
-        <section className="mb-4 overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+        <section data-guide="history-calendar" className="mb-4 overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
 
           <div className="bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)]">
 
@@ -2712,6 +2712,8 @@ export default function HistoryPage() {
                   type="button"
 
                   variant="outline"
+
+                  data-guide="history-filters"
 
                   className="size-9 rounded-full border-white/45 bg-white/15 p-0 text-[var(--hewie-accent-text,#ffffff)] hover:bg-white/25"
 

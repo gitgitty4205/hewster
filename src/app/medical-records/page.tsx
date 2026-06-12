@@ -870,7 +870,7 @@ export default function MedicalRecordsPage() {
           ) : null}
         </div>
 
-        <div className="space-y-3">
+        <div data-guide="medical-records" className="space-y-3">
           {!hydrated ? (
             <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
               <p className="text-sm text-zinc-500">Loading records...</p>

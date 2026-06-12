@@ -1430,10 +1430,10 @@ export default function LogPage() {
         </header>
 
 
-        {!isTodayLog ? activityFeed : null}
+        {!isTodayLog ? <div data-guide="log-review">{activityFeed}</div> : null}
 
         {logEventOpen ? (
-          <div className="log-event-open-panel relative mb-7 [&>section]:mb-0">
+          <div data-guide="log-events" className="log-event-open-panel relative mb-7 [&>section]:mb-0">
             <QuickLogCard
               activityState={activityState}
               onQuickLog={quickLogActivity}
@@ -1506,6 +1506,7 @@ export default function LogPage() {
           <button
             type="button"
             onClick={openLogEvent}
+            data-guide="log-events"
             className="group relative mb-7 flex w-full cursor-pointer items-center justify-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-center text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition duration-200 ease-out hover:opacity-95 active:translate-y-0.5 active:scale-[0.985]"
           >
             <h2 className="text-lg"><LogTitle /></h2>
@@ -1519,30 +1520,32 @@ export default function LogPage() {
 
 
 
-        {isTodayLog ? activityFeed : null}
+        {isTodayLog ? <div data-guide="log-review">{activityFeed}</div> : null}
 
 
 
-        <TodayMealPlanCard
-          dayKey={logDayKey}
-          isToday={isTodayLog}
-          templates={activeTemplates}
-          dailyMealState={dailyMealState}
-          mealLogs={mealLogs}
-          careTemplates={careTemplates}
-          editingMealTimeId={editingMealTimeId}
-          editingMealTimeValue={editingMealTimeValue}
-          editingMealNoteValue={editingMealNoteValue}
-          editingSkippedCareItemIds={editingSkippedCareItemIds}
-          onOpenMealEditor={canEditEntries ? openMealTimeEditor : () => undefined}
-          onActualTimeChange={setEditingMealTimeValue}
-          onFedNoteChange={setEditingMealNoteValue}
-          onToggleCareItem={toggleEditingCareItem}
-          onSaveMeal={saveMealTime}
-          onCancelMealEdit={cancelMealTimeEditor}
-          onUndoMeal={undoMealFed}
-          canUndoMeal={canDeleteEntries}
-        />
+        <div data-guide="log-meal-plan">
+          <TodayMealPlanCard
+            dayKey={logDayKey}
+            isToday={isTodayLog}
+            templates={activeTemplates}
+            dailyMealState={dailyMealState}
+            mealLogs={mealLogs}
+            careTemplates={careTemplates}
+            editingMealTimeId={editingMealTimeId}
+            editingMealTimeValue={editingMealTimeValue}
+            editingMealNoteValue={editingMealNoteValue}
+            editingSkippedCareItemIds={editingSkippedCareItemIds}
+            onOpenMealEditor={canEditEntries ? openMealTimeEditor : () => undefined}
+            onActualTimeChange={setEditingMealTimeValue}
+            onFedNoteChange={setEditingMealNoteValue}
+            onToggleCareItem={toggleEditingCareItem}
+            onSaveMeal={saveMealTime}
+            onCancelMealEdit={cancelMealTimeEditor}
+            onUndoMeal={undoMealFed}
+            canUndoMeal={canDeleteEntries}
+          />
+        </div>
 
 
 

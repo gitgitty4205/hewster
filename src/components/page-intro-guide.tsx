@@ -1,138 +1,211 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { CircleHelp, X } from "lucide-react";
 
-const PAGE_INTRO_STORAGE_KEY = "hewster.pageIntro.completed";
-const PAGE_INTRO_STEP_STORAGE_KEY = "hewster.pageIntro.step";
+const PAGE_GUIDE_STORAGE_KEY = "hewster.pageIntro.completed";
+const PAGE_GUIDE_STEP_STORAGE_KEY = "hewster.pageIntro.step";
 
-const introPages = [
-  {
-    title: "Today",
-    href: "/hewie",
-    description: "See today's meals, care reminders, care alerts, potty notes, and recent events in one place.",
-  },
-  {
-    title: "Manage Events",
-    href: "/hewie/log",
-    description: "Log meals, potty breaks, treats, symptoms, notes, medication, supplements, and attachments.",
-  },
-  {
-    title: "History",
-    href: "/hewie/history",
-    description: "Review meals, activities, notes, care alerts, and weight entries by day or filter.",
-  },
-  {
-    title: "Health Records",
-    href: "/hewie/medical-records",
-    description: "Keep vet visits, medical notes, and medical attachments easy to find.",
-  },
-  {
-    title: "Weight",
-    href: "/hewie/weight",
-    description: "Save weight entries and track changes over time.",
-  },
-  {
-    title: "Fitness",
-    href: "/hewie/activity",
-    description: "View tracker summaries and activity details.",
-  },
-  {
-    title: "Care Alerts",
-    href: "/hewie/alerts",
-    description: "Create reminders for anything that needs special attention.",
-  },
-  {
-    title: "Pet Profile",
-    href: "/hewie/profile",
-    description: "Edit pet info, profile photo, care notes, sharing, and theme settings.",
-  },
-  {
-    title: "Settings",
-    href: "/hewie/settings",
-    description: "Manage saved plans, supplements, medications, account options, and notebook setup.",
-  },
+type GuideStep = {
+  title: string;
+  href: string;
+  target: string;
+  text: string;
+};
+
+const guideSteps: GuideStep[] = [
+  { title: "Today", href: "/hewie", target: "today-upcoming", text: "Upcoming meals, meds, supplements, and alerts." },
+  { title: "Today", href: "/hewie", target: "today-quick-log", text: "Quickly log common events." },
+  { title: "Today", href: "/hewie", target: "today-poop-records", text: "Last 7 days of stool records." },
+  { title: "Manage Events", href: "/hewie/log", target: "log-events", text: "Open this to log events." },
+  { title: "Manage Events", href: "/hewie/log", target: "log-review", text: "Tap entries to review or edit." },
+  { title: "Meal Plan", href: "/hewie/log", target: "log-meal-plan", text: "Review and edit the meal plan." },
+  { title: "History", href: "/hewie/history", target: "history-calendar", text: "Days with records have dots." },
+  { title: "History", href: "/hewie/history", target: "history-filters", text: "Filter records and email a PDF report." },
+  { title: "Medical Records", href: "/hewie/medical-records", target: "medical-records", text: "Vet visits, vaccines, medications, and documents." },
+  { title: "Weight", href: "/hewie/weight", target: "weight-log", text: "Save weight entries and track changes." },
+  { title: "Pet Profile", href: "/hewie/profile", target: "profile-info", text: "Pet info used across the notebook and reports." },
+  { title: "Pet Profile", href: "/hewie/profile", target: "profile-sharing", text: "Invite people to help with the notebook." },
+  { title: "Account Settings", href: "/hewie/account-settings", target: "account-settings", text: "Account info, notifications, security, and membership." },
 ];
+
+function currentPathMatches(pathname: string, href: string) {
+  return pathname === href || (href === "/hewie" && pathname === "/");
+}
+
+function clampStepIndex(value: number) {
+  return Math.min(Math.max(value, 0), guideSteps.length - 1);
+}
 
 export function PageIntroGuide() {
   const pathname = usePathname();
   const router = useRouter();
   const [step, setStep] = useState<number | null>(null);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
-    if (window.localStorage.getItem(PAGE_INTRO_STORAGE_KEY) !== "true") {
-      const storedStep = Number.parseInt(window.localStorage.getItem(PAGE_INTRO_STEP_STORAGE_KEY) ?? "0", 10);
-      const nextStep = Number.isFinite(storedStep) ? Math.min(Math.max(storedStep, 0), introPages.length - 1) : 0;
-      queueMicrotask(() => setStep(nextStep));
-    }
+    if (window.localStorage.getItem(PAGE_GUIDE_STORAGE_KEY) === "true") return;
+
+    const storedStep = Number.parseInt(window.localStorage.getItem(PAGE_GUIDE_STEP_STORAGE_KEY) ?? "0", 10);
+    const nextStep = Number.isFinite(storedStep) ? clampStepIndex(storedStep) : 0;
+    queueMicrotask(() => setStep(nextStep));
   }, []);
 
-  if (step === null) return null;
+  const currentStep = step === null ? null : guideSteps[step];
+  const isViewingCurrentPage = currentStep ? currentPathMatches(pathname, currentStep.href) : false;
 
-  const currentPage = introPages[step];
-  const isLastStep = step === introPages.length - 1;
-  const isViewingCurrentPage = pathname === currentPage.href || (currentPage.href === "/hewie" && pathname === "/");
+  useEffect(() => {
+    if (!currentStep || !isViewingCurrentPage) {
+      queueMicrotask(() => setTargetRect(null));
+      return;
+    }
 
-  const finishIntro = () => {
-    window.localStorage.setItem(PAGE_INTRO_STORAGE_KEY, "true");
-    window.localStorage.removeItem(PAGE_INTRO_STEP_STORAGE_KEY);
+    let frameId = 0;
+
+    const updateTarget = () => {
+      const target = document.querySelector<HTMLElement>(`[data-guide="${currentStep.target}"]`);
+      if (!target) {
+        setTargetRect(null);
+        return;
+      }
+
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+      frameId = window.requestAnimationFrame(() => setTargetRect(target.getBoundingClientRect()));
+    };
+
+    const timeoutId = window.setTimeout(updateTarget, 80);
+    window.addEventListener("resize", updateTarget);
+    window.addEventListener("scroll", updateTarget, true);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", updateTarget);
+      window.removeEventListener("scroll", updateTarget, true);
+    };
+  }, [currentStep, isViewingCurrentPage]);
+
+  const cardStyle = useMemo(() => {
+    if (!targetRect) return undefined;
+
+    const cardWidth = Math.min(320, window.innerWidth - 32);
+    const left = Math.min(Math.max(16, targetRect.left), window.innerWidth - cardWidth - 16);
+    const hasRoomBelow = targetRect.bottom + 148 < window.innerHeight;
+    const top = hasRoomBelow ? targetRect.bottom + 10 : Math.max(16, targetRect.top - 132);
+
+    return { left, top, width: cardWidth };
+  }, [targetRect]);
+
+  const startGuide = () => {
+    window.localStorage.removeItem(PAGE_GUIDE_STORAGE_KEY);
+    window.localStorage.setItem(PAGE_GUIDE_STEP_STORAGE_KEY, "0");
+    setStep(0);
+    router.push(guideSteps[0].href);
+  };
+
+  const finishGuide = () => {
+    window.localStorage.setItem(PAGE_GUIDE_STORAGE_KEY, "true");
+    window.localStorage.removeItem(PAGE_GUIDE_STEP_STORAGE_KEY);
     setStep(null);
   };
 
   const goToStep = (nextStep: number) => {
-    window.localStorage.setItem(PAGE_INTRO_STEP_STORAGE_KEY, String(nextStep));
-    setStep(nextStep);
-    router.push(introPages[nextStep].href);
+    const safeStep = clampStepIndex(nextStep);
+    window.localStorage.setItem(PAGE_GUIDE_STEP_STORAGE_KEY, String(safeStep));
+    setStep(safeStep);
+    router.push(guideSteps[safeStep].href);
   };
 
+  if (step === null || !currentStep) {
+    return (
+      <button
+        type="button"
+        onClick={startGuide}
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] left-4 z-[65] inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-2 text-xs font-bold text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] backdrop-blur"
+      >
+        <CircleHelp className="size-4" />
+        Guide
+      </button>
+    );
+  }
+
+  const activeStepIndex = step;
+  const isLastStep = step === guideSteps.length - 1;
+  const isFirstStep = step === 0;
+  const spotlightStyle = targetRect
+    ? {
+        left: Math.max(8, targetRect.left - 6),
+        top: Math.max(8, targetRect.top - 6),
+        width: Math.min(window.innerWidth - 16, targetRect.width + 12),
+        height: targetRect.height + 12,
+      }
+    : undefined;
+
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[90] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+    <>
+      <div className="pointer-events-none fixed inset-0 z-[88] bg-zinc-950/20" />
+      {spotlightStyle ? (
+        <div
+          className="pointer-events-none fixed z-[89] rounded-[1.6rem] ring-2 ring-white shadow-[0_0_0_9999px_rgba(15,23,42,0.22),0_12px_32px_rgba(15,23,42,0.22)]"
+          style={spotlightStyle}
+        />
+      ) : null}
+
       <section
-        className="pointer-events-auto mx-auto w-full max-w-md rounded-[1.4rem] bg-[var(--hewie-active-bg,#f1f5f9)]/95 p-4 text-[var(--hewie-active-text,#334155)] shadow-[0_16px_42px_rgba(15,23,42,0.18)] ring-1 ring-[var(--hewie-ring,#cbd5e1)] backdrop-blur-md"
+        className="fixed z-[90] rounded-[1.4rem] bg-white p-4 text-zinc-900 shadow-[0_18px_48px_rgba(15,23,42,0.24)] ring-1 ring-zinc-200"
+        style={cardStyle ?? { left: 16, right: 16, bottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
         role="status"
-        aria-labelledby="page-intro-title"
+        aria-labelledby="page-guide-title"
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] opacity-60">
-              Page {step + 1} of {introPages.length}
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+              {activeStepIndex + 1} of {guideSteps.length}
             </p>
-            <h2 id="page-intro-title" className="mt-1 text-lg font-bold tracking-tight">
-              {currentPage.title}
+            <h2 id="page-guide-title" className="mt-1 text-base font-bold tracking-tight text-zinc-900">
+              {currentStep.title}
             </h2>
-          </div>
-          {!isViewingCurrentPage ? (
-            <button
-              type="button"
-              onClick={() => router.push(currentPage.href)}
-              className="shrink-0 rounded-full bg-white/70 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]"
-            >
-              View Page
-            </button>
-          ) : null}
-        </div>
-        <p className="mt-2 text-sm leading-5 opacity-75">{currentPage.description}</p>
-
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <div className="flex gap-1.5" aria-hidden="true">
-            {introPages.map((page, index) => (
-              <span
-                key={page.title}
-                className={`h-1.5 rounded-full transition-all ${
-                  index === step ? "w-5 bg-[var(--hewie-accent,#64748b)]" : "w-1.5 bg-[var(--hewie-active-text,#334155)]/20"
-                }`}
-              />
-            ))}
           </div>
           <button
             type="button"
-            onClick={() => isLastStep ? finishIntro() : goToStep(step + 1)}
-            className="rounded-full bg-[var(--hewie-accent,#64748b)] px-5 py-2.5 text-sm font-bold text-[var(--hewie-accent-text,#ffffff)] shadow-sm"
+            onClick={finishGuide}
+            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200"
+            aria-label="Close guide"
           >
-            {isLastStep ? "Start Notebook" : "Next"}
+            <X className="size-3.5" />
+          </button>
+        </div>
+
+        <p className="mt-2 text-sm leading-5 text-zinc-600">{currentStep.text}</p>
+
+        {!isViewingCurrentPage ? (
+          <button
+            type="button"
+            onClick={() => router.push(currentStep.href)}
+            className="mt-3 h-9 rounded-full bg-zinc-900 px-4 text-xs font-bold text-white"
+          >
+            View Page
+          </button>
+        ) : null}
+
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => isFirstStep ? finishGuide() : goToStep(step - 1)}
+            className="h-9 rounded-full bg-zinc-100 px-4 text-xs font-bold text-zinc-600 ring-1 ring-zinc-200"
+          >
+            {isFirstStep ? "Skip" : "Back"}
+          </button>
+          <button
+            type="button"
+            onClick={() => isLastStep ? finishGuide() : goToStep(step + 1)}
+            className="h-9 rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)]"
+          >
+            {isLastStep ? "Done" : "Next"}
           </button>
         </div>
       </section>
-    </div>
+    </>
   );
 }

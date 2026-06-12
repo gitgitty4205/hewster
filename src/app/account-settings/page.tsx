@@ -774,7 +774,7 @@ export default function AccountSettingsPage() {
         </header>
 
         {!passwordResetRequired ? (
-        <section className="mb-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <section data-guide="account-settings" className="mb-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <span
