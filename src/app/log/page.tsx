@@ -466,6 +466,9 @@ function TodayMealPlanCard({
     <section className="mb-4 rounded-3xl bg-[#f4eadf]/90 p-5 text-[#6b3f22] shadow-sm ring-1 ring-[#d8b895]/65">
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-[#5f3a22]">Today&apos;s Meal Plan</h2>
+        <p className="mt-1 text-sm leading-5 text-[#6b3f22]/68">
+          Meals from your saved meal plan appear here. Tap any meal to view or edit details.
+        </p>
       </div>
 
       <div className="space-y-3">

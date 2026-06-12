@@ -358,6 +358,13 @@ export default function AlertsPage() {
     return resolveAlerts(templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates);
   }, [templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates, alertMinuteKey, petRemembered]);
   const alertCards = alerts.filter((alert) => alert.kind !== "reminder");
+  const visibleReminderRules = useMemo(
+    () =>
+      reminderRules.filter(
+        (rule) => !(reminderRulesScope === "default" && rule.eventType === "potty" && rule.time === "15:00")
+      ),
+    [reminderRules, reminderRulesScope]
+  );
   const unresolvedAlertCountFor = (
     nextDailyMealState: DailyMealState[] = dailyMealState,
     nextActivityLogs: ActivityLog[] = activityLogs,
@@ -1148,10 +1155,10 @@ export default function AlertsPage() {
               </div>
             )}
 
-            {reminderRules.length ? (
+            {visibleReminderRules.length ? (
               <div className="space-y-2 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-3">
                 <h3 className="text-sm font-semibold text-[var(--hewie-active-text,#334155)]/85">Saved Reminders</h3>
-                {reminderRules.map((rule) => (
+                {visibleReminderRules.map((rule) => (
                   <article
                     key={rule.id}
                     role={editingReminderRuleId === rule.id ? undefined : "button"}
