@@ -370,10 +370,7 @@ function reportAttachmentKind(value: ReportImage) {
   return "File";
 }
 
-function pdfImageDraw(name: string, x: number, y: number, width: number, height: number, orientation = 1) {
-  if (orientation === 3) return `q ${-width} 0 0 ${-height} ${x + width} ${y + height} cm /${name} Do Q`;
-  if (orientation === 6) return `q 0 ${-height} ${width} 0 ${x} ${y + height} cm /${name} Do Q`;
-  if (orientation === 8) return `q 0 ${height} ${-width} 0 ${x + width} ${y} cm /${name} Do Q`;
+function pdfImageDraw(name: string, x: number, y: number, width: number, height: number) {
   return `q ${width} 0 0 ${height} ${x} ${y} cm /${name} Do Q`;
 }
 
@@ -540,19 +537,14 @@ endstream`);
 
         const column = index % 4;
         const row = Math.floor(index / 4);
-        const tileX = 74 + column * (tileWidth + gap);
+        const aspect = image.width / image.height;
+        const drawWidth = aspect >= 1 ? imageMaxWidth : Math.min(imageMaxWidth, imageMaxHeight * aspect);
+        const drawHeight = aspect >= 1 ? Math.min(imageMaxHeight, imageMaxWidth / aspect) : imageMaxHeight;
+        const x = 74 + column * (tileWidth + gap) + (tileWidth - drawWidth) / 2;
         const imageTop = y - row * 86;
-
-        const rotated = image.orientation >= 5 && image.orientation <= 8;
-        const displayWidth = rotated ? image.height : image.width;
-        const displayHeight = rotated ? image.width : image.height;
-        const scale = Math.min(imageMaxWidth / displayWidth, imageMaxHeight / displayHeight, 1);
-        const drawWidth = displayWidth * scale;
-        const drawHeight = displayHeight * scale;
-        const x = tileX + (tileWidth - drawWidth) / 2;
         const imageY = imageTop - drawHeight;
 
-        pageCommands.push(pdfImageDraw(image.pdfName, x, imageY, drawWidth, drawHeight, image.orientation));
+        pageCommands.push(pdfImageDraw(image.pdfName, x, imageY, drawWidth, drawHeight));
       });
 
       const linksTop = y - imageBlockHeight;
