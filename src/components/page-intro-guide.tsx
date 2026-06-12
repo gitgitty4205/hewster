@@ -14,6 +14,15 @@ type GuideStep = {
   text: string;
 };
 
+type GuideRect = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+};
+
 const guideSteps: GuideStep[] = [
   { title: "Today's Page", href: "/hewie", target: "today-upcoming", text: "View upcoming meals, supplements, medications, and reminders." },
   { title: "Quick Log", href: "/hewie", target: "today-quick-log", text: "Tap an icon to quickly log an event. Swipe for more event types." },
@@ -36,11 +45,32 @@ function clampStepIndex(value: number) {
   return Math.min(Math.max(value, 0), guideSteps.length - 1);
 }
 
+function toGuideRect(rect: DOMRect): GuideRect {
+  return {
+    left: Math.round(rect.left),
+    top: Math.round(rect.top),
+    right: Math.round(rect.right),
+    bottom: Math.round(rect.bottom),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+  };
+}
+
+function rectsMatch(a: GuideRect | null, b: GuideRect) {
+  return (
+    a !== null &&
+    Math.abs(a.left - b.left) <= 1 &&
+    Math.abs(a.top - b.top) <= 1 &&
+    Math.abs(a.width - b.width) <= 1 &&
+    Math.abs(a.height - b.height) <= 1
+  );
+}
+
 export function PageIntroGuide() {
   const pathname = usePathname();
   const router = useRouter();
   const [step, setStep] = useState<number | null>(null);
-  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [targetRect, setTargetRect] = useState<GuideRect | null>(null);
 
   useEffect(() => {
     if (window.localStorage.getItem(PAGE_GUIDE_STORAGE_KEY) === "true") return;
@@ -60,27 +90,42 @@ export function PageIntroGuide() {
     }
 
     let frameId = 0;
+    let scrollTimeoutId = 0;
+    let resizeObserver: ResizeObserver | null = null;
 
-    const updateTarget = () => {
+    const measureTarget = () => {
       const target = document.querySelector<HTMLElement>(`[data-guide="${currentStep.target}"]`);
       if (!target) {
         setTargetRect(null);
         return;
       }
 
-      target.scrollIntoView({ block: "center", behavior: "smooth" });
-      frameId = window.requestAnimationFrame(() => setTargetRect(target.getBoundingClientRect()));
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        const nextRect = toGuideRect(target.getBoundingClientRect());
+        setTargetRect((previousRect) => (rectsMatch(previousRect, nextRect) ? previousRect : nextRect));
+      });
     };
 
-    const timeoutId = window.setTimeout(updateTarget, 80);
-    window.addEventListener("resize", updateTarget);
-    window.addEventListener("scroll", updateTarget, true);
+    const target = document.querySelector<HTMLElement>(`[data-guide="${currentStep.target}"]`);
+    if (target) {
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+      resizeObserver = new ResizeObserver(measureTarget);
+      resizeObserver.observe(target);
+    }
+
+    const timeoutId = window.setTimeout(measureTarget, 80);
+    scrollTimeoutId = window.setTimeout(measureTarget, 380);
+    window.addEventListener("resize", measureTarget);
+    window.addEventListener("scroll", measureTarget, true);
 
     return () => {
       window.clearTimeout(timeoutId);
+      window.clearTimeout(scrollTimeoutId);
       window.cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", updateTarget);
-      window.removeEventListener("scroll", updateTarget, true);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", measureTarget);
+      window.removeEventListener("scroll", measureTarget, true);
     };
   }, [currentStep, isViewingCurrentPage]);
 
