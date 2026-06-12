@@ -22,6 +22,7 @@ const guideSteps: GuideStep[] = [
   { title: "Today's Events", href: "/hewie/log", target: "log-review", text: "Tap any event to view or edit details." },
   { title: "Today's Meal Plan", href: "/hewie/log", target: "log-meal-plan", text: "Meals from your saved meal plan appear here. Tap any meal to view or edit details." },
   { title: "History", href: "/hewie/history", target: "history-calendar", text: "Review past records, filter results, and create PDF reports." },
+  { title: "Edit Mode", href: "/hewie/history", target: "history-edit-mode", text: "Unlock to edit today's events and past records." },
   { title: "Health Records", href: "/hewie/medical-records", target: "medical-records", text: "Quickly find health records, medications, and documents." },
   { title: "Notebook Sharing", href: "/hewie/profile", target: "profile-sharing", text: "Invite family, caretakers, and pet sitters to help care for your pet and log events together." },
 ];

@@ -2596,7 +2596,7 @@ export default function HistoryPage() {
 
   const showAlerts = selectedHistoryDay && activeFilter === "all";
 
-  const historyEditModeButton = (label: string, colorClassName = "text-zinc-500 hover:text-zinc-700") => {
+  const historyEditModeButton = (label: string, colorClassName = "text-zinc-500 hover:text-zinc-700", guideTarget?: string) => {
     const Icon = historyEditUnlocked ? LockOpen : Lock;
     const stateClassName = historyEditUnlocked
       ? "bg-[#f6d978] text-[#4f2f1b] shadow-sm shadow-[#4f2f1b]/20 ring-[#4f2f1b]/25 hover:bg-[#f1cc61]"
@@ -2605,6 +2605,7 @@ export default function HistoryPage() {
     return (
       <button
         type="button"
+        data-guide={guideTarget}
         onClick={() => setHistoryEditUnlocked((current) => !current)}
         className={`flex size-6 shrink-0 items-center justify-center rounded-full ring-1 transition ${stateClassName}`}
         aria-label={`${historyEditUnlocked ? "Lock" : "Unlock"} ${label} history editing`}
@@ -3454,7 +3455,7 @@ export default function HistoryPage() {
 
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <h3 className="text-sm font-semibold text-zinc-700">Events</h3>
-                    {historyEditModeButton("events")}
+                    {historyEditModeButton("events", undefined, "history-edit-mode")}
                   </div>
 
                   <div className="space-y-2">
