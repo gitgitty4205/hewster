@@ -744,7 +744,7 @@ export default function AlertsPage() {
             <h2 className="text-lg font-semibold text-[#8f1739]">Care Alerts</h2>
           </div>
           <p className="mb-4 text-sm leading-5 text-[#b71f48]/70">
-            Create a one-time or everyday care alert for something that needs special attention.
+            Custom alerts for important care notes.
           </p>
 
           <div className="space-y-3">
@@ -1112,7 +1112,7 @@ export default function AlertsPage() {
             <h2 className="text-lg font-semibold text-[var(--hewie-active-text,#334155)]">Reminders</h2>
           </div>
           <p className="mb-4 text-sm leading-5 text-[var(--hewie-active-text,#334155)]/65">
-            Set a reminder if a regular task isn’t logged by a certain time.
+            Reminders for tasks that haven&apos;t been logged.
           </p>
 
           <div className="space-y-3">
