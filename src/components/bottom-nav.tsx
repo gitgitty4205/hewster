@@ -165,6 +165,8 @@ function clampFloatingMenuPosition(position: FloatingMenuPosition, width: number
 export function BottomNav({ alertsCount }: Props) {
   const { user } = useAuth();
   const pathname = usePathname();
+  const reminderRulesScope = pathname.startsWith(APP_BASE) ? "hewie" : "default";
+  const includeDefaultReminderRules = pathname.startsWith(APP_BASE);
   const [open, setOpen] = useState(false);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(DEFAULT_PET_PHOTO_URL);
   const [pagesBackgroundMode, setPagesBackgroundMode] = useState<PagesBackgroundMode>("soft");
@@ -290,7 +292,7 @@ export function BottomNav({ alertsCount }: Props) {
           state.dailyMealState,
           state.activityLogs,
           state.manualAlerts ?? [],
-          loadReminderAlertRules(),
+          loadReminderAlertRules({ scope: reminderRulesScope, includeDefaults: includeDefaultReminderRules }),
           careTemplates
         ).filter((alert) => alert.kind !== "reminder").length;
 
@@ -309,7 +311,7 @@ export function BottomNav({ alertsCount }: Props) {
       window.removeEventListener("focus", refreshStoredBadgeFromState);
       document.removeEventListener("visibilitychange", refreshStoredBadgeFromState);
     };
-  }, [alertsCount]);
+  }, [alertsCount, includeDefaultReminderRules, reminderRulesScope]);
 
   useEffect(() => {
     if (!floatingMenuPosition) return;

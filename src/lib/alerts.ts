@@ -116,22 +116,36 @@ function isReminderAlertRuleArray(value: unknown): value is ReminderAlertRule[] 
   );
 }
 
-export function loadReminderAlertRules() {
-  if (typeof window === "undefined") return defaultReminderAlertRules;
+function normalizeReminderAlertRules(rules: ReminderAlertRule[]) {
+  return rules.map((rule) => ({ ...rule, frequency: "daily" as const, weekdays: undefined }));
+}
+
+function reminderAlertRulesStorageKey(scope?: string) {
+  if (!scope) return REMINDER_ALERT_RULES_STORAGE_KEY;
+  return `${REMINDER_ALERT_RULES_STORAGE_KEY}.${scope.replace(/[^a-z0-9_-]/gi, "-")}`;
+}
+
+type ReminderAlertRulesStorageOptions = {
+  scope?: string;
+  includeDefaults?: boolean;
+};
+
+export function loadReminderAlertRules(options: ReminderAlertRulesStorageOptions = {}) {
+  const fallbackRules = options.includeDefaults ? defaultReminderAlertRules : [];
+  if (typeof window === "undefined") return fallbackRules;
 
   try {
-    const stored = window.localStorage.getItem(REMINDER_ALERT_RULES_STORAGE_KEY);
+    const storageKey = reminderAlertRulesStorageKey(options.scope);
+    const stored = window.localStorage.getItem(storageKey) ?? (options.includeDefaults ? window.localStorage.getItem(REMINDER_ALERT_RULES_STORAGE_KEY) : null);
     const parsed = stored ? JSON.parse(stored) : null;
-    return isReminderAlertRuleArray(parsed)
-      ? parsed.map((rule) => ({ ...rule, frequency: "daily" as const, weekdays: undefined }))
-      : defaultReminderAlertRules;
+    return isReminderAlertRuleArray(parsed) ? normalizeReminderAlertRules(parsed) : fallbackRules;
   } catch {
-    return defaultReminderAlertRules;
+    return fallbackRules;
   }
 }
 
-export function saveReminderAlertRules(rules: ReminderAlertRule[]) {
-  window.localStorage.setItem(REMINDER_ALERT_RULES_STORAGE_KEY, JSON.stringify(rules));
+export function saveReminderAlertRules(rules: ReminderAlertRule[], options: Pick<ReminderAlertRulesStorageOptions, "scope"> = {}) {
+  window.localStorage.setItem(reminderAlertRulesStorageKey(options.scope), JSON.stringify(rules));
 }
 
 function parsePlannedTimeToMinutes(value: string) {
@@ -390,7 +404,7 @@ export function resolveAlerts(
   dailyMealState: DailyMealState[],
   activityLogs: ActivityLog[],
   manualAlerts: ManualAlert[],
-  reminderRules: ReminderAlertRule[] = defaultReminderAlertRules,
+  reminderRules: ReminderAlertRule[] = [],
   careTemplates: CareItemTemplate[] = []
 ): ResolvedAlert[] {
   const alerts: ResolvedAlert[] = [];

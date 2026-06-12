@@ -10,6 +10,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { ActivityDetailForm } from "@/components/activity-detail-form";
 import { ActivityFeed } from "@/components/activity-feed";
@@ -911,6 +912,9 @@ async function importBridgePayload(payload: HewsterBridgePayload) {
 }
 
 export default function HomeApp() {
+  const pathname = usePathname();
+  const reminderRulesScope = pathname.startsWith("/hewie") ? "hewie" : "default";
+  const includeDefaultReminderRules = pathname.startsWith("/hewie");
   const { loading: authLoading, user } = useAuth();
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>(
@@ -1095,7 +1099,7 @@ export default function HomeApp() {
         setSupplementTemplates(supplements);
         setMedicationTemplates(medications);
         setCustomCareStatus(loadCustomCareStatus());
-        setReminderRules(loadReminderAlertRules());
+        setReminderRules(loadReminderAlertRules({ scope: reminderRulesScope, includeDefaults: includeDefaultReminderRules }));
         setHeaderDateTime(formatHeaderDate());
         setAlertMinuteKey(currentAlertMinuteKey());
       } catch {
@@ -1108,7 +1112,7 @@ export default function HomeApp() {
         setTodayKey((current) => current || currentTodayKey());
         setSupplementTemplates(loadCareTemplates("supplement"));
         setMedicationTemplates(loadCareTemplates("medication"));
-        setReminderRules(loadReminderAlertRules());
+        setReminderRules(loadReminderAlertRules({ scope: reminderRulesScope, includeDefaults: includeDefaultReminderRules }));
       } finally {
         if (!cancelled) {
           initialLoadComplete.current = true;
@@ -1122,7 +1126,7 @@ export default function HomeApp() {
     return () => {
       cancelled = true;
     };
-  }, [applySharedNotebookState, authLoading, supabaseReady]);
+  }, [applySharedNotebookState, authLoading, includeDefaultReminderRules, reminderRulesScope, supabaseReady]);
 
   useEffect(() => {
     if (!hydrated || !initialLoadComplete.current) return;

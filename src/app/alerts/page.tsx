@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, ChevronDown, TriangleAlert } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { type MouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 
@@ -242,6 +243,9 @@ function buildCustomCareActivityLog(
 
 export default function AlertsPage() {
   const { loading: authLoading } = useAuth();
+  const pathname = usePathname();
+  const reminderRulesScope = pathname.startsWith("/hewie") ? "hewie" : "default";
+  const includeDefaultReminderRules = pathname.startsWith("/hewie");
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -295,7 +299,7 @@ export default function AlertsPage() {
 
     async function hydrate() {
       try {
-        setReminderRules(loadReminderAlertRules());
+        setReminderRules(loadReminderAlertRules({ scope: reminderRulesScope, includeDefaults: includeDefaultReminderRules }));
         const state = await loadAppState();
         if (cancelled) return;
         setTemplates(state.templates);
@@ -313,7 +317,7 @@ export default function AlertsPage() {
           ...mergeCareTemplateSources("supplement", localSupplements, remoteSupplements),
           ...mergeCareTemplateSources("medication", localMedications, remoteMedications),
         ]);
-        setReminderRules(loadReminderAlertRules());
+        setReminderRules(loadReminderAlertRules({ scope: reminderRulesScope, includeDefaults: includeDefaultReminderRules }));
         setAlertMinuteKey(currentAlertMinuteKey());
       } finally {
         if (!cancelled) {
@@ -327,7 +331,7 @@ export default function AlertsPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, supabaseReady]);
+  }, [authLoading, includeDefaultReminderRules, reminderRulesScope, supabaseReady]);
 
   useEffect(() => {
     const refreshAlertClock = () => setAlertMinuteKey(currentAlertMinuteKey());
@@ -635,7 +639,7 @@ export default function AlertsPage() {
 
   const commitReminderRules = (rules: ReminderAlertRule[]) => {
     setReminderRules(rules);
-    saveReminderAlertRules(rules);
+    saveReminderAlertRules(rules, { scope: reminderRulesScope });
   };
 
   const addReminderRule = () => {
