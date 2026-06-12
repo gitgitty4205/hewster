@@ -428,7 +428,9 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
-              <p className="min-h-4 text-xs font-semibold text-emerald-600">{saveState === "saved" ? "Saved" : ""}</p>
+              {saveState === "saved" ? (
+                <p className="text-xs font-semibold text-emerald-600">Saved</p>
+              ) : null}
               {canEditProfile ? (
                 isEditingProfile ? (
                   <button
@@ -738,7 +740,9 @@ export default function ProfilePage() {
               <h2 className="text-lg font-semibold">About {petFirstName}</h2>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
-              <p className="min-h-4 text-xs font-semibold text-emerald-600">{saveState === "saved" ? "Saved" : ""}</p>
+              {saveState === "saved" ? (
+                <p className="text-xs font-semibold text-emerald-600">Saved</p>
+              ) : null}
               {canEditProfile ? (
                 isEditingAbout ? (
                   <button
