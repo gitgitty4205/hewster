@@ -8,7 +8,7 @@ export default function MedicationsPage() {
     <CareSettingsPage
       kind="medication"
       title="Medication Settings"
-      description="Medication names, doses, schedules, refill notes, and reminders. Meal-linked meds show on today&apos;s meal plan."
+      description="Create medication schedules, reminders, and daily logs."
       emptyLabel="No medications yet. Add regular medications or custom reminders when your pet needs them."
       icon={MedicationPillIcon}
       accentClassName="bg-sky-50 text-sky-700 ring-sky-200"
