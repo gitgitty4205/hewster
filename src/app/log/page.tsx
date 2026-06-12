@@ -1366,7 +1366,7 @@ export default function LogPage() {
                 onNotesChange={setNotesValue}
                 onExtraNotesChange={setExtraNotesValue}
                 attachmentFiles={attachmentFiles}
-                attachmentNames={attachmentFiles.length ? attachmentFiles.map((file) => file.name) : activity.attachments?.map((attachment) => attachment.fileName) ?? []}
+                attachmentNames={activity.attachments?.map((attachment) => attachment.fileName) ?? []}
                 onAttachmentsChange={setAttachmentFiles}
                 maxAttachmentFiles={detailAttachmentLimit}
                 attachmentPickerBlocked={detailAttachmentPickerBlocked}
@@ -1466,8 +1466,6 @@ export default function LogPage() {
                 onExtraNotesChange={setExtraNotesValue}
 
                 attachmentFiles={attachmentFiles}
-
-                attachmentNames={attachmentFiles.length ? attachmentFiles.map((file) => file.name) : []}
 
                 onAttachmentsChange={setAttachmentFiles}
                 maxAttachmentFiles={detailAttachmentLimit}

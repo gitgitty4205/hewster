@@ -2805,7 +2805,7 @@ export default function HomeApp() {
               onDetailChange={setDetailValue}
               onNotesChange={setNotesValue}
               onExtraNotesChange={setExtraNotesValue}
-              attachmentNames={attachmentFiles.length ? attachmentFiles.map((file) => file.name) : []}
+              attachmentFiles={attachmentFiles}
               onAttachmentsChange={setAttachmentFiles}
               recordTags={recordTags}
               onRecordTagsChange={setRecordTags}
