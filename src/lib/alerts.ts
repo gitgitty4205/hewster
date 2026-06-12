@@ -129,6 +129,36 @@ function reminderAlertRulesStorageKey(scope?: string) {
   return `${REMINDER_ALERT_RULES_STORAGE_KEY}.${scope.replace(/[^a-z0-9_-]/gi, "-")}`;
 }
 
+function scrubDefaultReminderRuleStorage(storageKey: string) {
+  const stored = window.localStorage.getItem(storageKey);
+  if (!stored) return null;
+
+  const parsed = JSON.parse(stored);
+  if (!isReminderAlertRuleArray(parsed)) return null;
+
+  const normalizedRules = normalizeReminderAlertRules(parsed);
+  const scrubbedRules = removeHewieDefaultReminderRules(normalizedRules);
+  if (scrubbedRules.length !== normalizedRules.length) {
+    window.localStorage.setItem(storageKey, JSON.stringify(scrubbedRules));
+  }
+  return scrubbedRules;
+}
+
+function scrubDefaultReminderRuleStorageKeys(primaryStorageKey: string) {
+  const storageKeys = new Set<string>([primaryStorageKey, REMINDER_ALERT_RULES_STORAGE_KEY]);
+
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (!key?.startsWith(REMINDER_ALERT_RULES_STORAGE_KEY)) continue;
+    if (key === reminderAlertRulesStorageKey("hewie")) continue;
+    storageKeys.add(key);
+  }
+
+  for (const storageKey of storageKeys) {
+    scrubDefaultReminderRuleStorage(storageKey);
+  }
+}
+
 type ReminderAlertRulesStorageOptions = {
   scope?: string;
   includeDefaults?: boolean;
@@ -140,18 +170,15 @@ export function loadReminderAlertRules(options: ReminderAlertRulesStorageOptions
 
   try {
     const storageKey = reminderAlertRulesStorageKey(options.scope);
+    if (options.scope === "default") {
+      scrubDefaultReminderRuleStorageKeys(storageKey);
+    }
+
     const stored = window.localStorage.getItem(storageKey) ?? (options.includeDefaults ? window.localStorage.getItem(REMINDER_ALERT_RULES_STORAGE_KEY) : null);
     const parsed = stored ? JSON.parse(stored) : null;
     if (!isReminderAlertRuleArray(parsed)) return fallbackRules;
-
     const normalizedRules = normalizeReminderAlertRules(parsed);
-    if (options.scope !== "default") return normalizedRules;
-
-    const scopedDefaultRules = removeHewieDefaultReminderRules(normalizedRules);
-    if (scopedDefaultRules.length !== normalizedRules.length) {
-      window.localStorage.setItem(storageKey, JSON.stringify(scopedDefaultRules));
-    }
-    return scopedDefaultRules;
+    return options.scope === "default" ? removeHewieDefaultReminderRules(normalizedRules) : normalizedRules;
   } catch {
     return fallbackRules;
   }

@@ -3103,7 +3103,7 @@ export default function HistoryPage() {
 
 
 
-        <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
+        <section data-guide="history-records" className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
 
           <div className="mb-4 flex items-start justify-between gap-3">
 
