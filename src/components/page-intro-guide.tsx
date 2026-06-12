@@ -20,7 +20,7 @@ const guideSteps: GuideStep[] = [
   { title: "Poop Records", href: "/hewie", target: "today-poop-records", text: "View recent stool history." },
   { title: "Manage Events", href: "/hewie/log", target: "log-events", text: "Open the log menu to add new events." },
   { title: "Today's Events", href: "/hewie/log", target: "log-review", text: "Tap any event to view or edit details." },
-  { title: "Meal Plan", href: "/hewie/log", target: "log-meal-plan", text: "Review and edit the meal plan." },
+  { title: "Today's Meal Plan", href: "/hewie/log", target: "log-meal-plan", text: "Meals from your saved meal plan appear here. Tap any meal to view or edit details." },
   { title: "History", href: "/hewie/history", target: "history-calendar", text: "Days with records have dots." },
   { title: "History", href: "/hewie/history", target: "history-filters", text: "Filter records and email a PDF report." },
   { title: "Medical Records", href: "/hewie/medical-records", target: "medical-records", text: "Vet visits, vaccines, medications, and documents." },
