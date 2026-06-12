@@ -466,7 +466,6 @@ function TodayMealPlanCard({
     <section className="mb-4 rounded-3xl bg-[#f4eadf]/90 p-5 text-[#6b3f22] shadow-sm ring-1 ring-[#d8b895]/65">
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-[#5f3a22]">Today&apos;s Meal Plan</h2>
-        <p className="text-sm text-[#6b3f22]/62">{isToday ? "Today's meals, checked off as they're logged." : "Meals for this day, checked off as they're logged."}</p>
       </div>
 
       <div className="space-y-3">
@@ -1348,7 +1347,6 @@ export default function LogPage() {
       timelineItems={selectedDayEventItems}
       grouped
       title={isTodayLog ? "Today's Events" : `${formatLogDayLabel(logDayKey)} Events`}
-      subtitle={`Review and edit ${isTodayLog ? "today's" : "this day's"} events and meal plan.`}
       onSelectActivity={canEditEntries ? openEditorForActivity : undefined}
       careTemplates={careTemplates}
       renderInlineEditor={(activity) =>
