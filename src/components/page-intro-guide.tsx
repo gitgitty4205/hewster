@@ -15,7 +15,7 @@ type GuideStep = {
 };
 
 const guideSteps: GuideStep[] = [
-  { title: "Today", href: "/hewie", target: "today-upcoming", text: "Upcoming meals, meds, supplements, and alerts." },
+  { title: "Today's Page", href: "/hewie", target: "today-upcoming", text: "View upcoming meals, supplements, medications, and reminders." },
   { title: "Today", href: "/hewie", target: "today-quick-log", text: "Quickly log common events." },
   { title: "Today", href: "/hewie", target: "today-poop-records", text: "Last 7 days of stool records." },
   { title: "Manage Events", href: "/hewie/log", target: "log-events", text: "Open this to log events." },
