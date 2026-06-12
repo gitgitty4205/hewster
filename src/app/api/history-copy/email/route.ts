@@ -372,24 +372,27 @@ function reportAttachmentKind(value: ReportImage) {
 
 function pdfImageDraw(name: string, x: number, y: number, width: number, height: number, orientation = 1) {
   if (orientation === 3) return `q ${-width} 0 0 ${-height} ${x + width} ${y + height} cm /${name} Do Q`;
-  if (orientation === 6) return `q 0 ${height} ${-width} 0 ${x + width} ${y} cm /${name} Do Q`;
-  if (orientation === 8) return `q 0 ${-height} ${width} 0 ${x} ${y + height} cm /${name} Do Q`;
+  if (orientation === 6) return `q 0 ${-height} ${width} 0 ${x} ${y + height} cm /${name} Do Q`;
+  if (orientation === 8) return `q 0 ${height} ${-width} 0 ${x + width} ${y} cm /${name} Do Q`;
   return `q ${width} 0 0 ${height} ${x} ${y} cm /${name} Do Q`;
 }
 
 function pdfAttachmentCard(attachment: ReportImage, x: number, y: number, width: number, height: number, theme: ReturnType<typeof pdfReportTheme>) {
-  const nameLines = wrapPdfLine(attachment.fileName || "Attachment", 28).slice(0, 2);
+  const iconSize = 30;
+  const nameX = x + 54;
+  const nameMaxChars = Math.max(24, Math.floor((width - 70) / 4.2));
+  const nameLines = wrapPdfLine(attachment.fileName || "Attachment", nameMaxChars).slice(0, 2);
   const kind = reportAttachmentKind(attachment);
-  const iconSize = 24;
+  const textY = y + height - 24;
 
   return [
-    `${theme.cardFill} ${pdfRoundedRect(x, y, width, height, 10, "f")}`,
-    `${theme.cardStroke} ${pdfRoundedRect(x, y, width, height, 10, "S")}`,
-    `${theme.cardStroke} ${pdfRoundedRect(x + 8, y + height - iconSize - 10, iconSize, iconSize, 6, "S")}`,
+    `${theme.cardFill} ${pdfRoundedRect(x, y, width, height, 11, "f")}`,
+    `${theme.cardStroke} ${pdfRoundedRect(x, y, width, height, 11, "S")}`,
+    `${theme.cardStroke} ${pdfRoundedRect(x + 12, y + height - iconSize - 13, iconSize, iconSize, 7, "S")}`,
     theme.accent,
-    pdfText(kind, x + 12, y + height - 25, 7, "F2"),
+    pdfText(kind, x + 17, y + height - 32, 7, "F2"),
     theme.neutral,
-    pdfTextLines(nameLines, x + 40, y + height - 21, 7.5, 9),
+    pdfTextLines(nameLines, nameX, textY, 8, 10),
   ].join("\n");
 }
 
@@ -511,38 +514,48 @@ endstream`);
       const attachments = reportImagesByActivityId.get(reportImageMatch[1]) ?? [];
       if (!attachments.length) return;
 
-      const tileWidth = 132;
-      const tileHeight = 76;
-      const imageMaxWidth = 112;
-      const imageMaxHeight = 76;
-      const gap = 12;
-      const rows = Math.ceil(attachments.length / 3);
-      const blockHeight = rows * (tileHeight + gap) + 8;
+      const attachmentX = 64;
+      const attachmentWidth = 360;
+      const cardHeight = 62;
+      const imageMaxWidth = 176;
+      const imageMaxHeight = 176;
+      const attachmentGap = 14;
+      const attachmentHeights = attachments.map((image) => {
+        const objectId = pdfImageObjects.get(image.id);
+        if (!objectId || !image.width || !image.height) return cardHeight;
+
+        const rotated = image.orientation >= 5 && image.orientation <= 8;
+        const displayWidth = rotated ? image.height : image.width;
+        const displayHeight = rotated ? image.width : image.height;
+        const scale = Math.min(imageMaxWidth / displayWidth, imageMaxHeight / displayHeight, 1);
+        return Math.max(72, displayHeight * scale);
+      });
+      const blockHeight = attachmentHeights.reduce((sum, height) => sum + height, 0) + Math.max(0, attachments.length - 1) * attachmentGap + 10;
 
       if (y - blockHeight < 54) finishPage();
 
+      let attachmentTop = y;
       attachments.forEach((image, index) => {
         const objectId = pdfImageObjects.get(image.id);
-        const column = index % 3;
-        const row = Math.floor(index / 3);
-        const tileX = 74 + column * (tileWidth + gap);
-        const imageTop = y - row * (tileHeight + gap);
+        const itemHeight = attachmentHeights[index] ?? cardHeight;
 
         if (objectId && image.width && image.height) {
           const rotated = image.orientation >= 5 && image.orientation <= 8;
           const displayWidth = rotated ? image.height : image.width;
           const displayHeight = rotated ? image.width : image.height;
-          const aspect = displayWidth / displayHeight;
-          const drawWidth = aspect >= 1 ? imageMaxWidth : Math.min(imageMaxWidth, imageMaxHeight * aspect);
-          const drawHeight = aspect >= 1 ? Math.min(imageMaxHeight, imageMaxWidth / aspect) : imageMaxHeight;
-          const x = tileX + (tileWidth - drawWidth) / 2;
-          const imageY = imageTop - drawHeight;
+          const scale = Math.min(imageMaxWidth / displayWidth, imageMaxHeight / displayHeight, 1);
+          const drawWidth = displayWidth * scale;
+          const drawHeight = displayHeight * scale;
+          const x = attachmentX + (attachmentWidth - drawWidth) / 2;
+          const imageY = attachmentTop - drawHeight;
 
           pageCommands.push(pdfImageDraw(image.pdfName, x, imageY, drawWidth, drawHeight, image.orientation));
+          attachmentTop -= itemHeight + attachmentGap;
           return;
         }
 
-        pageCommands.push(pdfAttachmentCard(image, tileX, imageTop - 62, tileWidth, 56, reportTheme));
+        pageCommands.push(pdfAttachmentCard(image, attachmentX, attachmentTop - cardHeight, attachmentWidth, cardHeight, reportTheme));
+        attachmentTop -= itemHeight + attachmentGap;
       });
 
       y -= blockHeight;
