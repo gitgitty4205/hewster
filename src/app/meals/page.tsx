@@ -326,7 +326,7 @@ export default function MealsPage() {
                     <div className="min-w-0">
                       <h3 className="break-words font-medium text-zinc-900 [overflow-wrap:anywhere]">{displayedMeal.name || "New Meal"}</h3>
                       <p className="text-sm text-zinc-500">
-                        {displayedMeal.active === false ? "Inactive" : "Active"} • Template used for future daily checklists.
+                        {displayedMeal.active === false ? "Inactive" : "Active"} • Daily at {displayedMeal.plannedTime}
                       </p>
                     </div>
                     {isEditing ? null : (
