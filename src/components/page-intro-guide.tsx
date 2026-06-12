@@ -28,7 +28,7 @@ const guideSteps: GuideStep[] = [
   { title: "Quick Log", href: "/hewie", target: "today-quick-log", text: "Tap an icon to quickly log an event. Swipe for more event types." },
   { title: "Poop Records", href: "/hewie", target: "today-poop-records", text: "View recent stool history." },
   { title: "Manage Events", href: "/hewie/log", target: "log-events", text: "Open the log menu to add new events." },
-  { title: "Today's Events", href: "/hewie/log", target: "log-review", text: "Tap any event to view or edit details." },
+  { title: "Today's Events", href: "/hewie/log", target: "log-review", text: "Logged events show here. After you add one, tap it to view or edit details." },
   { title: "Today's Meal Plan", href: "/hewie/log", target: "log-meal-plan", text: "Meals from your saved meal plan appear here. Tap any meal to view or edit details." },
   { title: "History", href: "/hewie/history", target: "history-calendar", text: "Review past records, filter results, and create PDF reports." },
   { title: "Edit Mode", href: "/hewie/history", target: "history-edit-mode", text: "Unlock to edit today's events and past records." },

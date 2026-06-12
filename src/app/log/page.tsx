@@ -1363,6 +1363,7 @@ export default function LogPage() {
       }
       onSelectActivity={canEditEntries ? openEditorForActivity : undefined}
       careTemplates={careTemplates}
+      emptyMessage="No events logged yet. Use Manage Events to add one, then it will show here."
       renderInlineEditor={(activity) =>
         activity.id === editingActivityId || (!editingActivityId && detailActivityType === activity.activityType && activity.happenedAt === selectedDayActivityLogs[0]?.happenedAt)
           ? (

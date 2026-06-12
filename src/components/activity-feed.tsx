@@ -34,6 +34,7 @@ type Props = {
   onSelectActivity?: (activity: ActivityLog) => void;
   renderInlineEditor?: (activity: ActivityLog) => React.ReactNode;
   careTemplates?: CareItemTemplate[];
+  emptyMessage?: React.ReactNode;
 };
 
 type TextModal = {
@@ -644,6 +645,7 @@ export function ActivityFeed({
   onSelectActivity,
   renderInlineEditor,
   careTemplates = [],
+  emptyMessage = "No events logged yet.",
 }: Props) {
   const [textModal, setTextModal] = useState<TextModal | null>(null);
   const visibleActivityLogs = activityLogs.filter((activity) => isVisibleActivity(activity, careTemplates));
@@ -668,7 +670,7 @@ export function ActivityFeed({
           </div>
           <div className="space-y-3">
             {visibleTimelineItems.length === 0 ? (
-              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No events logged yet.</p>
+              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">{emptyMessage}</p>
             ) : (
               visibleTimelineItems.map((item, index) => {
                 if (item.activity) {
@@ -767,7 +769,7 @@ export function ActivityFeed({
         </div>
         <div className="space-y-5">
           {dayEntries.length === 0 ? (
-            <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No events logged yet.</p>
+            <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">{emptyMessage}</p>
           ) : (
             dayEntries.map(([day, logs]) => (
               <div key={day} className="space-y-3">
@@ -906,7 +908,7 @@ export function ActivityFeed({
         {visibleTimelineItems?.length ? (
           visibleTimelineItems.map((item, index) => renderTimelineRow(item, `${item.activityType ?? "item"}-${item.time}-${item.label}-${item.detail}-${index}`))
         ) : (
-          <p className="text-sm text-zinc-500">No events logged yet.</p>
+          <p className="text-sm text-zinc-500">{emptyMessage}</p>
         )}
       </div>
     </section>
