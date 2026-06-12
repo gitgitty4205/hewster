@@ -1,8 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 
 import { appThemes, type ThemeId } from "@/lib/pet-profile";
 import { getSupabaseEnv } from "@/lib/supabase";
+
+export const runtime = "nodejs";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFromEmail = process.env.RESEND_FROM_EMAIL || "PetNotebook <onboarding@resend.dev>";
@@ -37,7 +40,6 @@ type ReportImage = ReportImageReference & {
   bytes: Buffer;
   width: number | null;
   height: number | null;
-  orientation: number;
   pdfName: string;
 };
 
@@ -355,6 +357,33 @@ function jpegMetadata(bytes: Buffer) {
   return width && height ? { width, height, orientation } : null;
 }
 
+async function normalizePdfJpeg(bytes: Buffer, contentType: string) {
+  if (!isJpegContentType(contentType)) {
+    return { bytes, width: null, height: null };
+  }
+
+  try {
+    const { data, info } = await sharp(bytes)
+      .rotate()
+      .toColorspace("srgb")
+      .jpeg({ quality: 86 })
+      .toBuffer({ resolveWithObject: true });
+
+    return {
+      bytes: data,
+      width: info.width,
+      height: info.height,
+    };
+  } catch {
+    const metadata = jpegMetadata(bytes);
+    return {
+      bytes,
+      width: metadata?.width ?? null,
+      height: metadata?.height ?? null,
+    };
+  }
+}
+
 function isJpegContentType(value: string) {
   const normalized = value.toLowerCase();
   return normalized === "image/jpeg" || normalized === "image/jpg";
@@ -643,15 +672,14 @@ async function fetchReportImages(supabase: SupabaseClient, references: ReportIma
 
     const bytes = Buffer.from(await data.arrayBuffer());
     const contentType = (data.type || reference.contentType || "application/octet-stream").toLowerCase();
-    const metadata = jpegMetadata(bytes);
+    const normalized = await normalizePdfJpeg(bytes, contentType);
 
     images.push({
       ...reference,
       contentType,
-      bytes,
-      width: metadata?.width ?? null,
-      height: metadata?.height ?? null,
-      orientation: metadata?.orientation ?? 1,
+      bytes: normalized.bytes,
+      width: normalized.width,
+      height: normalized.height,
       pdfName: `Im${index + 1}`,
     });
   }
