@@ -24,7 +24,6 @@ const guideSteps: GuideStep[] = [
   { title: "History", href: "/hewie/history", target: "history-calendar", text: "Review past records, filter results, and create PDF reports." },
   { title: "Health Records", href: "/hewie/medical-records", target: "medical-records", text: "Quickly find health records, medications, and documents." },
   { title: "Notebook Sharing", href: "/hewie/profile", target: "profile-sharing", text: "Invite family, caretakers, and pet sitters to help care for your pet and log events together." },
-  { title: "Account Settings", href: "/hewie/account-settings", target: "account-settings", text: "Account info, notifications, security, and membership." },
 ];
 
 function currentPathMatches(pathname: string, href: string) {
