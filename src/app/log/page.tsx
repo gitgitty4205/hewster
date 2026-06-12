@@ -481,8 +481,8 @@ function TodayMealPlanCard({
           const checked = status === "done" && !skipped && !missed;
           const notLoggedPast = !isToday && !actualTime && !skipped && !missed;
           const skippedCareItemIds = mealLog?.skippedCareItemIds ?? mealState?.skippedCareItemIds ?? [];
-          const mealCareItems = mealLog
-            ? (mealLog.loggedCareItems ?? []).map((item) => ({ ...item, skipped: Boolean(item.skipped) }))
+          const mealCareItems = mealLog?.loggedCareItems?.length
+            ? mealLog.loggedCareItems.map((item) => ({ ...item, skipped: Boolean(item.skipped) }))
             : mealCareItemsWithDoseBadges(careTemplates, meal, templates, dayKey).map((item) => ({
                 ...item,
                 skipped: skippedCareItemIds.includes(`${item.kind}-${item.id}`),
