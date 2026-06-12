@@ -211,6 +211,11 @@ function splitActivityNotes(notes: string | null) {
 
 function renderTodayTimelineActivityDetail(activity: ActivityLog) {
   if (isPottyTimelineActivity(activity.activityType)) return formatPottyTimelineDetail(activity.detail);
+  if (activity.activityType === "sick") {
+    const { notesText } = splitActivityNotes(activity.notes);
+    const detail = renderActivityDetail({ ...activity, notes: null });
+    return notesText && detail ? `${detail} • Notes: ${notesText}` : detail || notesText;
+  }
   if (!activity.attachments?.length) return renderActivityDetail(activity);
 
   const { notesText } = splitActivityNotes(activity.notes);
