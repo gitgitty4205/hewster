@@ -200,6 +200,23 @@ function formatPottyTimelineDetail(detail: string | null) {
   return detail?.replace(/\s+•\s+/, "\n") ?? "";
 }
 
+function splitActivityNotes(notes: string | null) {
+  const lines = notes?.split("\n").map((line) => line.trim()).filter(Boolean) ?? [];
+  const attachmentLine = lines.find((line) => line.startsWith("Attachments: ")) ?? null;
+
+  return {
+    notesText: lines.filter((line) => line !== attachmentLine).join("\n"),
+  };
+}
+
+function renderTodayTimelineActivityDetail(activity: ActivityLog) {
+  if (isPottyTimelineActivity(activity.activityType)) return formatPottyTimelineDetail(activity.detail);
+  if (!activity.attachments?.length) return renderActivityDetail(activity);
+
+  const { notesText } = splitActivityNotes(activity.notes);
+  return renderActivityDetail({ ...activity, notes: notesText || null });
+}
+
 function careKindLabel(kind: CareItemKind) {
   return kind === "supplement" ? "Supplement" : "Medication";
 }
@@ -1661,8 +1678,8 @@ export default function HomeApp() {
         const sortMs = sortMsForClockTime(activeTodayKey, displayTime);
         const skippedCareItemIds = mealState?.skippedCareItemIds ?? [];
         const mealAt = new Date(sortMsForClockTime(activeTodayKey, displayTime));
-        const mealCareItems = mealLog
-          ? mealLog.loggedCareItems ?? []
+        const mealCareItems = mealLog?.loggedCareItems?.length
+          ? mealLog.loggedCareItems
           : mealCareItemsWithDoseBadges(careTemplates, meal, dailyMeals, activeTodayKey);
         const mealLinkedCareItems = mealCareItems.filter((item) => {
           const itemOccurrenceCount = dailyMeals.filter((dailyMeal) =>
@@ -1716,11 +1733,10 @@ export default function HomeApp() {
 
     const activityTimeline = todayActivityLogs.map((activity) => {
       const happenedAt = customCareDisplayDate(activity);
-      const isPottyActivity = isPottyTimelineActivity(activity.activityType);
       return {
         time: formatActivityTime(happenedAt.toISOString()),
-        label: isPottyActivity ? "Potty" : formatActivityLabel(activity.activityType),
-        detail: isPottyActivity ? formatPottyTimelineDetail(activity.detail) : renderActivityDetail(activity),
+        label: isPottyTimelineActivity(activity.activityType) ? "Potty" : formatActivityLabel(activity.activityType),
+        detail: renderTodayTimelineActivityDetail(activity),
         activity,
         activityType: activity.activityType,
         sortMinutes: happenedAt.getHours() * 60 + happenedAt.getMinutes(),

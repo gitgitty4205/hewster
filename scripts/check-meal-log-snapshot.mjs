@@ -56,7 +56,28 @@ async function main() {
           createdAt: loggedIso,
         },
       ]));
-      window.localStorage.setItem("hewster.activityLogs", JSON.stringify([]));
+      window.localStorage.setItem("hewster.activityLogs", JSON.stringify([
+        {
+          id: "health-attachment-check",
+          profileSlug: "hewie",
+          activityType: "sick",
+          happenedAt: loggedIso,
+          detail: "Health Entry",
+          notes: "Attachments: vet-report.pdf",
+          attachments: [
+            {
+              id: "attachment-1",
+              activityId: "health-attachment-check",
+              fileName: "vet-report.pdf",
+              filePath: "test/vet-report.pdf",
+              contentType: "application/pdf",
+              documentTypes: ["Medical Attachment"],
+              createdAt: loggedIso,
+            },
+          ],
+          createdAt: loggedIso,
+        },
+      ]));
       window.localStorage.setItem("hewster.weightLogs", JSON.stringify([]));
       window.localStorage.setItem("hewster.manualAlerts", JSON.stringify([]));
       window.localStorage.setItem("hewster.supplementSettings", JSON.stringify([
@@ -64,10 +85,20 @@ async function main() {
           id: 99,
           kind: "supplement",
           name: "Probiotics",
-          amount: "1 cap",
-          notes: "Old deleted probiotic notes",
+          dose: "1 cap",
+          notes: "",
           active: true,
           mealIds: [1],
+          customTiming: "with-food",
+          medicationType: "oral",
+          customScheduleMode: "one",
+          startDateTime: "",
+          customScheduleCreatedAt: "",
+          repeatEveryHours: "",
+          repeatForDays: "",
+          mealPlanDoseCount: "",
+          scheduleSteps: [{ id: 1, everyHours: "", forDays: "" }],
+          ongoing: false,
           asNeeded: false,
           scheduleKind: "meal",
         },
@@ -77,9 +108,13 @@ async function main() {
     await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
 
     await page.getByText("Old Breakfast: Old Food").waitFor({ state: "visible", timeout: 10_000 });
+    await page.getByText("Probiotics — 1 cap").waitFor({ state: "visible", timeout: 10_000 });
     const bodyText = await page.locator("body").innerText({ timeout: 5_000 });
-    if (bodyText.includes("Old deleted probiotic notes") || bodyText.includes("Probiotics")) {
-      throw new Error("Logged meal rendered current/deleted supplement settings instead of its saved care snapshot.");
+    if (bodyText.includes("New meal plan notes")) {
+      throw new Error("Logged meal rendered current meal-plan notes instead of the saved meal snapshot.");
+    }
+    if (bodyText.includes("Health Entry: Attachments: vet-report.pdf")) {
+      throw new Error("Health timeline rendered attachment filenames as notes.");
     }
 
     await page.screenshot({ path: screenshotPath, fullPage: false });
