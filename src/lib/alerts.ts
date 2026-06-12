@@ -120,6 +120,10 @@ function normalizeReminderAlertRules(rules: ReminderAlertRule[]) {
   return rules.map((rule) => ({ ...rule, frequency: "daily" as const, weekdays: undefined }));
 }
 
+function removeHewieDefaultReminderRules(rules: ReminderAlertRule[]) {
+  return rules.filter((rule) => rule.id !== "rule-potty-3pm");
+}
+
 function reminderAlertRulesStorageKey(scope?: string) {
   if (!scope) return REMINDER_ALERT_RULES_STORAGE_KEY;
   return `${REMINDER_ALERT_RULES_STORAGE_KEY}.${scope.replace(/[^a-z0-9_-]/gi, "-")}`;
@@ -138,7 +142,16 @@ export function loadReminderAlertRules(options: ReminderAlertRulesStorageOptions
     const storageKey = reminderAlertRulesStorageKey(options.scope);
     const stored = window.localStorage.getItem(storageKey) ?? (options.includeDefaults ? window.localStorage.getItem(REMINDER_ALERT_RULES_STORAGE_KEY) : null);
     const parsed = stored ? JSON.parse(stored) : null;
-    return isReminderAlertRuleArray(parsed) ? normalizeReminderAlertRules(parsed) : fallbackRules;
+    if (!isReminderAlertRuleArray(parsed)) return fallbackRules;
+
+    const normalizedRules = normalizeReminderAlertRules(parsed);
+    if (options.scope !== "default") return normalizedRules;
+
+    const scopedDefaultRules = removeHewieDefaultReminderRules(normalizedRules);
+    if (scopedDefaultRules.length !== normalizedRules.length) {
+      window.localStorage.setItem(storageKey, JSON.stringify(scopedDefaultRules));
+    }
+    return scopedDefaultRules;
   } catch {
     return fallbackRules;
   }
