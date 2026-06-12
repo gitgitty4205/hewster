@@ -121,7 +121,7 @@ function normalizeReminderAlertRules(rules: ReminderAlertRule[]) {
 }
 
 function removeHewieDefaultReminderRules(rules: ReminderAlertRule[]) {
-  return rules.filter((rule) => rule.id !== "rule-potty-3pm");
+  return rules.filter((rule) => !(rule.id === "rule-potty-3pm" || (rule.eventType === "potty" && rule.time === "15:00")));
 }
 
 function reminderAlertRulesStorageKey(scope?: string) {
