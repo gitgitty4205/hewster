@@ -12,6 +12,7 @@ import { useAuth } from "@/components/auth-provider";
 import {
   ALERT_BADGE_COUNT_STORAGE_KEY,
   formatReminderTime,
+  isLeakedDefaultPottyReminderRule,
   loadReminderAlertRules,
   reminderEventLabel,
   resolveAlerts,
@@ -361,9 +362,9 @@ export default function AlertsPage() {
   const visibleReminderRules = useMemo(
     () =>
       reminderRules.filter(
-        (rule) => !(reminderRulesScope === "default" && rule.eventType === "potty" && rule.time === "15:00")
+        (rule) => !isLeakedDefaultPottyReminderRule(rule)
       ),
-    [reminderRules, reminderRulesScope]
+    [reminderRules]
   );
   const unresolvedAlertCountFor = (
     nextDailyMealState: DailyMealState[] = dailyMealState,
