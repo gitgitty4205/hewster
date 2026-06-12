@@ -198,7 +198,7 @@ export function PageIntroGuide() {
 
       <section
         className="fixed z-[90] rounded-[1.4rem] bg-white p-4 text-zinc-900 shadow-[0_18px_48px_rgba(15,23,42,0.24)] ring-1 ring-zinc-200"
-        style={cardStyle ?? { left: 16, right: 16, bottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
+        style={cardStyle ?? { left: "50%", bottom: "calc(env(safe-area-inset-bottom) + 1rem)", width: "min(20rem, calc(100vw - 2rem))", transform: "translateX(-50%)" }}
         role="status"
         aria-labelledby="page-guide-title"
       >
