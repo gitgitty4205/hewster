@@ -28,6 +28,7 @@ type NotebookMemberRow = {
 
 const ACCESS_CACHE_TTL_MS = 60_000;
 const MEMBERS_CACHE_TTL_MS = 60_000;
+export const NOTEBOOK_MEMBER_LIMIT = 10;
 export const ACTIVE_NOTEBOOK_OWNER_STORAGE_KEY = "petnotebook.activeNotebookOwnerId";
 const ACTIVE_NOTEBOOK_SELECTION_EXPLICIT_KEY = "petnotebook.activeNotebookSelectionExplicit";
 const ACTIVE_NOTEBOOK_SELECTION_VERSION_KEY = "petnotebook.activeNotebookSelectionVersion";
@@ -353,6 +354,20 @@ export async function inviteNotebookMember(
 
   if (ownerError || !ownerMembership) {
     throw new Error("Only the notebook owner can invite people right now.");
+  }
+
+  const { data: existingMembers, error: membersError } = await supabase
+    .from("notebook_members")
+    .select("member_email, status")
+    .eq("notebook_owner_id", user.id);
+
+  throwSupabaseError(membersError);
+
+  const nonRevokedMembers = existingMembers?.filter((member) => member.status !== "revoked") ?? [];
+  const existingNonRevokedMember = nonRevokedMembers.some((member) => normalizeEmail(member.member_email) === memberEmail);
+
+  if (!existingNonRevokedMember && nonRevokedMembers.length >= NOTEBOOK_MEMBER_LIMIT) {
+    throw new Error(`This notebook already has ${NOTEBOOK_MEMBER_LIMIT} members. Remove someone before inviting another person.`);
   }
 
   const { error } = await supabase.from("notebook_members").upsert(

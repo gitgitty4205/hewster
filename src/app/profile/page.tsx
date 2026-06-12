@@ -12,6 +12,7 @@ import { useAuth } from "@/components/auth-provider";
 import {
   inviteNotebookMember,
   loadNotebookMembers,
+  NOTEBOOK_MEMBER_LIMIT,
   notebookAccessRoleDescriptions,
   notebookInviteRoles,
   removeNotebookMember,
@@ -177,6 +178,8 @@ export default function ProfilePage() {
   const [showMemorialSettings, setShowMemorialSettings] = useState(false);
   const [showNotebookSharingIntro, setShowNotebookSharingIntro] = useState(false);
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
+  const visibleMembers = members.filter((member) => member.status !== "revoked");
+  const notebookMemberLimitReached = visibleMembers.length >= NOTEBOOK_MEMBER_LIMIT;
 
   useEffect(() => {
     const refreshPlan = () => setSubscriptionPlan(loadStoredSubscriptionPlan());
@@ -238,6 +241,12 @@ export default function ProfilePage() {
     if (subscriptionPlan !== "plus") {
       setAccessStatus("error");
       setAccessMessage("Notebook sharing is included with PetNotebook Plus. Upgrade to invite co-owners, caretakers, and pet sitters.");
+      return;
+    }
+
+    if (notebookMemberLimitReached) {
+      setAccessStatus("error");
+      setAccessMessage(`This notebook already has ${NOTEBOOK_MEMBER_LIMIT} members. Remove someone before inviting another person.`);
       return;
     }
 
@@ -1037,10 +1046,13 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => void handleInvitePerson()}
                 className="mt-3 h-11 w-full rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60"
-                disabled={!user || accessStatus === "saving"}
+                disabled={!user || accessStatus === "saving" || notebookMemberLimitReached}
               >
                 {accessStatus === "saving" ? "Sending..." : "Invite"}
               </Button>
+              <p className="mt-2 text-center text-xs font-medium text-[var(--hewie-active-text,#334155)]/60">
+                {visibleMembers.length}/{NOTEBOOK_MEMBER_LIMIT} members
+              </p>
             </>
           ) : null}
           {canOwnNotebookAccess && !isNotebookSharingUnlocked ? (
@@ -1061,7 +1073,7 @@ export default function ProfilePage() {
 
           <div className="mt-5 space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Notebook members</h3>
-            {members.filter((member) => member.status !== "revoked").map((member) => {
+            {visibleMembers.map((member) => {
               const pendingAccess = pendingMemberAccess[member.id] ?? member.role;
               const hasPendingChange = member.role !== "owner" && pendingAccess !== member.role;
 
