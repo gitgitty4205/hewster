@@ -319,15 +319,16 @@ export default function MealsPage() {
             {visibleTemplates.map((meal) => {
               const isEditing = editingDraft?.meal.id === meal.id;
               const displayedMeal = isEditing ? editingDraft.meal : meal;
+              const mealBlurb = displayedMeal.food.trim()
+                ? `Daily at ${displayedMeal.plannedTime} • ${displayedMeal.food.trim()}`
+                : `Daily at ${displayedMeal.plannedTime}`;
 
               return (
                 <article key={meal.id} className="rounded-2xl bg-zinc-50 p-4 ring-1 ring-zinc-200">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="break-words font-medium text-zinc-900 [overflow-wrap:anywhere]">{displayedMeal.name || "New Meal"}</h3>
-                      <p className="text-sm text-zinc-500">
-                        {displayedMeal.active === false ? "Inactive" : "Active"} • Daily at {displayedMeal.plannedTime}
-                      </p>
+                      <p className="break-words text-sm text-zinc-500 [overflow-wrap:anywhere]">{mealBlurb}</p>
                     </div>
                     {isEditing ? null : (
                       <Button
