@@ -146,7 +146,7 @@ export function QuickLogCard({ activityState, onQuickLog, includeOther = true, v
         )
       ) : null}
 
-      <div className={iconOnly ? "-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : `grid gap-3 ${visibleActions.length > 2 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"}`}>
+      <div className={iconOnly ? "-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "grid grid-cols-2 gap-3"}>
         {visibleActions.map((action) => {
           const Icon = action.icon;
           return (
