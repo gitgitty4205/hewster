@@ -43,6 +43,10 @@ type TextModal = {
   text: string;
 };
 
+const timelineTitleClassName = "min-w-0 text-sm font-semibold leading-5 text-zinc-900";
+const timelineDetailClassName = "mt-1 text-sm font-normal leading-5 text-zinc-600";
+const timelineSecondaryDetailClassName = "mt-1 text-sm font-normal leading-5 text-zinc-500";
+
 function initialsFromName(name?: string | null) {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "";
@@ -126,7 +130,7 @@ function visiblePottyNotes(notes: string | null) {
     .trim();
 }
 
-function PottyActivityNotes({ activity, className = "mt-2 text-sm text-zinc-500" }: { activity: ActivityLog; className?: string }) {
+function PottyActivityNotes({ activity, className = "mt-2 text-sm font-normal leading-5 text-zinc-500" }: { activity: ActivityLog; className?: string }) {
   const notes = visiblePottyNotes(activity.notes);
   if (!notes) return null;
 
@@ -331,7 +335,7 @@ function PottyActivityMeta({ activity }: { activity: ActivityLog }) {
 
   return (
     <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-      <PottyActivityNotes activity={activity} className="pt-1 text-sm text-zinc-500" />
+      <PottyActivityNotes activity={activity} className="pt-1 text-sm font-normal leading-5 text-zinc-500" />
       <ActivityAttachmentLinks activity={activity} className="flex flex-wrap justify-end gap-2" />
     </div>
   );
@@ -364,7 +368,7 @@ function TimelineStatusBadge({ status }: { status: "Skipped" | "Missed" | null }
   return status ? <span className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{status}</span> : null;
 }
 
-function TimelineDetailText({ detail, status, className = "mt-1 text-sm leading-5 text-zinc-600", title = "Details", onOpenText }: { detail: string; status: "Skipped" | "Missed" | null; className?: string; title?: string; onOpenText?: (modal: TextModal) => void }) {
+function TimelineDetailText({ detail, status, className = timelineDetailClassName, title = "Details", onOpenText }: { detail: string; status: "Skipped" | "Missed" | null; className?: string; title?: string; onOpenText?: (modal: TextModal) => void }) {
   const cleanDetail = cleanTimelineDetail(detail, status);
   const detailLines = cleanDetail.split("\n").filter(Boolean);
 
@@ -384,7 +388,7 @@ function TimelineDetailText({ detail, status, className = "mt-1 text-sm leading-
   );
 }
 
-function InlineTimelineDetailText({ detail, status, className = "mt-1 text-sm leading-5 text-zinc-600" }: { detail: string; status: "Skipped" | "Missed" | null; className?: string }) {
+function InlineTimelineDetailText({ detail, status, className = timelineDetailClassName }: { detail: string; status: "Skipped" | "Missed" | null; className?: string }) {
   const cleanDetail = cleanTimelineDetail(detail, status);
   const detailLines = cleanDetail.split("\n").filter(Boolean);
 
@@ -419,13 +423,13 @@ function MealLinkedCareRows({ items, onOpenText }: { items?: TimelineItem["mealL
               <TimelineMarker style={markerStyle} />
             </div>
             <div className="min-w-0">
-              <OpenableText className="text-sm font-semibold text-zinc-900" modal={{ title: item.label, label: "Details", text: [item.label, summary].filter(Boolean).join("\n") }} onOpen={onOpenText}>{item.label}</OpenableText>
+              <OpenableText className={timelineTitleClassName} modal={{ title: item.label, label: "Details", text: [item.label, summary].filter(Boolean).join("\n") }} onOpen={onOpenText}>{item.label}</OpenableText>
               {onOpenText ? (
-                <TimelineDetailText detail={summary} status={status} className="mt-1 text-sm text-zinc-500" title={item.label} onOpenText={onOpenText} />
+                <TimelineDetailText detail={summary} status={status} className={timelineSecondaryDetailClassName} title={item.label} onOpenText={onOpenText} />
               ) : (
-                <InlineTimelineDetailText detail={summary} status={status} className="mt-1 text-sm text-zinc-500" />
+                <InlineTimelineDetailText detail={summary} status={status} className={timelineSecondaryDetailClassName} />
               )}
-              {notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {notes}</ExpandableNoteText> : null}
+              {notes ? <ExpandableNoteText className={timelineSecondaryDetailClassName}>Notes: {notes}</ExpandableNoteText> : null}
             </div>
           </div>
         );
@@ -826,7 +830,7 @@ export function ActivityFeed({
       <>
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <p className="min-w-0 text-sm font-semibold text-zinc-900">{item.label}</p>
+            <p className={timelineTitleClassName}>{item.label}</p>
           </div>
           {!showRightPhotoControls ? (
             <div className="flex shrink-0 items-center gap-1.5">
@@ -843,13 +847,13 @@ export function ActivityFeed({
           <CareActivityDetail activity={careActivity} careTemplates={careTemplates} />
         ) : treatParts ? (
           <>
-            {treatParts.summary ? <p className="mt-1 text-sm text-zinc-500">{treatParts.summary}</p> : null}
-            {treatParts.notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {treatParts.notes}</ExpandableNoteText> : null}
+            {treatParts.summary ? <p className={timelineSecondaryDetailClassName}>{treatParts.summary}</p> : null}
+            {treatParts.notes ? <ExpandableNoteText className={timelineSecondaryDetailClassName}>Notes: {treatParts.notes}</ExpandableNoteText> : null}
           </>
         ) : item.detail.includes(" • Notes: ") ? (
           <>
-            <InlineTimelineDetailText detail={detailSummary} status={status} className="mt-1 text-sm text-zinc-500" />
-            {!pottyNotesActivity && detailNotes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {detailNotes}</ExpandableNoteText> : null}
+            <InlineTimelineDetailText detail={detailSummary} status={status} className={timelineSecondaryDetailClassName} />
+            {!pottyNotesActivity && detailNotes ? <ExpandableNoteText className={timelineSecondaryDetailClassName}>Notes: {detailNotes}</ExpandableNoteText> : null}
           </>
         ) : (
           <InlineTimelineDetailText detail={item.detail} status={status} />
