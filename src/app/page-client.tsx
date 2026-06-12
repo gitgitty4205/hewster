@@ -2866,7 +2866,6 @@ export default function HomeApp() {
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-[#6f4c0f]">Poop Records</h2>
-              <p className="text-sm text-[#765313]/65">Last {poopRecordsWindowDays} days of stool records.</p>
             </div>
             <button
               type="button"
