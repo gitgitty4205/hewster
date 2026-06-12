@@ -2,7 +2,7 @@
 
 
 
-import { Check, ChevronDown, Clock3, Tablets } from "lucide-react";
+import { Check, ChevronDown, Clock3, History, Tablets } from "lucide-react";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -1350,7 +1350,8 @@ export default function LogPage() {
         logDayKey < currentTodayKey() ? (
           <span className="flex flex-wrap items-center gap-2">
             <span>{formatLogDayLabel(logDayKey)}</span>
-            <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold text-[var(--hewie-active-text,#334155)]/70 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff4c6] px-2.5 py-1 text-xs font-semibold text-[#8a6a16] ring-1 ring-[#ecd98d]">
+              <History className="size-3.5 shrink-0" aria-hidden="true" />
               Past Entries
             </span>
           </span>
