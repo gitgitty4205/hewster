@@ -103,10 +103,19 @@ const avatarClassNames = {
   tile: "size-[4.5rem] rounded-[1.15rem] object-cover object-center shadow-[0_10px_22px_rgba(15,23,42,0.22),0_1px_3px_rgba(255,255,255,0.35)_inset] ring-1 ring-[var(--hewie-active-text,#334155)]/18",
 };
 
+const defaultAvatarClassNames = {
+  circle: "object-contain p-2",
+  tile: "object-contain p-2.5",
+};
+
 const avatarButtonClassNames = {
   circle: "shrink-0 rounded-full text-left transition hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/55",
   tile: "shrink-0 rounded-[1.15rem] text-left transition hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/55",
 };
+
+function isDefaultPetPhoto(photoUrl?: string) {
+  return !photoUrl || photoUrl === DEFAULT_PET_PHOTO_URL;
+}
 
 export function PetAvatarMenu({ className, width, height, shape = "circle" }: Props) {
   const { user } = useAuth();
@@ -257,6 +266,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
   const ownedPetCount = user ? Math.max(pets.length, 1) : 0;
   const ownedPetLimit = petLimitForSubscriptionPlan(subscriptionPlan);
   const imageSize = shape === "tile" ? 72 : 80;
+  const currentPetUsesDefaultPhoto = isDefaultPetPhoto(currentPet.photoUrl);
 
   const openFreePetUpgradeDialog = () => {
     setAddPetMessage("");
@@ -368,7 +378,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
           alt={currentPet.name}
           width={width ?? imageSize}
           height={height ?? imageSize}
-          className={cn(className, avatarClassNames[shape])}
+          className={cn(className, avatarClassNames[shape], currentPetUsesDefaultPhoto && defaultAvatarClassNames[shape])}
         />
       </button>
 
