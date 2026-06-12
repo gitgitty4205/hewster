@@ -129,6 +129,7 @@ function normalizeMedicationSchedule(item: CareItemTemplate) {
 export function CareSettingsPage({
   kind,
   title,
+  description,
   emptyLabel,
   icon: Icon,
   accentClassName,
@@ -363,6 +364,9 @@ export function CareSettingsPage({
               </span>
               <div>
                 <h2 className="text-lg font-semibold">{kind === "supplement" ? "Saved Supplements" : "Saved Medications"}</h2>
+                {kind === "supplement" ? (
+                  <p className="mt-1 text-sm leading-5 text-zinc-500">{description}</p>
+                ) : null}
                 <p className="text-sm text-zinc-500">
                   {isHydrating ? "Loading saved items..." : `${items.length} Saved • ${activeCount} Active`}
                 </p>
