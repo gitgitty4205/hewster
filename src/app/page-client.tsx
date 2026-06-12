@@ -947,7 +947,7 @@ export default function HomeApp() {
     subtitle: string;
     label?: string;
     text: string;
-    sections?: { label: string; text: string }[];
+    sections?: { id?: string; label: string; text: string }[];
     tone: {
       panel: string;
       closeButton: string;
@@ -2453,19 +2453,36 @@ export default function HomeApp() {
                       closeButton: "bg-white/55 text-current/58 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white/80 hover:text-current/75",
                       noteBox: "border border-[var(--hewie-ring,#cbd5e1)] bg-white text-current/75",
                     };
-                    const mealCareNoteModalTone = {
-                      panel: "bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]",
-                      closeButton: "bg-white/55 text-current/58 ring-[#b8c9dd]/80 transition hover:bg-white/80 hover:text-current/75",
-                      noteBox: "border border-[#b8c9dd] bg-white text-current/75",
-                    };
                     const mealTextInsetClassName = mealNoteText ? "pr-7" : "";
                     const mealFoodText = card.meal.food.trim();
-                    const mealTextSections = (primary: "food" | "notes") => {
-                      const foodSection = mealFoodText ? { label: "Food / Ingredients", text: mealFoodText } : null;
-                      const notesSection = mealNoteText ? { label: "Notes", text: mealNoteText } : null;
+                    const mealDetailSections = (primary: "food" | "notes" | "care", primaryCareItem?: CareItemTemplate) => {
+                      const foodSection = mealFoodText ? { id: "food", label: "Food / Ingredients", text: mealFoodText } : null;
+                      const notesSection = mealNoteText ? { id: "notes", label: "Notes", text: mealNoteText } : null;
+                      const careSections = cardMealCareItems
+                        .filter((item) => item.kind === "supplement")
+                        .map((item) => ({
+                          id: `${item.kind}-${item.id}`,
+                          label: item.kind === "supplement" ? "Supplement" : "Medication",
+                          text: [
+                            item.name,
+                            item.dose ? `Dose: ${item.dose}` : null,
+                            item.notes?.trim() ? `Notes: ${item.notes.trim().slice(0, TEXT_LIMITS.note)}` : null,
+                          ].filter(Boolean).join("\n"),
+                        }));
+                      const selectedCareSection = primaryCareItem
+                        ? careSections.find((section) => section.id === `${primaryCareItem.kind}-${primaryCareItem.id}`) ?? null
+                        : null;
+                      const otherCareSections = selectedCareSection
+                        ? careSections.filter((section) => section.id !== selectedCareSection.id)
+                        : careSections;
+
+                      if (primary === "care") {
+                        return [selectedCareSection, foodSection, notesSection, ...otherCareSections].filter(Boolean) as { id: string; label: string; text: string }[];
+                      }
+
                       return primary === "food"
-                        ? [foodSection, notesSection].filter(Boolean) as { label: string; text: string }[]
-                        : [notesSection, foodSection].filter(Boolean) as { label: string; text: string }[];
+                        ? [foodSection, ...careSections, notesSection].filter(Boolean) as { id: string; label: string; text: string }[]
+                        : [notesSection, foodSection, ...careSections].filter(Boolean) as { id: string; label: string; text: string }[];
                     };
                     const mealPriorityClassName = priorityScheduleTime === card.sortAt.getTime() && upcomingScheduleCards.length > 1
                       ? "hewie-priority-border"
@@ -2482,7 +2499,7 @@ export default function HomeApp() {
                                 title: card.meal.name,
                                 subtitle: plannedTimeLabel,
                                 text: "",
-                                sections: mealTextSections("food"),
+                                sections: mealDetailSections("food"),
                                 tone: mealNoteModalTone,
                               })}
                             >
@@ -2499,7 +2516,7 @@ export default function HomeApp() {
                               subtitle: plannedTimeLabel,
                               label: "Food / Ingredients",
                               text: mealFoodText,
-                              sections: mealTextSections("food"),
+                              sections: mealDetailSections("food"),
                               tone: mealNoteModalTone,
                             })}
                           >
@@ -2515,7 +2532,7 @@ export default function HomeApp() {
                                 subtitle: plannedTimeLabel,
                                 label: "Notes",
                                 text: mealNoteText,
-                                sections: mealTextSections("notes"),
+                                sections: mealDetailSections("notes"),
                                 tone: mealNoteModalTone,
                               })}
                             >
@@ -2526,28 +2543,23 @@ export default function HomeApp() {
                             <CompactMealCareSummary
                               items={cardMealCareItems}
                               onOpenDetail={(item) => setUpcomingNoteModal({
-                                title: item.name,
+                                title: card.meal.name,
                                 subtitle: plannedTimeLabel,
-                                label: "Supplement",
+                                label: item.kind === "supplement" ? "Supplement" : "Medication",
                                 text: item.name,
-                                sections: [
-                                  { label: "Supplement", text: item.name },
-                                  item.dose ? { label: "Dose", text: item.dose } : null,
-                                  item.notes?.trim() ? { label: "Notes", text: item.notes.trim().slice(0, TEXT_LIMITS.note) } : null,
-                                ].filter(Boolean) as { label: string; text: string }[],
-                                tone: mealCareNoteModalTone,
+                                sections: mealDetailSections("care", item),
+                                tone: mealNoteModalTone,
                               })}
                               onOpenNote={(item) => setUpcomingNoteModal({
-                                title: item.name,
+                                title: card.meal.name,
                                 subtitle: plannedTimeLabel,
                                 label: "Notes",
                                 text: item.notes.trim().slice(0, TEXT_LIMITS.note),
                                 sections: [
-                                  { label: "Notes", text: item.notes.trim().slice(0, TEXT_LIMITS.note) },
-                                  { label: "Supplement", text: item.name },
-                                  item.dose ? { label: "Dose", text: item.dose } : null,
-                                ].filter(Boolean) as { label: string; text: string }[],
-                                tone: mealCareNoteModalTone,
+                                  { id: "selected-note", label: "Notes", text: item.notes.trim().slice(0, TEXT_LIMITS.note) },
+                                  ...mealDetailSections("care", item),
+                                ],
+                                tone: mealNoteModalTone,
                               })}
                             />
                           ) : null}
@@ -2792,8 +2804,8 @@ export default function HomeApp() {
               ) : null}
               {upcomingNoteModal.sections?.length ? (
                 <div className="max-h-[45vh] space-y-3 overflow-y-auto">
-                  {upcomingNoteModal.sections.map((section) => (
-                    <section key={section.label} className={`rounded-2xl p-3 ${upcomingNoteModal.tone.noteBox}`}>
+                  {upcomingNoteModal.sections.map((section, index) => (
+                    <section key={section.id ?? `${section.label}-${index}`} className={`rounded-2xl p-3 ${upcomingNoteModal.tone.noteBox}`}>
                       <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-current/48">{section.label}</p>
                       <p className="whitespace-pre-wrap break-words text-sm leading-6">{section.text}</p>
                     </section>
