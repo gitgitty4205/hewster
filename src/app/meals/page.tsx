@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Save, Trash2 } from "lucide-react";
+import { Beef, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
@@ -267,10 +267,15 @@ export default function MealsPage() {
 
         <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
           <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">Saved Meal Plan</h2>
-              <p className="text-sm text-zinc-500">Create meal schedules, reminders, and daily logs.</p>
-              <p className="text-sm text-zinc-500">{`${templates.length} Saved • ${activeCount} Active`}</p>
+            <div className="flex items-start gap-3">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#f8ecea] text-[#7b3f35] ring-1 ring-[#e3b9b1]">
+                <Beef className="size-7" />
+              </span>
+              <div>
+                <h2 className="text-lg font-semibold">Saved Meal Plan</h2>
+                <p className="text-sm text-zinc-500">Create meal schedules, reminders, and daily logs.</p>
+                <p className="text-sm text-zinc-500">{`${templates.length} Saved • ${activeCount} Active`}</p>
+              </div>
             </div>
             <div className="text-right text-xs text-zinc-500">
               <div className="flex items-center justify-end gap-1.5 text-emerald-600">
