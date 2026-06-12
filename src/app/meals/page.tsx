@@ -57,6 +57,7 @@ export default function MealsPage() {
   const { loading: authLoading } = useAuth();
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [editingDraft, setEditingDraft] = useState<MealDraft | null>(null);
+  const [mealPendingDelete, setMealPendingDelete] = useState<MealTemplate | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [storageMode, setStorageMode] = useState<"browser" | "supabase">("browser");
   const [mealDataUnavailable, setMealDataUnavailable] = useState(false);
@@ -156,7 +157,7 @@ export default function MealsPage() {
   }, [templates, hydrated, supabaseReady, mealDataUnavailable]);
 
   const visibleTemplates = editingDraft?.isNew
-    ? sortMealTemplatesByTime([...templates, editingDraft.meal])
+    ? [editingDraft.meal, ...templates.filter((meal) => meal.id !== editingDraft.meal.id)]
     : templates;
 
   const beginEditingMeal = (meal: MealTemplate) => {
@@ -197,18 +198,27 @@ export default function MealsPage() {
 
   const cancelEditingMeal = () => {
     setEditingDraft(null);
+    setMealPendingDelete(null);
   };
 
   const deleteEditingMeal = () => {
     if (!editingDraft) return;
 
     if (!editingDraft.isNew) {
-      const confirmed = window.confirm(`Delete ${editingDraft.meal.name || "this meal"} from the saved meal plan?`);
-      if (!confirmed) return;
+      setMealPendingDelete(editingDraft.meal);
+      return;
     }
 
     setTemplates((current) => current.filter((meal) => meal.id !== editingDraft.meal.id));
     setEditingDraft(null);
+  };
+
+  const confirmDeleteMeal = () => {
+    if (!mealPendingDelete) return;
+
+    setTemplates((current) => current.filter((meal) => meal.id !== mealPendingDelete.id));
+    setEditingDraft(null);
+    setMealPendingDelete(null);
   };
 
   const addMealTemplate = () => {
@@ -398,6 +408,28 @@ export default function MealsPage() {
             })}
           </div>
         </section>
+
+        {mealPendingDelete ? (
+          <div className="fixed inset-0 z-[80] flex items-end bg-zinc-950/35 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="delete-meal-title">
+            <button type="button" aria-label="Cancel delete meal" className="absolute inset-0 cursor-default" onClick={() => setMealPendingDelete(null)} />
+            <div className="relative w-full max-w-md rounded-3xl bg-white p-4 text-zinc-900 shadow-2xl ring-1 ring-zinc-200">
+              <div className="mb-4">
+                <h2 id="delete-meal-title" className="text-base font-semibold">Delete meal?</h2>
+                <p className="mt-1 text-sm leading-6 text-zinc-500">
+                  Delete {mealPendingDelete.name || "this meal"} from the saved meal plan?
+                </p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" className="rounded-full" onClick={() => setMealPendingDelete(null)}>
+                  Cancel
+                </Button>
+                <Button type="button" className="rounded-full bg-rose-600 text-white hover:bg-rose-700" onClick={confirmDeleteMeal}>
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <BottomNav />
       </div>
