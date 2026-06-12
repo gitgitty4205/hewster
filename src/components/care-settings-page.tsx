@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleHelp, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { CircleHelp, Plus, Save, Trash2 } from "lucide-react";
 import type { ComponentType } from "react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useMemo, useState } from "react";
@@ -329,13 +329,6 @@ export function CareSettingsPage({
     setEditingId((current) => (current === id ? null : current));
   };
 
-  const resetItems = () => {
-    const nextItems = initialCareTemplatesForKind(kind);
-    commitItems(nextItems);
-    setDraftItems({});
-    setEditingId(null);
-  };
-
   return (
     <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
@@ -377,10 +370,6 @@ export function CareSettingsPage({
             <Button variant="outline" className="rounded-full" onClick={addItem} disabled={isHydrating}>
               <Plus className="size-4" />
               Add {kind === "supplement" ? "Supplement" : "Medication"}
-            </Button>
-            <Button variant="outline" className="rounded-full" onClick={resetItems} disabled={isHydrating}>
-              <RotateCcw className="size-4" />
-              Reset
             </Button>
           </div>
 
