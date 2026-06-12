@@ -1793,6 +1793,7 @@ export default function HistoryPage() {
         plannedTime: meal.actualTime,
         food: meal.food,
         notes: meal.defaultNotes,
+        active: true,
       };
       const missedMeal = isMissedMealRecord(meal);
       const skippedMeal = isSkippedMealRecord(meal);

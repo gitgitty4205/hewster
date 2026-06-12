@@ -2,7 +2,7 @@ import { compareActivitiesReverseChronological } from "@/lib/activity";
 import type { User } from "@supabase/supabase-js";
 import type { CareItemKind, CareItemTemplate } from "@/lib/care-settings";
 import type { MealStatus, MealTemplate } from "@/lib/meal-templates";
-import { clampMealFoodText, clampMealNameText, clampMealNoteText, initialTemplates, isInitialMealTemplatePlan, isMealTemplateArray, sortMealTemplatesByTime, STORAGE_KEY } from "@/lib/meal-templates";
+import { clampMealFoodText, clampMealNameText, clampMealNoteText, initialTemplates, isInitialMealTemplatePlan, isMealTemplateArray, normalizeMealTemplate, sortMealTemplatesByTime, STORAGE_KEY } from "@/lib/meal-templates";
 import {
   canDeleteNotebookEntries,
   canEditNotebookEntries,
@@ -394,6 +394,7 @@ type MealTemplateRow = {
   planned_time: string;
   food: string;
   notes: string;
+  active?: boolean | null;
   reminder_offset: string;
   sort_order: number;
 };
@@ -643,7 +644,7 @@ export function loadLocalState(): HewsterAppState {
     const manualAlerts = storedManualAlerts ? JSON.parse(storedManualAlerts) : null;
     const todayKey = storedTodayKey ?? currentTodayKey();
     const resolvedTemplates = sortMealTemplatesByTime((isMealTemplateArray(templates) ? templates : seed.templates).map((template) => ({
-      ...template,
+      ...normalizeMealTemplate(template),
       name: clampMealNameText(template.name),
       food: clampMealFoodText(template.food),
       notes: clampMealNoteText(template.notes),
@@ -691,7 +692,7 @@ export function persistLocalState(
 ) {
   const existingState = loadLocalState();
   const resolvedTemplates = templates.map((template) => ({
-    ...template,
+    ...normalizeMealTemplate(template),
     name: clampMealNameText(template.name),
     food: clampMealFoodText(template.food),
     notes: clampMealNoteText(template.notes),
@@ -786,6 +787,7 @@ function mapTemplateRowToTemplate(row: MealTemplateRow): MealTemplate {
     plannedTime: row.planned_time,
     food: clampMealFoodText(row.food),
     notes: clampMealNoteText(row.notes),
+    active: row.active !== false,
   };
 }
 
@@ -807,6 +809,7 @@ function mapHistoricalTemplateRowToTemplate(row: HistoricalMealTemplateRow): Mea
     plannedTime: row.planned_time,
     food: clampMealFoodText(row.food),
     notes: clampMealNoteText(row.notes),
+    active: row.active !== false,
   };
 }
 
@@ -1064,6 +1067,7 @@ function mapTemplateToRow(template: MealTemplate, index: number, ownerId: string
     planned_time: template.plannedTime,
     food: clampMealFoodText(template.food),
     notes: clampMealNoteText(template.notes),
+    active: template.active !== false,
     reminder_offset: "",
     sort_order: index,
   };

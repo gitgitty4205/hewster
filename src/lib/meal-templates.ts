@@ -6,6 +6,7 @@ export type MealTemplate = {
   plannedTime: string;
   food: string;
   notes: string;
+  active: boolean;
 };
 
 export type MealStatus = "done" | "upcoming" | "late";
@@ -39,6 +40,7 @@ export const initialTemplates: MealTemplate[] = [
     plannedTime: "8:00 AM",
     food: "Turkey mix + kefir",
     notes: "Add pumpkin if stool was soft the night before.",
+    active: true,
   },
   {
     id: 2,
@@ -46,6 +48,7 @@ export const initialTemplates: MealTemplate[] = [
     plannedTime: "1:00 PM",
     food: "Goat milk + sardine topper",
     notes: "Use half portion if breakfast ran late.",
+    active: true,
   },
   {
     id: 3,
@@ -53,8 +56,16 @@ export const initialTemplates: MealTemplate[] = [
     plannedTime: "6:30 PM",
     food: "Beef raw bowl + greens",
     notes: "Main full meal. Add supplements here.",
+    active: true,
   },
 ];
+
+export function normalizeMealTemplate(template: MealTemplate): MealTemplate {
+  return {
+    ...template,
+    active: template.active !== false,
+  };
+}
 
 export function parseMealTemplateTimeToMinutes(value: string) {
   const normalized = value.trim().replace(/\s+/g, " ").toUpperCase();
@@ -114,6 +125,8 @@ function mealTemplateCreatedAt(template: MealTemplate) {
 }
 
 export function isMealTemplateActiveForDay(template: MealTemplate, dayKey: string) {
+  if (template.active === false) return false;
+
   const createdAt = mealTemplateCreatedAt(template);
   if (!createdAt) return true;
 

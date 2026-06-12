@@ -1385,6 +1385,7 @@ export default function HomeApp() {
         plannedTime: mealLog.actualTime,
         food: mealLog.food,
         notes: mealLog.defaultNotes,
+        active: true,
         actualTime: mealLog.actualTime,
         status: "done" as const,
       }));

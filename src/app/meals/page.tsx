@@ -22,6 +22,7 @@ import {
   clampMealNoteText,
   type MealTemplate,
   isInitialMealTemplatePlan,
+  normalizeMealTemplate,
   parseMealTemplateTimeToMinutes,
   sortMealTemplatesByTime,
 } from "@/lib/meal-templates";
@@ -83,7 +84,7 @@ export default function MealsPage() {
         }
 
         setMealDataUnavailable(false);
-        setTemplates(sortMealTemplatesByTime(state.templates));
+        setTemplates(sortMealTemplatesByTime(state.templates.map(normalizeMealTemplate)));
         setStorageMode(state.source === "supabase" ? "supabase" : "browser");
       } catch {
         if (cancelled) return;
@@ -158,6 +159,7 @@ export default function MealsPage() {
   const visibleTemplates = editingDraft?.isNew
     ? [editingDraft.meal, ...templates.filter((meal) => meal.id !== editingDraft.meal.id)]
     : templates;
+  const activeCount = templates.filter((meal) => meal.active !== false).length;
 
   const beginEditingMeal = (meal: MealTemplate) => {
     setEditingDraft({ meal: { ...meal }, isNew: false });
@@ -175,6 +177,16 @@ export default function MealsPage() {
     });
   };
 
+  const updateDraftActive = (active: boolean) => {
+    setEditingDraft((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        meal: { ...current.meal, active },
+      };
+    });
+  };
+
   const saveEditingMeal = () => {
     if (!editingDraft) return;
     const mealToSave = {
@@ -182,6 +194,7 @@ export default function MealsPage() {
       name: clampMealNameText(editingDraft.meal.name),
       food: clampMealFoodText(editingDraft.meal.food),
       notes: clampMealNoteText(editingDraft.meal.notes),
+      active: editingDraft.meal.active !== false,
     };
 
     setTemplates((current) => {
@@ -231,6 +244,7 @@ export default function MealsPage() {
         plannedTime: "12:00 PM",
         food: "",
         notes: "",
+        active: true,
       },
     });
   };
@@ -256,6 +270,7 @@ export default function MealsPage() {
             <div>
               <h2 className="text-lg font-semibold">Saved Meal Plan</h2>
               <p className="text-sm text-zinc-500">Create meal schedules, reminders, and daily logs.</p>
+              <p className="text-sm text-zinc-500">{`${templates.length} Saved • ${activeCount} Active`}</p>
             </div>
             <div className="text-right text-xs text-zinc-500">
               <div className="flex items-center justify-end gap-1.5 text-emerald-600">
@@ -305,7 +320,9 @@ export default function MealsPage() {
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="break-words font-medium text-zinc-900 [overflow-wrap:anywhere]">{displayedMeal.name || "New Meal"}</h3>
-                      <p className="text-sm text-zinc-500">Template used for future daily checklists.</p>
+                      <p className="text-sm text-zinc-500">
+                        {displayedMeal.active === false ? "Inactive" : "Active"} • Template used for future daily checklists.
+                      </p>
                     </div>
                     {isEditing ? null : (
                       <Button
@@ -320,6 +337,17 @@ export default function MealsPage() {
                   </div>
 
                   <div className="space-y-3">
+                    <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
+                      <input
+                        type="checkbox"
+                        checked={displayedMeal.active !== false}
+                        disabled={!isEditing}
+                        onChange={(event) => updateDraftActive(event.target.checked)}
+                        className="size-4 rounded border-zinc-300"
+                      />
+                      Active
+                    </label>
+
                     <label className="block text-sm">
                       <span className="mb-1 block font-medium text-zinc-700">Meal Name</span>
                       <input
