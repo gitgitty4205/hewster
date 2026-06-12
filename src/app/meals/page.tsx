@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
@@ -21,7 +21,6 @@ import {
   clampMealNameText,
   clampMealNoteText,
   type MealTemplate,
-  initialTemplates,
   isInitialMealTemplatePlan,
   parseMealTemplateTimeToMinutes,
   sortMealTemplatesByTime,
@@ -236,12 +235,6 @@ export default function MealsPage() {
     });
   };
 
-  const resetTemplates = () => {
-    setTemplates(sortMealTemplatesByTime(initialTemplates));
-    setEditingDraft(null);
-    setSaveState("idle");
-  };
-
   if (!hydrated) {
     return (
       <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
@@ -293,10 +286,6 @@ export default function MealsPage() {
             <Button variant="outline" className="rounded-full" disabled={Boolean(editingDraft) || mealDataUnavailable} onClick={addMealTemplate}>
               <Plus className="size-4" />
               Add Meal
-            </Button>
-            <Button variant="outline" className="rounded-full" disabled={Boolean(editingDraft) || mealDataUnavailable} onClick={resetTemplates}>
-              <RotateCcw className="size-4" />
-              Reset Meal Plan
             </Button>
           </div>
 
