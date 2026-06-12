@@ -4,7 +4,7 @@ const path = require("node:path");
 const projectRoot = path.resolve(__dirname, "..");
 const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
 
-const child = spawn(npmCmd, ["run", "dev", "--", "-p", "3000"], {
+const child = spawn(npmCmd, ["run", "start", "--", "-p", "3000"], {
   cwd: projectRoot,
   stdio: ["ignore", "inherit", "inherit"],
   windowsHide: true,
