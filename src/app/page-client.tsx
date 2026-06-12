@@ -2216,28 +2216,7 @@ export default function HomeApp() {
           </div>
         </header>
 
-        <div data-guide="today-upcoming">
-          {notebookDataUnavailable ? (
-            <section className="mb-3 rounded-3xl bg-amber-50 px-4 py-3 text-amber-900 shadow-sm ring-1 ring-amber-200">
-              <div className="flex items-start gap-3">
-                <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold leading-5">Notebook data is reconnecting</p>
-                  <p className="mt-0.5 text-xs leading-4 text-amber-900/70">
-                    Your saved meal plan did not load yet, so the default plan is hidden.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  className="h-8 shrink-0 rounded-full bg-amber-900 px-3 text-xs font-semibold text-amber-50 hover:bg-amber-800"
-                  onClick={() => window.location.reload()}
-                >
-                  Retry
-                </Button>
-              </div>
-            </section>
-          ) : null}
-
+        <div>
           {todayAlertCards.length ? (
             <section className="mb-3 space-y-2">
             {todayAlertCards.slice(0, 3).map((alert) => {
@@ -2448,9 +2427,9 @@ export default function HomeApp() {
           </section>
         ) : null}
 
-          {upcomingScheduleCards.length ? (
-            <section className="mb-4 space-y-2">
+          <section data-guide="today-upcoming" className="mb-4 space-y-2">
             <section className="rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-2 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+              {upcomingScheduleCards.length ? (
               <div className="grid grid-cols-2 gap-2">
                 {upcomingScheduleCards.map((card) => {
                   if (card.type === "meal") {
@@ -2752,6 +2731,13 @@ export default function HomeApp() {
                   </button>
                 ) : null}
               </div>
+              ) : (
+                <div className="flex min-h-28 flex-col justify-center rounded-2xl bg-white/32 px-4 py-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/55">
+                  <p className="text-[10px] font-bold uppercase leading-3 tracking-wide text-current/55">Upcoming</p>
+                  <p className="mt-1 text-sm font-semibold leading-5 text-current/88">No upcoming items yet.</p>
+                  <p className="mt-0.5 text-xs leading-4 text-current/58">Meals, supplements, medications, and reminders will appear here.</p>
+                </div>
+              )}
               {hiddenUpcomingScheduleCards.length ? (
                 <div className="mt-2">
                   {upcomingOverflowExpanded ? (
@@ -2782,7 +2768,6 @@ export default function HomeApp() {
             </section>
 
             </section>
-          ) : null}
         </div>
 
         {upcomingNoteModal ? (
