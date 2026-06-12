@@ -43,9 +43,9 @@ type TextModal = {
   text: string;
 };
 
-const timelineTitleClassName = "min-w-0 text-sm font-semibold leading-5 text-zinc-900";
-const timelineDetailClassName = "mt-1 text-sm font-normal leading-5 text-zinc-600";
-const timelineSecondaryDetailClassName = "mt-1 text-sm font-normal leading-5 text-zinc-500";
+const timelineTitleClassName = "min-w-0 text-sm font-semibold text-zinc-900";
+const timelineDetailClassName = "mt-1 text-sm text-zinc-500";
+const timelineSecondaryDetailClassName = "mt-1 text-sm text-zinc-500";
 
 function initialsFromName(name?: string | null) {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -742,11 +742,11 @@ export function ActivityFeed({
                       <div className="col-span-2 col-start-2 min-w-0">
                         {item.detail.includes(" • Notes: ") ? (
                           <>
-                            <InlineTimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} className="text-sm text-zinc-600" />
+                            <InlineTimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} />
                             <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
                           </>
                         ) : (
-                          <InlineTimelineDetailText detail={item.detail} status={status} className="text-sm text-zinc-600" />
+                          <InlineTimelineDetailText detail={item.detail} status={status} />
                         )}
                       </div>
                     </div>
