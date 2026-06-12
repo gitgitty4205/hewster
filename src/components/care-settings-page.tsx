@@ -47,13 +47,6 @@ function currentDateTimeInputValue() {
   return local.toISOString().slice(0, 16);
 }
 
-function formatStartedDate(value: string) {
-  if (!value) return "Start date & time";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Start date & time";
-  return `Started ${new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date)}`;
-}
-
 function defaultTemplate(kind: CareItemKind, count: number): CareItemTemplate {
   return {
     id: Date.now(),
@@ -85,11 +78,11 @@ function summarizeSchedule(item: CareItemTemplate, meals: MealTemplate[]) {
     const schedule = validSteps.length > 1
       ? `${validSteps.length} schedules${item.ongoing ? " • Ongoing" : item.asNeeded ? " • As needed" : ""}`
       : validSteps[0]
-        ? `Every ${validSteps[0].everyHours} hours${item.ongoing ? " • Ongoing" : item.asNeeded ? " • As needed" : ` for ${validSteps[0].forDays} days`}`
+        ? [`Every ${validSteps[0].everyHours} hours`, item.ongoing ? "Ongoing" : item.asNeeded ? "As needed" : `${validSteps[0].forDays} days`].join(" • ")
         : item.ongoing
           ? ""
         : "Schedule needed";
-    return [formatStartedDate(item.startDateTime), schedule, timing].filter(Boolean).join(" • ");
+    return [schedule, timing].filter(Boolean).join(" • ");
   }
 
   const mealNames = meals.filter((meal) => item.mealIds.includes(meal.id)).map((meal) => meal.name);
