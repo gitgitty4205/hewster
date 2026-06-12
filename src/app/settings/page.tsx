@@ -21,7 +21,7 @@ import {
 const settingsItems = [
   {
     title: "Pet Profile",
-    description: "Pet info, background, and accent colors.",
+    description: "Pet information, photos, and profile details.",
     href: "/hewie/profile",
     icon: null,
     iconKind: "paw",
@@ -30,7 +30,7 @@ const settingsItems = [
   },
   {
     title: "Meal Plan Settings",
-    description: "Feeding schedule, planned times, foods, notes, and reminders.",
+    description: "Feeding schedules, foods, notes, and reminders.",
     href: "/hewie/meals",
     icon: null,
     iconText: "\u{1F969}",
@@ -39,7 +39,7 @@ const settingsItems = [
   },
   {
     title: "Supplement Settings",
-    description: "Supplement names, doses, notes, and reminders.",
+    description: "Supplement schedules, doses, notes, and reminders.",
     href: "/hewie/supplements",
     icon: Tablets,
     accent: "bg-[#eaf0f8] text-[#1f3d5c]",
@@ -47,7 +47,7 @@ const settingsItems = [
   },
   {
     title: "Medication Settings",
-    description: "Medication names, doses, schedules, and refill notes.",
+    description: "Medication schedules, doses, notes, and reminders.",
     href: "/hewie/medications",
     icon: MedicationPillIcon,
     accent: "bg-sky-50 text-sky-700",
@@ -55,7 +55,7 @@ const settingsItems = [
   },
   {
     title: "Account Settings",
-    description: "Owner info, caretakers, access, and account details.",
+    description: "Notebook sharing, access, and account settings.",
     href: "/hewie/account-settings",
     icon: UserRound,
     iconKind: "theme",
