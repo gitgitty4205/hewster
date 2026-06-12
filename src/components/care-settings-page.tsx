@@ -93,7 +93,7 @@ function summarizeSchedule(item: CareItemTemplate, meals: MealTemplate[]) {
   }
 
   const mealNames = meals.filter((meal) => item.mealIds.includes(meal.id)).map((meal) => meal.name);
-  const mealSummary = mealNames.length ? mealNames.join(", ") : "No meal selected";
+  const mealSummary = mealNames.length ? mealNames.join(" • ") : "No meal selected";
   return mealSummary;
 }
 
@@ -407,7 +407,7 @@ export function CareSettingsPage({
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-medium text-zinc-900">{item.name || "Untitled"}</h3>
-                      <p className="mt-1 text-sm text-zinc-500">{item.dose || "No Dose"} • {summarizeSchedule(item, meals)}</p>
+                      <p className="mt-1 break-words text-sm text-zinc-500 [overflow-wrap:anywhere]">{item.dose || "No Dose"} • {summarizeSchedule(item, meals)}</p>
                     </div>
                     {isEditing ? null : (
                       <Button variant="outline" className="rounded-full" onClick={() => startEditing(item)}>
