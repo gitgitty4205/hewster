@@ -1661,8 +1661,8 @@ export default function HomeApp() {
         const sortMs = sortMsForClockTime(activeTodayKey, displayTime);
         const skippedCareItemIds = mealState?.skippedCareItemIds ?? [];
         const mealAt = new Date(sortMsForClockTime(activeTodayKey, displayTime));
-        const mealCareItems = mealLog?.loggedCareItems?.length
-          ? mealLog.loggedCareItems
+        const mealCareItems = mealLog
+          ? mealLog.loggedCareItems ?? []
           : mealCareItemsWithDoseBadges(careTemplates, meal, dailyMeals, activeTodayKey);
         const mealLinkedCareItems = mealCareItems.filter((item) => {
           const itemOccurrenceCount = dailyMeals.filter((dailyMeal) =>

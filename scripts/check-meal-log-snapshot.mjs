@@ -59,12 +59,28 @@ async function main() {
       window.localStorage.setItem("hewster.activityLogs", JSON.stringify([]));
       window.localStorage.setItem("hewster.weightLogs", JSON.stringify([]));
       window.localStorage.setItem("hewster.manualAlerts", JSON.stringify([]));
-      window.localStorage.setItem("hewster.supplementSettings", JSON.stringify([]));
+      window.localStorage.setItem("hewster.supplementSettings", JSON.stringify([
+        {
+          id: 99,
+          kind: "supplement",
+          name: "Probiotics",
+          amount: "1 cap",
+          notes: "Old deleted probiotic notes",
+          active: true,
+          mealIds: [1],
+          asNeeded: false,
+          scheduleKind: "meal",
+        },
+      ]));
       window.localStorage.setItem("hewster.medicationSettings", JSON.stringify([]));
     });
     await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
 
     await page.getByText("Old Breakfast: Old Food").waitFor({ state: "visible", timeout: 10_000 });
+    const bodyText = await page.locator("body").innerText({ timeout: 5_000 });
+    if (bodyText.includes("Old deleted probiotic notes") || bodyText.includes("Probiotics")) {
+      throw new Error("Logged meal rendered current/deleted supplement settings instead of its saved care snapshot.");
+    }
 
     await page.screenshot({ path: screenshotPath, fullPage: false });
     console.log(`Meal log snapshot check passed: ${targetUrl}`);

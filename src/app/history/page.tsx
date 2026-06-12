@@ -1789,7 +1789,7 @@ export default function HistoryPage() {
       const displayTime = missedMeal || skippedMeal ? mealTemplate.plannedTime || meal.actualTime : meal.actualTime || mealTemplate.plannedTime;
       const skippedCareItemIds = meal.skippedCareItemIds ?? [];
       const mealTemplatesForDoseCount = templates.some((savedMeal) => savedMeal.id === mealTemplate.id) ? templates : [...templates, mealTemplate];
-      const mealCareItems = meal.loggedCareItems?.length
+      const mealCareItems = meal.loggedCareItems
         ? meal.loggedCareItems.map((item) => ({ ...item, skipped: Boolean(item.skipped) }))
         : mealCareItemsWithDoseBadges(careTemplates, mealTemplate, mealTemplatesForDoseCount, day).map((item) => ({
             ...item,
