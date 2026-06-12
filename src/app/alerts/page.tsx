@@ -733,9 +733,6 @@ export default function AlertsPage() {
             <div data-guide="alerts-reminders">
               <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Alerts &amp; Reminders</h1>
-              <p className="mt-1 text-sm leading-5 text-[#3b2832]/65">
-                Keep everyone on the same page with alerts, reminders, and important care notes.
-              </p>
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
