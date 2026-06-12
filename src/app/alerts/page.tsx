@@ -746,6 +746,9 @@ export default function AlertsPage() {
             <TriangleAlert className="size-5 text-[#8f1739]" />
             <h2 className="text-lg font-semibold text-[#8f1739]">Care Alerts</h2>
           </div>
+          <p className="mb-4 text-sm leading-5 text-[#b71f48]/70">
+            Custom alerts for important care notes.
+          </p>
           <div className="space-y-3">
             {!showAlertForm ? (
               <Button onClick={() => setShowAlertForm(true)} className="rounded-full bg-[#8f1739] text-white hover:bg-[#7c1431]">Add Care Alert</Button>
@@ -1110,6 +1113,9 @@ export default function AlertsPage() {
             <Bell className="size-5 text-[var(--hewie-active-text,#334155)]" />
             <h2 className="text-lg font-semibold text-[var(--hewie-active-text,#334155)]">Reminders</h2>
           </div>
+          <p className="mb-4 text-sm leading-5 text-[var(--hewie-active-text,#334155)]/65">
+            Reminders for tasks that haven&apos;t been logged.
+          </p>
           <div className="space-y-3">
             {!showReminderForm ? (
               <Button onClick={() => setShowReminderForm(true)} className="rounded-full bg-[var(--hewie-active-text,#334155)] text-white hover:opacity-90">Add Reminder</Button>
