@@ -215,6 +215,7 @@ export async function refreshSupabaseCurrentSession(supabase: SupabaseClient): P
 }
 
 export const HEWSTER_PROFILE_SLUG = process.env.NEXT_PUBLIC_HEWSTER_PROFILE_SLUG || "lindy";
+export const UNSCOPED_PROFILE_SLUG = "unset";
 export const ACTIVE_PROFILE_SLUG_STORAGE_KEY = "petnotebook.activeProfileSlug";
 
 export function normalizeProfileSlug(value: string) {
@@ -229,8 +230,9 @@ export function normalizeProfileSlug(value: string) {
 }
 
 export function getActiveProfileSlug() {
-  if (typeof window === "undefined") return HEWSTER_PROFILE_SLUG;
-  return normalizeProfileSlug(window.localStorage.getItem(ACTIVE_PROFILE_SLUG_STORAGE_KEY) || HEWSTER_PROFILE_SLUG);
+  if (typeof window === "undefined") return UNSCOPED_PROFILE_SLUG;
+  const storedProfileSlug = window.localStorage.getItem(ACTIVE_PROFILE_SLUG_STORAGE_KEY);
+  return storedProfileSlug ? normalizeProfileSlug(storedProfileSlug) : UNSCOPED_PROFILE_SLUG;
 }
 
 export function setActiveProfileSlug(profileSlug: string) {

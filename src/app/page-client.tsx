@@ -1096,7 +1096,7 @@ export default function HomeApp() {
         setSupplementTemplates(supplements);
         setMedicationTemplates(medications);
         setCustomCareStatus(loadCustomCareStatus());
-        setReminderRules(loadReminderAlertRules({ ownerId: user?.id }));
+        setReminderRules(loadReminderAlertRules({ ownerId: user?.id, profileSlug: getActiveProfileSlug() }));
         setHeaderDateTime(formatHeaderDate());
         setAlertMinuteKey(currentAlertMinuteKey());
       } catch {
@@ -1109,7 +1109,7 @@ export default function HomeApp() {
         setTodayKey((current) => current || currentTodayKey());
         setSupplementTemplates(loadCareTemplates("supplement"));
         setMedicationTemplates(loadCareTemplates("medication"));
-        setReminderRules(loadReminderAlertRules({ ownerId: user?.id }));
+        setReminderRules(loadReminderAlertRules({ ownerId: user?.id, profileSlug: getActiveProfileSlug() }));
       } finally {
         if (!cancelled) {
           initialLoadComplete.current = true;

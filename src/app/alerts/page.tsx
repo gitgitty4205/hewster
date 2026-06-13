@@ -296,7 +296,7 @@ export default function AlertsPage() {
 
     async function hydrate() {
       try {
-        setReminderRules(loadReminderAlertRules({ ownerId: user?.id }));
+        setReminderRules(loadReminderAlertRules({ ownerId: user?.id, profileSlug: getActiveProfileSlug() }));
         const state = await loadAppState();
         if (cancelled) return;
         setTemplates(state.templates);
@@ -314,7 +314,7 @@ export default function AlertsPage() {
           ...mergeCareTemplateSources("supplement", localSupplements, remoteSupplements),
           ...mergeCareTemplateSources("medication", localMedications, remoteMedications),
         ]);
-        setReminderRules(loadReminderAlertRules({ ownerId: user?.id }));
+        setReminderRules(loadReminderAlertRules({ ownerId: user?.id, profileSlug: getActiveProfileSlug() }));
         setAlertMinuteKey(currentAlertMinuteKey());
       } finally {
         if (!cancelled) {
@@ -637,7 +637,7 @@ export default function AlertsPage() {
 
   const commitReminderRules = (rules: ReminderAlertRule[]) => {
     setReminderRules(rules);
-    saveReminderAlertRules(rules, { ownerId: user?.id });
+    saveReminderAlertRules(rules, { ownerId: user?.id, profileSlug: getActiveProfileSlug() });
   };
 
   const addReminderRule = () => {

@@ -24,7 +24,7 @@ import {
 import { loadCareTemplates } from "@/lib/care-settings";
 import { invalidateAppStateCache, loadAppState } from "@/lib/hewster-data";
 import { DEFAULT_PET_PHOTO_URL, PET_THEME_UPDATED_EVENT, applyPetTheme, loadPetProfile, loadSharedPetProfile, loadUserTheme } from "@/lib/pet-profile";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { getActiveProfileSlug, getSupabaseBrowserClient } from "@/lib/supabase";
 
 type Props = {
   alertsCount?: number;
@@ -292,7 +292,7 @@ export function BottomNav({ alertsCount }: Props) {
           state.dailyMealState,
           state.activityLogs,
           state.manualAlerts ?? [],
-          loadReminderAlertRules({ ownerId: user?.id }),
+          loadReminderAlertRules({ ownerId: user?.id, profileSlug: getActiveProfileSlug() }),
           careTemplates
         ).filter((alert) => alert.kind !== "reminder").length;
 
