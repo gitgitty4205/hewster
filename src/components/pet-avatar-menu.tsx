@@ -418,8 +418,13 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
         <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/25 px-3 py-4 backdrop-blur-sm sm:py-6">
           <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[680px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[78vh] sm:min-h-[560px]">
             <div
-              className="absolute inset-0 bg-cover bg-center opacity-[0.82] grayscale contrast-90 saturate-80"
-              style={{ backgroundImage: `url('${currentPet.photoUrl || DEFAULT_PET_PHOTO_URL}')` }}
+              className="absolute inset-0 opacity-[0.82] grayscale contrast-90 saturate-80"
+              style={{
+                backgroundImage: `url('${currentPet.photoUrl || DEFAULT_PET_PHOTO_URL}')`,
+                backgroundPosition: currentPetUsesDefaultPhoto ? "center 58%" : "center",
+                backgroundRepeat: "no-repeat",
+                backgroundSize: currentPetUsesDefaultPhoto ? "68% auto" : "cover",
+              }}
               aria-hidden="true"
             />
             <div
