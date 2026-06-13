@@ -2,7 +2,7 @@ import type { ActivityLog, DailyMealState, ManualAlert } from "@/lib/hewster-dat
 import { careItemOccursWithMeal, customScheduledCareItems, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 import { formatActivityTime } from "@/lib/activity";
 import type { MealTemplate } from "@/lib/meal-templates";
-import { getActiveProfileSlug } from "@/lib/supabase";
+import { getActiveProfileSlug, UNSCOPED_PROFILE_SLUG } from "@/lib/supabase";
 
 export type ResolvedAlert = {
   id: string;
@@ -164,6 +164,21 @@ function migrateLegacyReminderAlertRules(storageKey: string) {
   }
 }
 
+function migrateUnscopedReminderAlertRules(storageKey: string, ownerId?: string | null, profileSlug = getActiveProfileSlug()) {
+  if (!ownerId || profileSlug === UNSCOPED_PROFILE_SLUG) return;
+  const unscopedStorageKey = reminderAlertRulesStorageKey(ownerId, UNSCOPED_PROFILE_SLUG);
+  if (unscopedStorageKey === storageKey) return;
+
+  const existingRules = tryParseStoredReminderAlertRules(storageKey);
+  if (existingRules?.length) return;
+
+  const unscopedRules = tryParseStoredReminderAlertRules(unscopedStorageKey) ?? [];
+  if (!unscopedRules.length) return;
+
+  window.localStorage.setItem(storageKey, JSON.stringify(unscopedRules));
+  window.localStorage.removeItem(unscopedStorageKey);
+}
+
 type ReminderAlertRulesStorageOptions = {
   ownerId?: string | null;
   profileSlug?: string;
@@ -175,6 +190,7 @@ export function loadReminderAlertRules(options: ReminderAlertRulesStorageOptions
   try {
     const profileSlug = options.profileSlug ?? getActiveProfileSlug();
     const storageKey = reminderAlertRulesStorageKey(options.ownerId, profileSlug);
+    migrateUnscopedReminderAlertRules(storageKey, options.ownerId, profileSlug);
     migrateLegacyReminderAlertRules(storageKey);
     return parseStoredReminderAlertRules(storageKey) ?? [];
   } catch {

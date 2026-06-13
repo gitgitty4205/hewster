@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { CenteredLoadingIcon } from "@/components/centered-loading-icon";
 import { NotebookAccessRevokedError, resolveActiveNotebookAccess } from "@/lib/notebook-access";
-import { checkSupabaseAuthReachable, PASSWORD_RESET_REQUIRED_STORAGE_KEY } from "@/lib/supabase";
+import { checkSupabaseAuthReachable, getActiveProfileSlug, HEWSTER_PROFILE_SLUG, PASSWORD_RESET_REQUIRED_STORAGE_KEY, setActiveProfileSlug, UNSCOPED_PROFILE_SLUG } from "@/lib/supabase";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 const NOTEBOOK_AUTH_GATE_TIMEOUT_MS = 5_000;
@@ -20,6 +20,7 @@ export default function NotebookLayout({ children }: { children: React.ReactNode
   const [authReachable, setAuthReachable] = useState<boolean | null>(null);
   const [browserHostname, setBrowserHostname] = useState<string | null>(null);
   const [passwordResetRequired, setPasswordResetRequired] = useState(false);
+  const [profileSlugReady, setProfileSlugReady] = useState(false);
   const shouldBypassAuthGate =
     process.env.NODE_ENV === "development" &&
     browserHostname !== null &&
@@ -28,6 +29,7 @@ export default function NotebookLayout({ children }: { children: React.ReactNode
   const shouldRequireLogin = shouldProbeAuth && authReachable === true;
   const shouldUseLocalMode = shouldProbeAuth && authReachable === false;
   const shouldShowAuthGate = !shouldBypassAuthGate && configured && !shouldUseLocalMode && !shouldRequireLogin && (loading || !user);
+  const shouldShowProfileSlugGate = !shouldShowAuthGate && configured && !loading && Boolean(user) && !profileSlugReady;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setBrowserHostname(window.location.hostname), 0);
@@ -83,6 +85,45 @@ export default function NotebookLayout({ children }: { children: React.ReactNode
   }, [router, shouldRequireLogin]);
 
   useEffect(() => {
+    if (!configured || loading || !user) {
+      setProfileSlugReady(true);
+      return;
+    }
+
+    if (getActiveProfileSlug() !== UNSCOPED_PROFILE_SLUG) {
+      setProfileSlugReady(true);
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setProfileSlugReady(true);
+      return;
+    }
+
+    let active = true;
+    setProfileSlugReady(false);
+
+    void Promise.resolve().then(async () => {
+      const access = await resolveActiveNotebookAccess(supabase, user);
+      const { data } = await supabase
+        .from("pet_profiles")
+        .select("profile_slug")
+        .eq("owner_id", access.notebookOwnerId)
+        .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+        .maybeSingle();
+
+      if (active && data) setActiveProfileSlug(HEWSTER_PROFILE_SLUG);
+    }).catch(() => undefined).finally(() => {
+      if (active) setProfileSlugReady(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [configured, loading, user]);
+
+  useEffect(() => {
     if (!configured || loading || !user) return;
 
     const supabase = getSupabaseBrowserClient();
@@ -119,6 +160,14 @@ export default function NotebookLayout({ children }: { children: React.ReactNode
   }, [configured, loading, router, signOut, user]);
 
   if (shouldShowAuthGate) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[var(--hewie-bg,#999b96)] px-4 text-zinc-900">
+        <CenteredLoadingIcon className="min-h-32" />
+      </main>
+    );
+  }
+
+  if (shouldShowProfileSlugGate) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--hewie-bg,#999b96)] px-4 text-zinc-900">
         <CenteredLoadingIcon className="min-h-32" />
