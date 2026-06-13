@@ -1,7 +1,6 @@
 "use client";
 
 import { Bell, ChevronDown, TriangleAlert } from "lucide-react";
-import { usePathname } from "next/navigation";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { type MouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 
@@ -12,7 +11,6 @@ import { useAuth } from "@/components/auth-provider";
 import {
   ALERT_BADGE_COUNT_STORAGE_KEY,
   formatReminderTime,
-  isLeakedDefaultPottyReminderRule,
   loadReminderAlertRules,
   reminderEventLabel,
   resolveAlerts,
@@ -243,10 +241,7 @@ function buildCustomCareActivityLog(
 }
 
 export default function AlertsPage() {
-  const { loading: authLoading } = useAuth();
-  const pathname = usePathname();
-  const reminderRulesScope = pathname.startsWith("/hewie") ? "hewie" : "default";
-  const includeDefaultReminderRules = pathname.startsWith("/hewie");
+  const { loading: authLoading, user } = useAuth();
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [dailyMealState, setDailyMealState] = useState<DailyMealState[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -300,7 +295,7 @@ export default function AlertsPage() {
 
     async function hydrate() {
       try {
-        setReminderRules(loadReminderAlertRules({ scope: reminderRulesScope, includeDefaults: includeDefaultReminderRules }));
+        setReminderRules(loadReminderAlertRules({ ownerId: user?.id }));
         const state = await loadAppState();
         if (cancelled) return;
         setTemplates(state.templates);
@@ -318,7 +313,7 @@ export default function AlertsPage() {
           ...mergeCareTemplateSources("supplement", localSupplements, remoteSupplements),
           ...mergeCareTemplateSources("medication", localMedications, remoteMedications),
         ]);
-        setReminderRules(loadReminderAlertRules({ scope: reminderRulesScope, includeDefaults: includeDefaultReminderRules }));
+        setReminderRules(loadReminderAlertRules({ ownerId: user?.id }));
         setAlertMinuteKey(currentAlertMinuteKey());
       } finally {
         if (!cancelled) {
@@ -332,7 +327,7 @@ export default function AlertsPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, includeDefaultReminderRules, reminderRulesScope, supabaseReady]);
+  }, [authLoading, supabaseReady, user?.id]);
 
   useEffect(() => {
     const refreshAlertClock = () => setAlertMinuteKey(currentAlertMinuteKey());
@@ -359,13 +354,7 @@ export default function AlertsPage() {
     return resolveAlerts(templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates);
   }, [templates, dailyMealState, activityLogs, manualAlerts, reminderRules, careTemplates, alertMinuteKey, petRemembered]);
   const alertCards = alerts.filter((alert) => alert.kind !== "reminder");
-  const visibleReminderRules = useMemo(
-    () =>
-      reminderRules.filter(
-        (rule) => !(reminderRulesScope !== "hewie" && isLeakedDefaultPottyReminderRule(rule))
-      ),
-    [reminderRules, reminderRulesScope]
-  );
+  const visibleReminderRules = reminderRules;
   const unresolvedAlertCountFor = (
     nextDailyMealState: DailyMealState[] = dailyMealState,
     nextActivityLogs: ActivityLog[] = activityLogs,
@@ -647,7 +636,7 @@ export default function AlertsPage() {
 
   const commitReminderRules = (rules: ReminderAlertRule[]) => {
     setReminderRules(rules);
-    saveReminderAlertRules(rules, { scope: reminderRulesScope });
+    saveReminderAlertRules(rules, { ownerId: user?.id });
   };
 
   const addReminderRule = () => {
