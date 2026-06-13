@@ -467,7 +467,9 @@ function TodayMealPlanCard({
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-[#5f3a22]">Today&apos;s Meal Plan</h2>
         <p className="mt-1 text-sm leading-5 text-[#6b3f22]/68">
-          Meals from your saved meal plan appear here. Tap any meal to view or edit details.
+          {templates.length
+            ? "Meals from your saved meal plan appear here. Tap any meal to view or edit details."
+            : "No meals scheduled yet. Create a meal plan to get started."}
         </p>
       </div>
 
