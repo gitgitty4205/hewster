@@ -399,6 +399,7 @@ export default function ProfilePage() {
   const emergencyContactLocked = !canEditProfile || !isEditingEmergencyContact;
   const calculatedAge = displayPetAge(profile);
   const petFirstName = profile.petFirstName.trim() || profile.petName.split(/\s+/)[0] || "Pet";
+  const profilePhotoIsDefault = !profile.photoUrl || profile.photoUrl === DEFAULT_PET_PHOTO_URL;
   const rememberedDateLabel = formatRememberedDate(profile.passedAwayDate);
   const petInfoInputClass = (field?: RequiredPetInfoField) =>
     `w-full rounded-2xl border bg-white px-3 py-2.5 text-sm outline-none transition focus:ring-4 ${
@@ -795,7 +796,7 @@ export default function ProfilePage() {
                     src={profile.photoUrl || DEFAULT_PET_PHOTO_URL}
                     alt={profile.petFirstName || profile.petName || "Pet profile photo"}
                     fill
-                    className="object-cover object-center"
+                    className={profilePhotoIsDefault ? "object-contain object-center p-3" : "object-cover object-center"}
                     sizes="64px"
                   />
                   <input
