@@ -784,17 +784,17 @@ export default function MedicalRecordsPage() {
             <section className="mt-3 rounded-2xl bg-white/90 p-4 shadow-sm ring-1 ring-zinc-200">
               <div className="space-y-4">
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Record Type</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Record Type</p>
                   <div className="flex flex-wrap gap-2">
                     {filters.map((filter) => (
                       <button
                         key={filter}
                         type="button"
                         onClick={() => setDraftFilter(filter)}
-                        className={`rounded-full px-3 py-2 text-sm font-semibold ring-1 ${
+                        className={`min-h-9 rounded-full px-3.5 py-2 text-xs font-bold leading-none ring-1 transition ${
                           draftFilter === filter
-                            ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]"
-                            : "bg-white text-zinc-600 ring-zinc-200"
+                            ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] ring-white/45"
+                            : "bg-white/65 text-[var(--hewie-active-text,#334155)]/75 ring-[var(--hewie-ring,#cbd5e1)]/70"
                         }`}
                       >
                         {filter}
@@ -804,7 +804,7 @@ export default function MedicalRecordsPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Sort</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Sort</p>
                   <div className="flex flex-wrap gap-2">
                     {[
                       { label: "Newest First", value: "newest" as const },
@@ -814,10 +814,10 @@ export default function MedicalRecordsPage() {
                         key={option.value}
                         type="button"
                         onClick={() => setDraftSortOrder(option.value)}
-                        className={`rounded-full px-3 py-2 text-sm font-semibold ring-1 ${
+                        className={`min-h-9 rounded-full px-3.5 py-2 text-xs font-bold leading-none ring-1 transition ${
                           draftSortOrder === option.value
-                            ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]"
-                            : "bg-white text-zinc-600 ring-zinc-200"
+                            ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] ring-white/45"
+                            : "bg-white/65 text-[var(--hewie-active-text,#334155)]/75 ring-[var(--hewie-ring,#cbd5e1)]/70"
                         }`}
                       >
                         {option.label}
@@ -825,7 +825,7 @@ export default function MedicalRecordsPage() {
                     ))}
                   </div>
                   <div className="mt-3">
-                    <label htmlFor="medical-date-range" className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                    <label htmlFor="medical-date-range" className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
                       Date Range
                     </label>
                     <select
