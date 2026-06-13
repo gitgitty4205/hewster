@@ -116,7 +116,7 @@ export default function MealsPage() {
 
   useEffect(() => {
     if (!hydrated || !initialLoadComplete.current) return;
-    if (mealDataUnavailable || !templates.length) return;
+    if (mealDataUnavailable) return;
 
     let cancelled = false;
 
