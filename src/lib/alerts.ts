@@ -32,7 +32,15 @@ export const REMINDER_ALERT_RULES_STORAGE_KEY = "hewster.reminderAlertRules";
 export const ALERT_BADGE_COUNT_STORAGE_KEY = "hewster.alertBadgeCount";
 const DUE_REVIEW_GRACE_MINUTES = 60;
 
-export const defaultReminderAlertRules: ReminderAlertRule[] = [];
+export const defaultReminderAlertRules: ReminderAlertRule[] = [
+  {
+    id: "rule-potty-3pm",
+    eventType: "potty",
+    time: "15:00",
+    frequency: "daily",
+    active: true,
+  },
+];
 
 export function reminderEventLabel(eventType: ReminderAlertEvent) {
   switch (eventType) {
@@ -120,6 +128,13 @@ function removeLeakedDefaultPottyReminderRules(rules: ReminderAlertRule[]) {
   return rules.filter((rule) => !(rule.id === "rule-potty-3pm" || (rule.eventType === "potty" && rule.time === "15:00")));
 }
 
+function ensureDefaultReminderRules(rules: ReminderAlertRule[]) {
+  const missingDefaults = defaultReminderAlertRules.filter(
+    (defaultRule) => !rules.some((rule) => rule.id === defaultRule.id || (rule.eventType === defaultRule.eventType && rule.time === defaultRule.time))
+  );
+  return [...missingDefaults, ...rules];
+}
+
 function reminderAlertRulesStorageKey(scope?: string) {
   if (!scope) return REMINDER_ALERT_RULES_STORAGE_KEY;
   return `${REMINDER_ALERT_RULES_STORAGE_KEY}.${scope.replace(/[^a-z0-9_-]/gi, "-")}`;
@@ -146,6 +161,7 @@ function scrubDefaultReminderRuleStorageKeys(primaryStorageKey: string) {
   for (let index = 0; index < window.localStorage.length; index += 1) {
     const key = window.localStorage.key(index);
     if (!key?.startsWith(REMINDER_ALERT_RULES_STORAGE_KEY)) continue;
+    if (key === reminderAlertRulesStorageKey("hewie")) continue;
     storageKeys.add(key);
   }
 
@@ -165,12 +181,17 @@ export function loadReminderAlertRules(options: ReminderAlertRulesStorageOptions
 
   try {
     const storageKey = reminderAlertRulesStorageKey(options.scope);
-    scrubDefaultReminderRuleStorageKeys(storageKey);
+    if (options.scope !== "hewie") {
+      scrubDefaultReminderRuleStorageKeys(storageKey);
+    }
 
     const stored = window.localStorage.getItem(storageKey) ?? (options.includeDefaults ? window.localStorage.getItem(REMINDER_ALERT_RULES_STORAGE_KEY) : null);
     const parsed = stored ? JSON.parse(stored) : null;
     if (!isReminderAlertRuleArray(parsed)) return fallbackRules;
     const normalizedRules = normalizeReminderAlertRules(parsed);
+    if (options.scope === "hewie" && options.includeDefaults) {
+      return ensureDefaultReminderRules(normalizedRules);
+    }
     return removeLeakedDefaultPottyReminderRules(normalizedRules);
   } catch {
     return fallbackRules;
@@ -178,7 +199,8 @@ export function loadReminderAlertRules(options: ReminderAlertRulesStorageOptions
 }
 
 export function saveReminderAlertRules(rules: ReminderAlertRule[], options: Pick<ReminderAlertRulesStorageOptions, "scope"> = {}) {
-  window.localStorage.setItem(reminderAlertRulesStorageKey(options.scope), JSON.stringify(removeLeakedDefaultPottyReminderRules(rules)));
+  const rulesToSave = options.scope === "hewie" ? rules : removeLeakedDefaultPottyReminderRules(rules);
+  window.localStorage.setItem(reminderAlertRulesStorageKey(options.scope), JSON.stringify(rulesToSave));
 }
 
 function parsePlannedTimeToMinutes(value: string) {

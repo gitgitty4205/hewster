@@ -362,9 +362,9 @@ export default function AlertsPage() {
   const visibleReminderRules = useMemo(
     () =>
       reminderRules.filter(
-        (rule) => !isLeakedDefaultPottyReminderRule(rule)
+        (rule) => !(reminderRulesScope !== "hewie" && isLeakedDefaultPottyReminderRule(rule))
       ),
-    [reminderRules]
+    [reminderRules, reminderRulesScope]
   );
   const unresolvedAlertCountFor = (
     nextDailyMealState: DailyMealState[] = dailyMealState,
