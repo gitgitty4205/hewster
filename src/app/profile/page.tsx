@@ -906,6 +906,7 @@ export default function ProfilePage() {
                 value={profile.emergencyContactName}
                 onChange={(event) => updateProfile({ emergencyContactName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
                 maxLength={TEXT_LIMITS.shortName}
+                placeholder="Vet / Family"
                 className={petInfoInputClass()}
               />
             </label>
@@ -916,6 +917,7 @@ export default function ProfilePage() {
                 value={profile.emergencyContactPhone}
                 onChange={(event) => updateProfile({ emergencyContactPhone: clampText(event.target.value, TEXT_LIMITS.shortName) })}
                 maxLength={TEXT_LIMITS.shortName}
+                placeholder="Emergency number"
                 className={petInfoInputClass()}
               />
             </label>
