@@ -10,7 +10,7 @@ import {
   type NotebookMember,
   type NotebookAccessRole,
 } from "@/lib/notebook-access";
-import { getSupabaseBrowserClient, getSupabaseCurrentSession, HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { getSupabaseBrowserClient, getSupabaseCurrentSession, getActiveProfileSlug, HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
 
 export type DailyMealState = {
   mealId: number;
@@ -163,6 +163,24 @@ const ACTIVITY_TYPES = new Set<ActivityType>([
 ]);
 let appStateCache: { state: HewsterAppState; cachedAt: number } | null = null;
 let appStateLoadPromise: Promise<HewsterAppState> | null = null;
+
+export function activeProfileStorageKey(storageKey: string) {
+  return `${storageKey}.${getActiveProfileSlug()}`;
+}
+
+function getProfileScopedItem(storageKey: string) {
+  const scopedValue = window.localStorage.getItem(activeProfileStorageKey(storageKey));
+  if (scopedValue !== null) return scopedValue;
+  if (getActiveProfileSlug() === HEWSTER_PROFILE_SLUG) return window.localStorage.getItem(storageKey);
+  return null;
+}
+
+function setProfileScopedItem(storageKey: string, value: string) {
+  window.localStorage.setItem(activeProfileStorageKey(storageKey), value);
+  if (getActiveProfileSlug() === HEWSTER_PROFILE_SLUG) {
+    window.localStorage.setItem(storageKey, value);
+  }
+}
 
 function cacheAppState(state: HewsterAppState) {
   appStateCache = { state, cachedAt: Date.now() };
@@ -341,15 +359,15 @@ export function persistDailyMealStateLocally(dailyMealState: DailyMealState[], f
 
   let existingHistory: DailyMealState[] = [];
   try {
-    const storedHistory = window.localStorage.getItem(DAILY_MEAL_HISTORY_STORAGE_KEY);
+    const storedHistory = getProfileScopedItem(DAILY_MEAL_HISTORY_STORAGE_KEY);
     existingHistory = normalizeDailyMealHistory(storedHistory ? JSON.parse(storedHistory) : null, fallbackDayKey);
   } catch {
     existingHistory = [];
   }
   const nextHistory = mergeDailyMealHistory(existingHistory, dailyMealState, fallbackDayKey);
 
-  window.localStorage.setItem(DAILY_MEAL_STORAGE_KEY, JSON.stringify(dailyMealState));
-  window.localStorage.setItem(DAILY_MEAL_HISTORY_STORAGE_KEY, JSON.stringify(nextHistory));
+  setProfileScopedItem(DAILY_MEAL_STORAGE_KEY, JSON.stringify(dailyMealState));
+  setProfileScopedItem(DAILY_MEAL_HISTORY_STORAGE_KEY, JSON.stringify(nextHistory));
 }
 
 async function getSignedInSupabase() {
@@ -537,7 +555,7 @@ function readDeletedWeightLogIds() {
   if (typeof window === "undefined") return new Set<string>();
 
   try {
-    const stored = window.localStorage.getItem(DELETED_WEIGHT_LOG_IDS_STORAGE_KEY);
+    const stored = getProfileScopedItem(DELETED_WEIGHT_LOG_IDS_STORAGE_KEY);
     const parsed = stored ? JSON.parse(stored) : null;
     return new Set([...RETIRED_WEIGHT_LOG_IDS, ...(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [])]);
   } catch {
@@ -548,13 +566,13 @@ function readDeletedWeightLogIds() {
 export function markWeightLogDeleted(weightLogId: string) {
   const deletedIds = readDeletedWeightLogIds();
   deletedIds.add(weightLogId);
-  window.localStorage.setItem(DELETED_WEIGHT_LOG_IDS_STORAGE_KEY, JSON.stringify([...deletedIds]));
+  setProfileScopedItem(DELETED_WEIGHT_LOG_IDS_STORAGE_KEY, JSON.stringify([...deletedIds]));
 }
 
 export function unmarkWeightLogDeleted(weightLogId: string) {
   const deletedIds = readDeletedWeightLogIds();
   if (!deletedIds.delete(weightLogId)) return;
-  window.localStorage.setItem(DELETED_WEIGHT_LOG_IDS_STORAGE_KEY, JSON.stringify([...deletedIds]));
+  setProfileScopedItem(DELETED_WEIGHT_LOG_IDS_STORAGE_KEY, JSON.stringify([...deletedIds]));
 }
 
 function isMealLogArray(value: unknown): value is MealLog[] {
@@ -626,14 +644,14 @@ export function loadLocalState(): HewsterAppState {
   const seed = buildSeedState();
 
   try {
-    const storedTemplates = window.localStorage.getItem(STORAGE_KEY);
-    const storedDailyMeals = window.localStorage.getItem(DAILY_MEAL_STORAGE_KEY);
-    const storedDailyMealHistory = window.localStorage.getItem(DAILY_MEAL_HISTORY_STORAGE_KEY);
-    const storedActivityLogs = window.localStorage.getItem(ACTIVITY_LOGS_STORAGE_KEY);
-    const storedWeightLogs = window.localStorage.getItem(WEIGHT_LOGS_STORAGE_KEY);
-    const storedMealLogs = window.localStorage.getItem(MEAL_LOGS_STORAGE_KEY);
-    const storedManualAlerts = window.localStorage.getItem(MANUAL_ALERTS_STORAGE_KEY);
-    const storedTodayKey = window.localStorage.getItem(TODAY_KEY_STORAGE_KEY);
+    const storedTemplates = getProfileScopedItem(STORAGE_KEY);
+    const storedDailyMeals = getProfileScopedItem(DAILY_MEAL_STORAGE_KEY);
+    const storedDailyMealHistory = getProfileScopedItem(DAILY_MEAL_HISTORY_STORAGE_KEY);
+    const storedActivityLogs = getProfileScopedItem(ACTIVITY_LOGS_STORAGE_KEY);
+    const storedWeightLogs = getProfileScopedItem(WEIGHT_LOGS_STORAGE_KEY);
+    const storedMealLogs = getProfileScopedItem(MEAL_LOGS_STORAGE_KEY);
+    const storedManualAlerts = getProfileScopedItem(MANUAL_ALERTS_STORAGE_KEY);
+    const storedTodayKey = getProfileScopedItem(TODAY_KEY_STORAGE_KEY);
 
     const templates = storedTemplates ? JSON.parse(storedTemplates) : null;
     const dailyMeals = storedDailyMeals ? JSON.parse(storedDailyMeals) : null;
@@ -708,13 +726,13 @@ export function persistLocalState(
     todayKey
   );
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(resolvedTemplates));
+  setProfileScopedItem(STORAGE_KEY, JSON.stringify(resolvedTemplates));
   persistDailyMealStateLocally(resolvedDailyMealState, todayKey);
-  window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(resolvedActivityLogs));
-  window.localStorage.setItem(WEIGHT_LOGS_STORAGE_KEY, JSON.stringify(resolvedWeightLogs));
-  window.localStorage.setItem(MANUAL_ALERTS_STORAGE_KEY, JSON.stringify(resolvedManualAlerts));
-  window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(resolvedMealLogs));
-  window.localStorage.setItem(TODAY_KEY_STORAGE_KEY, todayKey);
+  setProfileScopedItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(resolvedActivityLogs));
+  setProfileScopedItem(WEIGHT_LOGS_STORAGE_KEY, JSON.stringify(resolvedWeightLogs));
+  setProfileScopedItem(MANUAL_ALERTS_STORAGE_KEY, JSON.stringify(resolvedManualAlerts));
+  setProfileScopedItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(resolvedMealLogs));
+  setProfileScopedItem(TODAY_KEY_STORAGE_KEY, todayKey);
 
   cacheAppState({
     templates: resolvedTemplates,
@@ -1015,7 +1033,7 @@ export async function loadActivityAuditInfoForReport(activityIds: string[]) {
   const { supabase, user, userId, members } = signedInSupabase;
   const { data, error } = await supabase.rpc("report_activity_audit_log", {
     report_owner_id: userId,
-    report_profile_slug: HEWSTER_PROFILE_SLUG,
+    report_profile_slug: getActiveProfileSlug(),
     report_activity_ids: uniqueActivityIds,
     report_row_limit: ACTIVITY_AUDIT_DETAILS_LIMIT,
   });
@@ -1038,7 +1056,7 @@ export async function loadMealAuditInfoForReport(mealLogIds: string[]) {
     .from("app_audit_log")
     .select("id, table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("profile_slug", getActiveProfileSlug())
     .eq("table_name", "meal_logs")
     .order("occurred_at", { ascending: false })
     .order("id", { ascending: false })
@@ -1061,7 +1079,7 @@ export async function loadMealAuditInfoForReport(mealLogIds: string[]) {
 function mapTemplateToRow(template: MealTemplate, index: number, ownerId: string): MealTemplateRow {
   return {
     owner_id: ownerId,
-    profile_slug: HEWSTER_PROFILE_SLUG,
+    profile_slug: getActiveProfileSlug(),
     meal_id: template.id,
     name: clampMealNameText(template.name),
     planned_time: template.plannedTime,
@@ -1076,7 +1094,7 @@ function mapTemplateToRow(template: MealTemplate, index: number, ownerId: string
 function mapDailyMealStateToRow(state: DailyMealState, ownerId: string): DailyMealRow {
   return {
     owner_id: ownerId,
-    profile_slug: HEWSTER_PROFILE_SLUG,
+    profile_slug: getActiveProfileSlug(),
     meal_id: state.mealId,
     day_key: state.dayKey ?? currentTodayKey(),
     actual_time: state.actualTime,
@@ -1115,7 +1133,7 @@ function mapActivityLogToRow(activity: ActivityLog, ownerId: string): ActivityLo
   return {
     id: activity.id,
     owner_id: ownerId,
-    profile_slug: HEWSTER_PROFILE_SLUG,
+    profile_slug: getActiveProfileSlug(),
     activity_type: activity.activityType,
     happened_at: activity.happenedAt,
     detail: activity.detail,
@@ -1142,7 +1160,7 @@ function mapWeightLogToRow(weight: WeightLog, ownerId: string): WeightLogRow {
   return {
     id: weight.id,
     owner_id: ownerId,
-    profile_slug: HEWSTER_PROFILE_SLUG,
+    profile_slug: getActiveProfileSlug(),
     log_date: weight.date,
     weight: normalizeWeightText(weight.weight),
     note: weight.note ?? null,
@@ -1171,7 +1189,7 @@ function mapMealLogToRow(mealLog: MealLog, ownerId: string): MealLogRow {
   return {
     id: mealLog.id,
     owner_id: ownerId,
-    profile_slug: HEWSTER_PROFILE_SLUG,
+    profile_slug: getActiveProfileSlug(),
     day_key: mealLog.dayKey,
     meal_id: mealLog.mealId,
     meal_name: mealLog.mealName,
@@ -1206,7 +1224,7 @@ function mapManualAlertToRow(alert: ManualAlert, ownerId: string): ManualAlertRo
   return {
     id: alert.id,
     owner_id: ownerId,
-    profile_slug: HEWSTER_PROFILE_SLUG,
+    profile_slug: getActiveProfileSlug(),
     title: alert.title,
     message: alert.message,
     scope: alert.scope ?? "today",
@@ -1240,14 +1258,14 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
     .from("meal_templates")
     .select("owner_id, profile_slug, meal_id, name, planned_time, food, notes, reminder_offset, sort_order")
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("profile_slug", getActiveProfileSlug())
     .order("sort_order", { ascending: true });
 
   const dailyMealsWithFedNotesPromise = supabase
     .from("daily_meals")
     .select("owner_id, profile_slug, meal_id, day_key, actual_time, status, fed_notes")
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+    .eq("profile_slug", getActiveProfileSlug());
 
   const [templatesResult, dailyMealsWithFedNotesResult] = await Promise.all([
     templatesPromise,
@@ -1271,7 +1289,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
       .from("daily_meals")
       .select("owner_id, profile_slug, meal_id, day_key, actual_time, status")
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+      .eq("profile_slug", getActiveProfileSlug());
   }
 
   if (templatesResult.error || dailyMealsResult.error) {
@@ -1295,37 +1313,37 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
       .from("activity_logs")
       .select("id, owner_id, profile_slug, activity_type, happened_at, detail, notes, created_at")
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("profile_slug", getActiveProfileSlug())
       .order("happened_at", { ascending: false }),
     supabase
       .from("activity_attachments")
       .select("id, owner_id, profile_slug, activity_log_id, file_name, file_path, content_type, size_bytes, document_types, created_at")
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("profile_slug", getActiveProfileSlug())
       .order("created_at", { ascending: true }),
     supabase
       .from("weight_logs")
       .select("id, owner_id, profile_slug, log_date, weight, note, created_at")
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("profile_slug", getActiveProfileSlug())
       .order("log_date", { ascending: false }),
     supabase
       .from("meal_logs")
       .select("id, owner_id, profile_slug, day_key, meal_id, meal_name, food, default_notes, fed_notes, actual_time, created_at")
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("profile_slug", getActiveProfileSlug())
       .order("created_at", { ascending: false }),
     supabase
       .from("manual_alerts")
       .select("id, owner_id, profile_slug, title, message, scope, weekdays, time, created_day_key, resolved, created_at, resolved_at")
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("profile_slug", getActiveProfileSlug())
       .order("created_at", { ascending: false }),
     supabase
       .from("app_audit_log")
       .select("id, table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("profile_slug", getActiveProfileSlug())
       .eq("table_name", "meal_templates")
       .order("occurred_at", { ascending: false })
       .order("id", { ascending: false }),
@@ -1333,7 +1351,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
       .from("app_audit_log")
       .select("id, table_name, action, occurred_at, actor_user_id, row_pk, old_row, new_row")
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("profile_slug", getActiveProfileSlug())
       .eq("table_name", "activity_logs")
       .order("occurred_at", { ascending: false })
       .order("id", { ascending: false })
@@ -1464,7 +1482,7 @@ async function loadAppStateUncached(): Promise<HewsterAppState> {
           .delete()
           .eq("id", weightLogId)
           .eq("owner_id", userId)
-          .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+          .eq("profile_slug", getActiveProfileSlug())
       )
     ).catch(() => undefined);
   }
@@ -1597,7 +1615,7 @@ export async function saveTemplatesToSupabase(templates: MealTemplate[]) {
     .from("meal_templates")
     .delete()
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+    .eq("profile_slug", getActiveProfileSlug());
 
   const deleted = sortedTemplates.length
     ? await deleteQuery.not("meal_id", "in", `(${sortedTemplates.map((template) => template.id).join(",")})`)
@@ -1633,7 +1651,7 @@ export async function saveDailyMealsToSupabase(dailyMealState: DailyMealState[])
   if (error && error.message.includes("fed_notes")) {
     const fallbackRows = dailyMealState.map((state) => ({
       owner_id: userId,
-      profile_slug: HEWSTER_PROFILE_SLUG,
+      profile_slug: getActiveProfileSlug(),
       meal_id: state.mealId,
       actual_time: state.actualTime,
       status: state.status,
@@ -1676,7 +1694,7 @@ export async function saveActivityLogToSupabase(activity: ActivityLog) {
     throw error;
   }
 
-  if (!data || data.owner_id !== userId || data.profile_slug !== HEWSTER_PROFILE_SLUG) {
+  if (!data || data.owner_id !== userId || data.profile_slug !== getActiveProfileSlug()) {
     throw new Error("Activity save verification failed.");
   }
 }
@@ -1700,7 +1718,7 @@ export async function updateActivityLogInSupabase(activity: ActivityLog) {
     })
     .eq("id", activity.id)
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+    .eq("profile_slug", getActiveProfileSlug());
 
   if (error) {
     throw error;
@@ -1725,7 +1743,7 @@ export async function saveActivityAttachmentsToSupabase(activity: ActivityLog, f
       .delete()
       .eq("activity_log_id", activity.id)
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+      .eq("profile_slug", getActiveProfileSlug());
 
     if (clearExisting.error) {
       if (isAttachmentStorageSetupError(clearExisting.error)) {
@@ -1763,7 +1781,7 @@ export async function saveActivityAttachmentsToSupabase(activity: ActivityLog, f
     const row: ActivityAttachmentRow = {
       id: attachmentId,
       owner_id: userId,
-      profile_slug: HEWSTER_PROFILE_SLUG,
+      profile_slug: getActiveProfileSlug(),
       activity_log_id: activity.id,
       file_name: fileName,
       file_path: filePath,
@@ -1820,7 +1838,7 @@ export async function deleteActivityAttachmentsFromSupabase(activityId: string, 
     .in("id", attachmentIds)
     .eq("activity_log_id", activityId)
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+    .eq("profile_slug", getActiveProfileSlug());
 
   if (deleteResult.error) {
     if (isAttachmentStorageSetupError(deleteResult.error)) {
@@ -1860,7 +1878,7 @@ export async function deleteActivityLogInSupabase(activityId: string) {
     .delete()
     .eq("id", activityId)
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+    .eq("profile_slug", getActiveProfileSlug());
 
   if (error) {
     throw error;
@@ -1917,7 +1935,7 @@ function safeStorageFileName(fileName: string) {
 }
 
 function activityAttachmentStoragePath(ownerId: string, activityId: string, attachmentId: string, fileName: string) {
-  return `${ownerId}/${HEWSTER_PROFILE_SLUG}/${activityId}/${attachmentId}-${safeStorageFileName(fileName)}`;
+  return `${ownerId}/${getActiveProfileSlug()}/${activityId}/${attachmentId}-${safeStorageFileName(fileName)}`;
 }
 
 function isAttachmentStorageSetupError(error: { message?: string } | null) {
@@ -1961,7 +1979,7 @@ export async function updateWeightLogInSupabase(weight: WeightLog) {
     .update(mapWeightLogToRow(weight, userId))
     .eq("id", weight.id)
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+    .eq("profile_slug", getActiveProfileSlug());
 
   if (error) {
     throw error;
@@ -1979,7 +1997,7 @@ export async function deleteWeightLogInSupabase(weightLogId: string) {
     .delete()
     .eq("id", weightLogId)
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+    .eq("profile_slug", getActiveProfileSlug());
 
   if (error) {
     throw error;
@@ -2044,7 +2062,7 @@ export async function saveCompletedMealToSupabase(mealLog: MealLog, dailyMealSta
       .delete()
       .eq("id", staleMealLogId)
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+      .eq("profile_slug", getActiveProfileSlug());
 
     if (deleteError) {
       throw deleteError;
@@ -2056,7 +2074,7 @@ export async function saveCompletedMealToSupabase(mealLog: MealLog, dailyMealSta
       .from("daily_meals")
       .select("actual_time,status")
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("profile_slug", getActiveProfileSlug())
       .eq("day_key", mealLog.dayKey)
       .eq("meal_id", mealLog.mealId)
       .maybeSingle(),
@@ -2065,7 +2083,7 @@ export async function saveCompletedMealToSupabase(mealLog: MealLog, dailyMealSta
       .select("id")
       .eq("id", mealLog.id)
       .eq("owner_id", userId)
-      .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+      .eq("profile_slug", getActiveProfileSlug())
       .maybeSingle(),
   ]);
 
@@ -2092,7 +2110,7 @@ export async function deleteMealLogInSupabase(mealLogId: string) {
     .delete()
     .eq("id", mealLogId)
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+    .eq("profile_slug", getActiveProfileSlug());
 
   if (error) {
     throw error;
@@ -2130,7 +2148,7 @@ export async function updateManualAlertInSupabase(alert: ManualAlert) {
     })
     .eq("id", alert.id)
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+    .eq("profile_slug", getActiveProfileSlug());
 
   if (error) {
     throw error;
@@ -2147,7 +2165,7 @@ export async function deleteManualAlertInSupabase(alertId: string) {
     .delete()
     .eq("id", alertId)
     .eq("owner_id", userId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG);
+    .eq("profile_slug", getActiveProfileSlug());
 
   if (error) {
     throw error;

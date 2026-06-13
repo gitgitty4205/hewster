@@ -2,7 +2,7 @@ import type { ActivityLog, DailyMealState, ManualAlert } from "@/lib/hewster-dat
 import { careItemOccursWithMeal, customScheduledCareItems, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 import { formatActivityTime } from "@/lib/activity";
 import type { MealTemplate } from "@/lib/meal-templates";
-import { HEWSTER_PROFILE_SLUG } from "@/lib/supabase";
+import { getActiveProfileSlug } from "@/lib/supabase";
 
 export type ResolvedAlert = {
   id: string;
@@ -116,7 +116,7 @@ function sanitizeStoragePart(value: string) {
   return value.replace(/[^a-z0-9_-]/gi, "-");
 }
 
-function reminderAlertRulesStorageKey(ownerId?: string | null, profileSlug = HEWSTER_PROFILE_SLUG) {
+function reminderAlertRulesStorageKey(ownerId?: string | null, profileSlug = getActiveProfileSlug()) {
   return `${REMINDER_ALERT_RULES_STORAGE_KEY}.${sanitizeStoragePart(ownerId || "anon")}.${sanitizeStoragePart(profileSlug)}`;
 }
 

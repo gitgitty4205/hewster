@@ -14,7 +14,7 @@ import {
   type NotebookMember,
 } from "@/lib/notebook-access";
 import { DEFAULT_PET_PHOTO_URL, defaultPetProfile, loadPetProfile, loadSharedPetProfile, savePetProfile, type PetProfile } from "@/lib/pet-profile";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { getActiveProfileSlug, getSupabaseBrowserClient, normalizeProfileSlug, setActiveProfileSlug } from "@/lib/supabase";
 import {
   loadStoredSubscriptionPlan,
   petLimitForSubscriptionPlan,
@@ -30,6 +30,7 @@ const OPEN_ADD_PET_UPGRADE_DIALOG_KEY = "petnotebook.openAddPetUpgradeDialog";
 
 type RosterPet = {
   id: string;
+  profileSlug: string;
   name: string;
   species: string;
   photoUrl?: string;
@@ -46,6 +47,7 @@ type Props = {
 function currentPetToRosterPet(profile: PetProfile): RosterPet {
   return {
     id: "current",
+    profileSlug: getActiveProfileSlug(),
     name: profile.petName || profile.petFirstName || defaultPetProfile.petName,
     species: profile.species || defaultPetProfile.species,
     photoUrl: profile.photoUrl || DEFAULT_PET_PHOTO_URL,
@@ -72,7 +74,10 @@ function readRoster(userId?: string | null) {
       typeof item.id === "string" &&
       typeof item.name === "string" &&
       typeof item.species === "string"
-    )).filter((item) => !item.archived);
+    )).map((item) => ({
+      ...item,
+      profileSlug: typeof item.profileSlug === "string" ? normalizeProfileSlug(item.profileSlug) : normalizeProfileSlug(item.name || item.id),
+    })).filter((item) => !item.archived);
   } catch {
     return [];
   }
@@ -81,6 +86,19 @@ function readRoster(userId?: string | null) {
 function saveRoster(pets: RosterPet[], userId?: string | null) {
   if (!userId) return;
   window.localStorage.setItem(petRosterStorageKey(userId), JSON.stringify(pets));
+}
+
+function uniquePetProfileSlug(name: string, pets: RosterPet[]) {
+  const baseSlug = normalizeProfileSlug(name);
+  const usedSlugs = new Set(pets.map((pet) => pet.profileSlug));
+  if (!usedSlugs.has(baseSlug)) return baseSlug;
+
+  for (let index = 2; index < 1000; index += 1) {
+    const candidate = `${baseSlug}-${index}`;
+    if (!usedSlugs.has(candidate)) return candidate;
+  }
+
+  return `${baseSlug}-${Date.now()}`;
 }
 
 function roleLabel(role: NotebookAccessRole) {
@@ -242,8 +260,16 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
     }
 
     const hasSharedNotebook = memberships.some((member) => member.notebookOwnerId !== user?.id && member.role !== "owner");
+    const ownMembership = memberships.find((member) => member.notebookOwnerId === user?.id && member.role === "owner");
+    const ownedNotebookPets = ownMembership
+      ? [currentPet, ...pets.filter((pet) => pet.profileSlug !== currentPet.profileSlug)].map((pet) => ({
+          ...pet,
+          role: ownMembership.role,
+          notebookOwnerId: ownMembership.notebookOwnerId,
+        }))
+      : [];
 
-    return memberships
+    const sharedNotebookPets = memberships
       .filter((member) => {
         const isOwnNotebook = member.notebookOwnerId === user?.id;
         return !(isOwnNotebook && hasSharedNotebook && !ownedPrimaryPet);
@@ -254,6 +280,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
 
         return {
           id: member.id,
+          profileSlug: isOwnNotebook && ownedPrimaryPet ? ownedPrimaryPet.profileSlug : currentPet.profileSlug,
           name: isOwnNotebook && ownedPrimaryPet ? ownedPrimaryPet.name : notebookLabel(member, profile, user?.id),
           species: displayedPet.species || defaultPetProfile.species,
           photoUrl: displayedPet.photoUrl || DEFAULT_PET_PHOTO_URL,
@@ -261,7 +288,8 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
           notebookOwnerId: member.notebookOwnerId,
         };
       });
-  }, [currentPet, memberships, notebookRole, ownedPrimaryPet, profile, user?.id]);
+    return [...ownedNotebookPets, ...sharedNotebookPets.filter((pet) => pet.notebookOwnerId !== user?.id)];
+  }, [currentPet, memberships, notebookRole, ownedPrimaryPet, pets, profile, user?.id]);
   const canAddOwnedPet = Boolean(user);
   const ownedPetCount = user ? Math.max(pets.length, 1) : 0;
   const ownedPetLimit = petLimitForSubscriptionPlan(subscriptionPlan);
@@ -290,6 +318,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
       return;
     }
     const [petFirstName, ...petLastNameParts] = name.split(/\s+/).filter(Boolean);
+    const profileSlug = uniquePetProfileSlug(name, pets);
     const newProfile = {
       ...defaultPetProfile,
       themeId: profile.themeId,
@@ -304,6 +333,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
       ...pets,
       {
         id: `pet-${Date.now()}`,
+        profileSlug,
         name,
         species,
         photoUrl: newProfile.photoUrl || DEFAULT_PET_PHOTO_URL,
@@ -312,6 +342,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
 
     const ensuredOwnNotebook = ownNotebook ?? await ensureOwnNotebookMembership(supabase, user);
 
+    setActiveProfileSlug(profileSlug);
     setProfile(newProfile);
     savePetProfile(newProfile);
     setPets(nextPets);
@@ -358,8 +389,9 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
     window.location.href = "/notebook/account-settings?upgrade=plus&returnToAddPet=1";
   };
 
-  const switchNotebook = (ownerId: string) => {
+  const switchNotebook = (ownerId: string, profileSlug?: string) => {
     if (ownerId === "local") return;
+    if (profileSlug) setActiveProfileSlug(profileSlug);
     setActiveNotebookOwnerId(ownerId);
     setOpen(false);
     window.location.reload();
@@ -419,7 +451,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                   <button
                     key={pet.id}
                     type="button"
-                    onClick={() => switchNotebook(pet.notebookOwnerId)}
+                    onClick={() => switchNotebook(pet.notebookOwnerId, pet.profileSlug)}
                     className="flex items-center gap-3 rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)]/82 p-3 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[rgba(15,23,42,0.08)] backdrop-blur-[1.5px] transition"
                   >
                     <span className="flex min-w-0 flex-1 items-center gap-3 text-left">

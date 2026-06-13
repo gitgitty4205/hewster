@@ -1,9 +1,9 @@
-﻿export type ThemeId = "slate" | "violet" | "sky" | "rose" | "emerald" | "amber";
+export type ThemeId = "slate" | "violet" | "sky" | "rose" | "emerald" | "amber";
 
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 import { resolveActiveNotebookAccess } from "@/lib/notebook-access";
-import { getStoredSupabaseSession, HEWSTER_PROFILE_SLUG } from "@/lib/supabase";
+import { getStoredSupabaseSession, getActiveProfileSlug } from "@/lib/supabase";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 export type PetProfile = {
@@ -52,12 +52,16 @@ async function upsertSharedPetProfile(supabase: SupabaseClient, ownerId: string,
   return supabase.from("pet_profiles").upsert(
     {
       owner_id: ownerId,
-      profile_slug: HEWSTER_PROFILE_SLUG,
+      profile_slug: getActiveProfileSlug(),
       profile,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "owner_id,profile_slug" },
   );
+}
+
+function petProfileStorageKey() {
+  return `${PET_PROFILE_STORAGE_KEY}.${getActiveProfileSlug()}`;
 }
 
 export const defaultPetProfile: PetProfile = {
@@ -230,7 +234,7 @@ export function loadPetProfile() {
   if (typeof window === "undefined") return defaultPetProfile;
 
   try {
-    const stored = window.localStorage.getItem(PET_PROFILE_STORAGE_KEY);
+    const stored = window.localStorage.getItem(petProfileStorageKey()) ?? window.localStorage.getItem(PET_PROFILE_STORAGE_KEY);
     return stored ? normalizePetProfile(JSON.parse(stored)) : defaultPetProfile;
   } catch {
     return defaultPetProfile;
@@ -239,6 +243,7 @@ export function loadPetProfile() {
 
 export function savePetProfile(profile: PetProfile, options: { notify?: boolean } = {}) {
   try {
+    window.localStorage.setItem(petProfileStorageKey(), JSON.stringify(profile));
     window.localStorage.setItem(PET_PROFILE_STORAGE_KEY, JSON.stringify(profile));
     if (options.notify !== false) {
       window.dispatchEvent(new Event(PET_PROFILE_UPDATED_EVENT));
@@ -256,7 +261,7 @@ export async function loadSharedPetProfile(supabase: SupabaseClient, user: User)
     .from("pet_profiles")
     .select("profile")
     .eq("owner_id", access.notebookOwnerId)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("profile_slug", getActiveProfileSlug())
     .maybeSingle();
 
   if (error || !data) {

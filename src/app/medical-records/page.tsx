@@ -10,6 +10,7 @@ import { ExpandableNoteText } from "@/components/expandable-note-text";
 import { compareActivitiesReverseChronological, formatActivityTime, formatActivityLabel } from "@/lib/activity";
 import {
   ACTIVITY_LOGS_STORAGE_KEY,
+  activeProfileStorageKey,
   activityAttachmentFileNamesForSave,
   deleteActivityAttachmentsFromSupabase,
   deleteActivityLogInSupabase,
@@ -23,7 +24,7 @@ import {
 } from "@/lib/hewster-data";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
-import { HEWSTER_PROFILE_SLUG, getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
+import { getActiveProfileSlug, getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 import {
   FREE_MEDICAL_ATTACHMENT_USE_LIMIT,
   FREE_POTTY_IMAGE_USE_LIMIT,
@@ -592,7 +593,7 @@ export default function MedicalRecordsPage() {
 
   const saveActivity = async (activity: ActivityLog) => {
     const nextLogs = [activity, ...activityLogs.filter((entry) => entry.id !== activity.id)].sort(compareActivitiesReverseChronological);
-    window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+    window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
     setActivityLogs(nextLogs);
     setActivityState("saving");
 
@@ -624,7 +625,7 @@ export default function MedicalRecordsPage() {
     const retainedAttachments = (existingActivity.attachments ?? []).filter((attachment) => !removedAttachmentIds.includes(attachment.id));
     const removedAttachments = (existingActivity.attachments ?? []).filter((attachment) => removedAttachmentIds.includes(attachment.id));
     const newAttachmentNames = activityAttachmentFileNamesForSave(
-      { id: editingActivityId, profileSlug: HEWSTER_PROFILE_SLUG, activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
+      { id: editingActivityId, profileSlug: getActiveProfileSlug(), activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
       attachmentFiles,
       attachmentDocumentTypes
     );
@@ -634,7 +635,7 @@ export default function MedicalRecordsPage() {
 
     const activity: ActivityLog = {
       ...existingActivity,
-      profileSlug: existingActivity.profileSlug ?? HEWSTER_PROFILE_SLUG,
+      profileSlug: existingActivity.profileSlug ?? getActiveProfileSlug(),
       activityType: resolvedActivityType,
       happenedAt,
       detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : trimmedDetail || null,
@@ -661,7 +662,7 @@ export default function MedicalRecordsPage() {
       const nextLogs = current.map((entry) =>
         entry.id === activity.id ? { ...entry, attachments: nextAttachments } : entry
       );
-      window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+      window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
       return nextLogs;
     });
 
@@ -680,7 +681,7 @@ export default function MedicalRecordsPage() {
     const deletingId = editingActivityId;
     setActivityLogs((current) => {
       const nextLogs = current.filter((activity) => activity.id !== deletingId);
-      window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+      window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
       return nextLogs;
     });
     setActivityState("saving");

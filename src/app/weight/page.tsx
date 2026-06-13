@@ -27,7 +27,7 @@ import {
   savePetProfile,
   type ThemeId,
 } from "@/lib/pet-profile";
-import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { getActiveProfileSlug, isSupabaseConfigured } from "@/lib/supabase";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
@@ -184,7 +184,7 @@ export default function WeightPage() {
 
     const entry: WeightLog = {
       id: `weight-${Date.now()}`,
-      profileSlug: HEWSTER_PROFILE_SLUG,
+      profileSlug: getActiveProfileSlug(),
       date: dateValue,
       weight: formatWeightWithUnit(weightValue, profile.weightUnit),
       note: clampText(noteValue.trim(), TEXT_LIMITS.note) || null,

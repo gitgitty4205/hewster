@@ -43,6 +43,7 @@ import {
   type MealTemplateAuditSnapshot,
 
   MEAL_LOGS_STORAGE_KEY,
+  activeProfileStorageKey,
 
   loadAppState,
   loadNotebookEntryPermissions,
@@ -67,7 +68,7 @@ import { initialTemplates, isMealTemplateActiveForDay, type MealStatus, type Mea
 
 import { careItemsForMeal, loadCareTemplates, loadCareTemplatesFromSupabase, mealPlanDoseNumberForMeal, mealPlanTotalDoseCount, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 
-import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { getActiveProfileSlug, isSupabaseConfigured } from "@/lib/supabase";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import {
   FREE_MEDICAL_ATTACHMENT_USE_LIMIT,
@@ -323,7 +324,7 @@ function mealLogStatus(mealLog: MealLog | undefined, fallbackStatus: MealStatus)
 function buildMealLog(meal: MealTemplate, actualTime: string, fedNotes: string | null, dayKey: string, skippedCareItemIds: string[] = [], loggedCareItems: MealLog["loggedCareItems"] = []): MealLog {
   return {
     id: `${dayKey}-${meal.id}`,
-    profileSlug: HEWSTER_PROFILE_SLUG,
+    profileSlug: getActiveProfileSlug(),
     dayKey,
     mealId: meal.id,
     mealName: meal.name,
@@ -822,7 +823,7 @@ export default function LogPage() {
 
     if (!hydrated) return;
 
-    window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(activityLogs));
+    window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(activityLogs));
 
   }, [activityLogs, hydrated]);
 
@@ -857,12 +858,12 @@ export default function LogPage() {
 
   const persistMealState = (nextMealState: DailyMealState[], nextMealLogs: MealLog[]) => {
     persistDailyMealStateLocally(nextMealState);
-    window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextMealLogs));
+    window.localStorage.setItem(activeProfileStorageKey(MEAL_LOGS_STORAGE_KEY), JSON.stringify(nextMealLogs));
   };
 
   const persistHistoricalMealState = (nextMealState: DailyMealState[], nextMealLogs: MealLog[]) => {
     persistDailyMealStateLocally(nextMealState, logDayKey);
-    window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextMealLogs));
+    window.localStorage.setItem(activeProfileStorageKey(MEAL_LOGS_STORAGE_KEY), JSON.stringify(nextMealLogs));
   };
 
   const openMealTimeEditor = useCallback((mealId: number, actualTime: string | null) => {
@@ -961,7 +962,7 @@ export default function LogPage() {
       setDailyMealState(nextMealState);
       persistMealState(nextMealState, nextMealLogs);
     } else {
-      window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextMealLogs));
+      window.localStorage.setItem(activeProfileStorageKey(MEAL_LOGS_STORAGE_KEY), JSON.stringify(nextMealLogs));
     }
     setMealLogs(nextMealLogs);
     cancelMealTimeEditor();
@@ -1101,7 +1102,7 @@ export default function LogPage() {
 
     const nextLogs = [activity, ...activityLogs.filter((entry) => entry.id !== activity.id)].sort(compareActivitiesReverseChronological);
 
-    window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+    window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
 
     setActivityLogs(nextLogs);
 
@@ -1173,7 +1174,7 @@ export default function LogPage() {
 
       id: `${activityType}-${Date.now()}`,
 
-      profileSlug: HEWSTER_PROFILE_SLUG,
+      profileSlug: getActiveProfileSlug(),
 
       activityType,
 
@@ -1222,7 +1223,7 @@ export default function LogPage() {
     const attachmentDocumentTypes = attachmentDocumentTypesForActivity(resolvedActivityType);
 
     const attachmentNames = activityAttachmentFileNamesForSave(
-      { id: editingActivityId ?? "", profileSlug: HEWSTER_PROFILE_SLUG, activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
+      { id: editingActivityId ?? "", profileSlug: getActiveProfileSlug(), activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
       attachmentFiles,
       attachmentDocumentTypes
     );
@@ -1245,7 +1246,7 @@ export default function LogPage() {
 
       id: editingActivityId ?? `${resolvedActivityType}-${Date.now()}`,
 
-      profileSlug: HEWSTER_PROFILE_SLUG,
+      profileSlug: getActiveProfileSlug(),
 
       activityType: resolvedActivityType,
 
@@ -1271,7 +1272,7 @@ export default function LogPage() {
           const nextLogs = current.map((entry) =>
             entry.id === activity.id ? { ...entry, attachments: savedAttachments } : entry
           );
-          window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+          window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
           return nextLogs;
         });
       }

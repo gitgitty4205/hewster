@@ -215,3 +215,26 @@ export async function refreshSupabaseCurrentSession(supabase: SupabaseClient): P
 }
 
 export const HEWSTER_PROFILE_SLUG = process.env.NEXT_PUBLIC_HEWSTER_PROFILE_SLUG || "lindy";
+export const ACTIVE_PROFILE_SLUG_STORAGE_KEY = "petnotebook.activeProfileSlug";
+
+export function normalizeProfileSlug(value: string) {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+
+  return normalized || "pet";
+}
+
+export function getActiveProfileSlug() {
+  if (typeof window === "undefined") return HEWSTER_PROFILE_SLUG;
+  return normalizeProfileSlug(window.localStorage.getItem(ACTIVE_PROFILE_SLUG_STORAGE_KEY) || HEWSTER_PROFILE_SLUG);
+}
+
+export function setActiveProfileSlug(profileSlug: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(ACTIVE_PROFILE_SLUG_STORAGE_KEY, normalizeProfileSlug(profileSlug));
+  window.dispatchEvent(new Event("petnotebook-active-profile-updated"));
+}

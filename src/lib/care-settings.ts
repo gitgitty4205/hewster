@@ -1,6 +1,6 @@
 import type { MealTemplate } from "@/lib/meal-templates";
 import { resolveActiveNotebookAccess } from "@/lib/notebook-access";
-import { getSupabaseBrowserClient, getSupabaseCurrentSession, HEWSTER_PROFILE_SLUG } from "@/lib/supabase";
+import { getSupabaseBrowserClient, getSupabaseCurrentSession, getActiveProfileSlug, HEWSTER_PROFILE_SLUG } from "@/lib/supabase";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 export type CareScheduleKind = "meal" | "custom";
@@ -396,6 +396,24 @@ export function storageKeyForCareKind(kind: CareItemKind) {
   return kind === "supplement" ? SUPPLEMENT_SETTINGS_STORAGE_KEY : MEDICATION_SETTINGS_STORAGE_KEY;
 }
 
+function scopedCareStorageKey(kind: CareItemKind) {
+  return `${storageKeyForCareKind(kind)}.${getActiveProfileSlug()}`;
+}
+
+function readCareStorage(kind: CareItemKind) {
+  const scoped = window.localStorage.getItem(scopedCareStorageKey(kind));
+  if (scoped !== null) return scoped;
+  if (getActiveProfileSlug() === HEWSTER_PROFILE_SLUG) return window.localStorage.getItem(storageKeyForCareKind(kind));
+  return null;
+}
+
+function writeCareStorage(kind: CareItemKind, value: string) {
+  window.localStorage.setItem(scopedCareStorageKey(kind), value);
+  if (getActiveProfileSlug() === HEWSTER_PROFILE_SLUG) {
+    window.localStorage.setItem(storageKeyForCareKind(kind), value);
+  }
+}
+
 export function initialCareTemplatesForKind(kind: CareItemKind) {
   return kind === "supplement" ? initialSupplementTemplates : initialMedicationTemplates;
 }
@@ -404,7 +422,7 @@ export function loadCareTemplates(kind: CareItemKind): CareItemTemplate[] {
   if (typeof window === "undefined") return initialCareTemplatesForKind(kind);
 
   try {
-    const stored = window.localStorage.getItem(storageKeyForCareKind(kind));
+    const stored = readCareStorage(kind);
     const parsed = stored ? JSON.parse(stored) : null;
     if (!isCareItemTemplateArray(parsed, kind)) return initialCareTemplatesForKind(kind);
     const templates = parsed.map((item) => normalizeCareItemTemplate(item, kind)).filter((item): item is CareItemTemplate => Boolean(item));
@@ -602,7 +620,7 @@ export function saveCareTemplates(kind: CareItemKind, templates: CareItemTemplat
     backupCareTemplates(kind, currentTemplates.length ? currentTemplates : repairedTemplates);
   }
 
-  window.localStorage.setItem(storageKeyForCareKind(kind), JSON.stringify(repairedTemplates));
+  writeCareStorage(kind, JSON.stringify(repairedTemplates));
   cacheCareTemplates(kind, repairedTemplates);
   window.dispatchEvent(new CustomEvent("hewster:care-settings-updated", { detail: { kind } }));
 }
@@ -640,7 +658,7 @@ async function loadLegacyCareTemplateRowsFromSupabase(supabase: ReturnType<typeo
   return supabase
     .from("care_item_templates")
     .select("items, updated_at")
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("profile_slug", getActiveProfileSlug())
     .eq("kind", kind)
     .order("updated_at", { ascending: false })
     .limit(5);
@@ -659,7 +677,7 @@ async function loadCareTemplatesFromSupabaseUncached(kind: CareItemKind) {
     .from("care_item_templates")
     .select("owner_id, items, updated_at")
     .in("owner_id", ownerIds)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("profile_slug", getActiveProfileSlug())
     .eq("kind", kind)
     .order("updated_at", { ascending: false })
     .limit(5);
@@ -714,7 +732,7 @@ async function loadCareTemplateAuditItemsFromSupabase(kind: CareItemKind) {
     .from("app_audit_log")
     .select("table_name, action, old_row, new_row")
     .in("owner_id", ownerIds)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("profile_slug", getActiveProfileSlug())
     .eq("table_name", "care_item_templates")
     .order("occurred_at", { ascending: false })
     .limit(25);
@@ -748,7 +766,7 @@ export async function loadCurrentCareTemplatesFromSupabase(kind: CareItemKind) {
     .from("care_item_templates")
     .select("owner_id, items, updated_at")
     .in("owner_id", ownerIds)
-    .eq("profile_slug", HEWSTER_PROFILE_SLUG)
+    .eq("profile_slug", getActiveProfileSlug())
     .eq("kind", kind)
     .order("updated_at", { ascending: false })
     .limit(5);
@@ -796,7 +814,7 @@ export async function saveCareTemplatesToSupabase(kind: CareItemKind, templates:
   const { error } = await supabase.from("care_item_templates").upsert(
     {
       owner_id: userId,
-      profile_slug: HEWSTER_PROFILE_SLUG,
+      profile_slug: getActiveProfileSlug(),
       kind,
       items: clampedTemplates,
       updated_at: new Date().toISOString(),
@@ -809,7 +827,7 @@ export async function saveCareTemplatesToSupabase(kind: CareItemKind, templates:
 
   const legacyResult = await supabase.from("care_item_templates").upsert(
     {
-      profile_slug: HEWSTER_PROFILE_SLUG,
+      profile_slug: getActiveProfileSlug(),
       kind,
       items: clampedTemplates,
       updated_at: new Date().toISOString(),

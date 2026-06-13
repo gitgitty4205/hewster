@@ -22,6 +22,7 @@ import {
 import { loadCareTemplates, loadCareTemplatesFromSupabase, mergeCareTemplateSources, type CareItemTemplate } from "@/lib/care-settings";
 import {
   ACTIVITY_LOGS_STORAGE_KEY,
+  activeProfileStorageKey,
   type ActivityLog,
   type DailyMealState,
   deleteActivityLogInSupabase,
@@ -37,7 +38,7 @@ import {
   updateManualAlertInSupabase,
 } from "@/lib/hewster-data";
 import type { MealTemplate } from "@/lib/meal-templates";
-import { HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { getActiveProfileSlug, isSupabaseConfigured } from "@/lib/supabase";
 import { loadPetProfile } from "@/lib/pet-profile";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { compareActivitiesReverseChronological } from "@/lib/activity";
@@ -178,7 +179,7 @@ function missedMealLogId(dayKey: string, mealId: number) {
 function buildMealLog(meal: MealTemplate, actualTime: string, fedNotes: string | null, dayKey: string): MealLog {
   return {
     id: `${dayKey}-${meal.id}`,
-    profileSlug: HEWSTER_PROFILE_SLUG,
+    profileSlug: getActiveProfileSlug(),
     dayKey,
     mealId: meal.id,
     mealName: meal.name,
@@ -225,7 +226,7 @@ function buildCustomCareActivityLog(
 
   return {
     id: status === "done" ? action.occurrenceKey : `${action.occurrenceKey}-skipped`,
-    profileSlug: HEWSTER_PROFILE_SLUG,
+    profileSlug: getActiveProfileSlug(),
     activityType: action.item.kind,
     happenedAt,
     detail: `${action.item.name}${action.item.dose && status === "done" ? ` • ${action.item.dose}` : ""}${status === "skipped" ? " Skipped" : ""}`,
@@ -486,7 +487,7 @@ export default function AlertsPage() {
         ...current.filter((entry) => !supersededActivityIds.includes(entry.id)),
       ].sort(compareActivitiesReverseChronological);
 
-      window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextActivityLogs));
+      window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextActivityLogs));
       persistLocalState(templates, dailyMealState, nextActivityLogs, weightLogs, undefined, manualAlerts);
       syncStoredAlertBadgeCount(unresolvedAlertCountFor(undefined, nextActivityLogs));
       return nextActivityLogs;
@@ -536,7 +537,7 @@ export default function AlertsPage() {
 
     const alert: ManualAlert = {
       id: `manual-alert-${Date.now()}`,
-      profileSlug: HEWSTER_PROFILE_SLUG,
+      profileSlug: getActiveProfileSlug(),
       title: clampText(titleValue.trim(), TEXT_LIMITS.shortName),
       message: clampText(messageValue.trim(), TEXT_LIMITS.note),
       scope: scopeValue,

@@ -32,6 +32,7 @@ import {
   type WeightLog,
   MEAL_LOGS_STORAGE_KEY,
   WEIGHT_LOGS_STORAGE_KEY,
+  activeProfileStorageKey,
   loadAppState,
   loadFreshAppState,
   loadNotebookEntryPermissions,
@@ -56,7 +57,7 @@ import {
 } from "@/lib/meal-templates";
 import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail } from "@/lib/activity";
 import { formatManualAlertTimelineDetail, loadReminderAlertRules, resolveAlerts, type ReminderAlertRule } from "@/lib/alerts";
-import { getSupabaseBrowserClient, HEWSTER_PROFILE_SLUG, isSupabaseConfigured } from "@/lib/supabase";
+import { getSupabaseBrowserClient, getActiveProfileSlug, isSupabaseConfigured } from "@/lib/supabase";
 import { loadPetProfile } from "@/lib/pet-profile";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
@@ -359,7 +360,7 @@ function CompactMealCareSummary({
 function buildMealLog(meal: DailyMeal, fedNotes: string | null, dayKey: string, skippedCareItemIds: string[] = [], loggedCareItems: MealLog["loggedCareItems"] = []): MealLog {
   return {
     id: `${dayKey}-${meal.id}`,
-    profileSlug: HEWSTER_PROFILE_SLUG,
+    profileSlug: getActiveProfileSlug(),
     dayKey,
     mealId: meal.id,
     mealName: meal.name,
@@ -430,7 +431,7 @@ function missedMealLogId(dayKey: string, mealId: number) {
 function buildMissedMealLog(template: MealTemplate, dayKey: string, skippedCareItemIds: string[] = [], loggedCareItems: MealLog["loggedCareItems"] = []): MealLog {
   return {
     id: missedMealLogId(dayKey, template.id),
-    profileSlug: HEWSTER_PROFILE_SLUG,
+    profileSlug: getActiveProfileSlug(),
     dayKey,
     mealId: template.id,
     mealName: template.name,
@@ -447,7 +448,7 @@ function buildMissedMealLog(template: MealTemplate, dayKey: string, skippedCareI
 function buildSkippedMealLog(template: MealTemplate, dayKey: string, skippedCareItemIds: string[] = [], loggedCareItems: MealLog["loggedCareItems"] = []): MealLog {
   return {
     id: `${dayKey}-${template.id}`,
-    profileSlug: HEWSTER_PROFILE_SLUG,
+    profileSlug: getActiveProfileSlug(),
     dayKey,
     mealId: template.id,
     mealName: template.name,
@@ -821,7 +822,7 @@ function customCareActivityLog(occurrence: CustomCareOccurrence, status: "given"
 
   return {
     id: status === "given" ? occurrence.key : `${occurrence.key}-${status}`,
-    profileSlug: HEWSTER_PROFILE_SLUG,
+    profileSlug: getActiveProfileSlug(),
     activityType: item.kind,
     happenedAt: happenedAt.toISOString(),
     detail: `${item.name}${item.dose && status === "given" ? ` • ${item.dose}` : ""}${statusDetail}`,
@@ -869,7 +870,7 @@ function parseStoredArray<T>(value: string | null): T[] {
 
 function buildBridgePayload(): HewsterBridgePayload {
   return {
-    weightLogs: parseStoredArray<WeightLog>(window.localStorage.getItem(WEIGHT_LOGS_STORAGE_KEY)),
+    weightLogs: parseStoredArray<WeightLog>(window.localStorage.getItem(activeProfileStorageKey(WEIGHT_LOGS_STORAGE_KEY))),
     supplementSettings: parseStoredArray<CareItemTemplate>(window.localStorage.getItem("hewster.supplementSettings")),
     medicationSettings: parseStoredArray<CareItemTemplate>(window.localStorage.getItem("hewster.medicationSettings")),
   };
@@ -877,13 +878,13 @@ function buildBridgePayload(): HewsterBridgePayload {
 
 async function importBridgePayload(payload: HewsterBridgePayload) {
   const incomingWeights = Array.isArray(payload.weightLogs) ? payload.weightLogs : [];
-  const existingWeights = parseStoredArray<WeightLog>(window.localStorage.getItem(WEIGHT_LOGS_STORAGE_KEY));
+  const existingWeights = parseStoredArray<WeightLog>(window.localStorage.getItem(activeProfileStorageKey(WEIGHT_LOGS_STORAGE_KEY)));
   const mergedWeights = [...incomingWeights, ...existingWeights]
     .filter((entry) => entry && typeof entry.id === "string" && typeof entry.date === "string" && typeof entry.weight === "string")
     .filter((entry, index, all) => index === all.findIndex((candidate) => candidate.id === entry.id));
 
   if (mergedWeights.length > existingWeights.length) {
-    window.localStorage.setItem(WEIGHT_LOGS_STORAGE_KEY, JSON.stringify(mergedWeights));
+    window.localStorage.setItem(activeProfileStorageKey(WEIGHT_LOGS_STORAGE_KEY), JSON.stringify(mergedWeights));
     await Promise.all(mergedWeights.map((entry) => saveWeightLogToSupabase(entry))).catch(() => undefined);
   }
 
@@ -1083,7 +1084,7 @@ export default function HomeApp() {
 
     async function hydrate() {
       try {
-        previousTodayKeyRef.current = window.localStorage.getItem(TODAY_KEY_STORAGE_KEY);
+        previousTodayKeyRef.current = window.localStorage.getItem(activeProfileStorageKey(TODAY_KEY_STORAGE_KEY));
         const state = await loadAppState();
         if (cancelled) return;
 
@@ -1311,7 +1312,7 @@ export default function HomeApp() {
               ...missedMealLogs,
               ...current.filter((entry) => !missedKeys.has(entry.id) && !(fedKeys.has(entry.id) && !isMissedMealLog(entry))),
             ];
-            window.localStorage.setItem(MEAL_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+            window.localStorage.setItem(activeProfileStorageKey(MEAL_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
             return nextLogs;
           });
 
@@ -1469,7 +1470,7 @@ export default function HomeApp() {
       if (!nextRepairActivities.length) return current;
 
       const nextLogs = [...nextRepairActivities, ...current].sort(compareActivitiesReverseChronological);
-      window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+      window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
       persistLocalState(templates, dailyMealState, nextLogs, undefined, activeTodayKey, manualAlerts, mealLogs);
       return nextLogs;
     });
@@ -1492,7 +1493,7 @@ export default function HomeApp() {
     const changedActivities = patchedActivities.filter((activity, index) => activity !== activityLogs[index]);
     if (!changedActivities.length) return;
 
-    window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(patchedActivities));
+    window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(patchedActivities));
     setActivityLogs(patchedActivities);
 
     if (supabaseReady) {
@@ -1507,7 +1508,7 @@ export default function HomeApp() {
     const previousTodayKey = previousTodayKeyRef.current ?? todayKey;
 
     if (previousTodayKey === activeTodayKey) {
-      window.localStorage.setItem(TODAY_KEY_STORAGE_KEY, activeTodayKey);
+      window.localStorage.setItem(activeProfileStorageKey(TODAY_KEY_STORAGE_KEY), activeTodayKey);
       return;
     }
 
@@ -1535,7 +1536,7 @@ export default function HomeApp() {
       if (missedActivities.length) {
         setActivityLogs((current) => {
           const nextLogs = [...missedActivities, ...current].sort(compareActivitiesReverseChronological);
-          window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+          window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
           return nextLogs;
         });
 
@@ -1546,7 +1547,7 @@ export default function HomeApp() {
     }
 
     previousTodayKeyRef.current = activeTodayKey;
-    window.localStorage.setItem(TODAY_KEY_STORAGE_KEY, activeTodayKey);
+    window.localStorage.setItem(activeProfileStorageKey(TODAY_KEY_STORAGE_KEY), activeTodayKey);
   }, [activityLogs, careTemplates, customCareStatus, hydrated, petRemembered, supabaseReady, todayKey]);
 
   const allUpcomingScheduleCards = useMemo(() => {
@@ -1984,7 +1985,7 @@ export default function HomeApp() {
   const saveActivity = async (activity: ActivityLog, mode: "create" | "update") => {
     setActivityLogs((current) => {
       const nextLogs = [activity, ...current.filter((entry) => entry.id !== activity.id)].sort(compareActivitiesReverseChronological);
-      window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+      window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
       persistLocalState(templates, dailyMealState, nextLogs, undefined, todayKey || currentTodayKey(), manualAlerts, mealLogs);
       return nextLogs;
     });
@@ -2018,7 +2019,7 @@ export default function HomeApp() {
     const missedActivityId = `${occurrence.key}-missed`;
     setActivityLogs((current) => {
       const nextLogs = current.filter((activity) => activity.id !== missedActivityId);
-      window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+      window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
       persistLocalState(templates, dailyMealState, nextLogs, undefined, todayKey || currentTodayKey(), manualAlerts, mealLogs);
       return nextLogs;
     });
@@ -2091,7 +2092,7 @@ export default function HomeApp() {
 
     const activity: ActivityLog = {
       id: `${activityType}-${Date.now()}`,
-      profileSlug: HEWSTER_PROFILE_SLUG,
+      profileSlug: getActiveProfileSlug(),
       activityType,
       happenedAt: new Date().toISOString(),
       detail: null,
@@ -2120,7 +2121,7 @@ export default function HomeApp() {
       const happenedAt = mergeTodayWithTime(happenedAtValue);
       const attachmentDocumentTypes = attachmentDocumentTypesForActivity(resolvedActivityType);
       const attachmentNames = activityAttachmentFileNamesForSave(
-        { id: editingActivityId ?? "", profileSlug: HEWSTER_PROFILE_SLUG, activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
+        { id: editingActivityId ?? "", profileSlug: getActiveProfileSlug(), activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
         attachmentFiles,
         attachmentDocumentTypes
       );
@@ -2131,7 +2132,7 @@ export default function HomeApp() {
           : [notesValue.trim(), recordTagNote, attachmentNote].filter(Boolean).join("\n") || null;
       const activity: ActivityLog = {
         id: editingActivityId ?? `${resolvedActivityType}-${Date.now()}`,
-        profileSlug: HEWSTER_PROFILE_SLUG,
+        profileSlug: getActiveProfileSlug(),
         activityType: resolvedActivityType,
         happenedAt,
         detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : trimmedDetail || null,
@@ -2148,7 +2149,7 @@ export default function HomeApp() {
             const nextLogs = current.map((entry) =>
               entry.id === activity.id ? { ...entry, attachments: savedAttachments } : entry
             );
-            window.localStorage.setItem(ACTIVITY_LOGS_STORAGE_KEY, JSON.stringify(nextLogs));
+            window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
             persistLocalState(templates, dailyMealState, nextLogs, undefined, todayKey || currentTodayKey(), manualAlerts, mealLogs);
             return nextLogs;
           });
