@@ -32,6 +32,8 @@ import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 const WEIGHT_VALUE_MAX_LENGTH = 12;
+const formInputClass =
+  "h-11 min-w-0 w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45";
 
 function todayInputValue() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -289,12 +291,12 @@ export default function WeightPage() {
   const renderWeightEntry = (entry: WeightLog) => {
     const isEditing = editingWeightId === entry.id;
     const summary = (
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-zinc-600">{formatWeightDate(entry.date)}</p>
           {entry.note ? <ExpandableNoteText className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/75">{entry.note}</ExpandableNoteText> : null}
         </div>
-        <p className="shrink-0 text-sm font-semibold">{formatWeightWithUnit(entry.weight, profile.weightUnit)}</p>
+        <p className="max-w-[8.5rem] shrink-0 truncate text-right text-sm font-semibold">{formatWeightWithUnit(entry.weight, profile.weightUnit)}</p>
       </div>
     );
 
@@ -320,18 +322,18 @@ export default function WeightPage() {
       >
       {summary}
         <div className="mt-4 space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-4">
-          <label className="block text-sm">
+          <label className="block min-w-0 text-sm">
             <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Date</span>
             <input
               type="date"
               value={editingDateValue}
               onChange={(event) => setEditingDateValue(event.target.value)}
-              className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+              className={formInputClass}
             />
           </label>
 
-          <div className="grid grid-cols-[1fr_auto] gap-3">
-            <label className="block text-sm">
+          <div className="grid grid-cols-[minmax(0,1fr)_6rem] gap-3">
+            <label className="block min-w-0 text-sm">
               <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Weight</span>
               <input
                 inputMode="decimal"
@@ -339,16 +341,16 @@ export default function WeightPage() {
                 onChange={(event) => setEditingWeightValue(clampText(event.target.value, WEIGHT_VALUE_MAX_LENGTH))}
                 maxLength={WEIGHT_VALUE_MAX_LENGTH}
                 placeholder={`e.g. 24.8 ${profile.weightUnit}`}
-                className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                className={formInputClass}
               />
             </label>
 
-            <label className="block text-sm">
+            <label className="block min-w-0 text-sm">
               <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Unit</span>
               <select
                 value={profile.weightUnit}
                 onChange={(event) => updateWeightUnit(event.target.value as PetProfile["weightUnit"])}
-                className="w-24 rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                className={formInputClass}
               >
                 <option value="lb">lb</option>
                 <option value="kg">kg</option>
@@ -363,7 +365,7 @@ export default function WeightPage() {
                 onChange={(event) => setEditingNoteValue(clampText(event.target.value, TEXT_LIMITS.note))}
                 maxLength={TEXT_LIMITS.note}
                 placeholder="Optional notes"
-                className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                className={formInputClass}
               />
           </label>
 
@@ -427,18 +429,18 @@ export default function WeightPage() {
           </div>
 
           <div className="space-y-3">
-            <label className="block text-sm">
+            <label className="block min-w-0 text-sm">
               <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Date</span>
               <input
                 type="date"
                 value={dateValue}
                 onChange={(event) => setDateValue(event.target.value)}
-                className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                className={formInputClass}
               />
             </label>
 
-            <div className="grid grid-cols-[1fr_auto] gap-3">
-              <label className="block text-sm">
+            <div className="grid grid-cols-[minmax(0,1fr)_6rem] gap-3">
+              <label className="block min-w-0 text-sm">
                 <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Weight</span>
                 <input
                   inputMode="decimal"
@@ -446,16 +448,16 @@ export default function WeightPage() {
                   onChange={(event) => setWeightValue(clampText(event.target.value, WEIGHT_VALUE_MAX_LENGTH))}
                   maxLength={WEIGHT_VALUE_MAX_LENGTH}
                   placeholder={`e.g. 24.8 ${profile.weightUnit}`}
-                  className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                  className={formInputClass}
                 />
               </label>
 
-              <label className="block text-sm">
+              <label className="block min-w-0 text-sm">
                 <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Unit</span>
                 <select
                   value={profile.weightUnit}
                   onChange={(event) => updateWeightUnit(event.target.value as PetProfile["weightUnit"])}
-                  className="w-24 rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                  className={formInputClass}
                 >
                   <option value="lb">lb</option>
                   <option value="kg">kg</option>
@@ -470,7 +472,7 @@ export default function WeightPage() {
                 onChange={(event) => setNoteValue(clampText(event.target.value, TEXT_LIMITS.note))}
                 maxLength={TEXT_LIMITS.note}
                 placeholder="Optional notes"
-                className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                className={formInputClass}
               />
             </label>
 
