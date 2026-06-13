@@ -47,7 +47,7 @@ type TextModal = {
 const timelineTitleClassName = "min-w-0 text-sm font-semibold text-zinc-900";
 const timelineDetailClassName = "mt-1 text-sm text-zinc-500";
 const timelineSecondaryDetailClassName = "mt-1 text-sm text-zinc-500";
-const timelineTimeBadgeClassName = "inline-flex h-7 w-[4.35rem] shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white/80 px-0 text-xs font-semibold leading-none text-zinc-500 ring-1 ring-zinc-200/80";
+const timelineTimeBadgeClassName = "hewie-time-badge";
 
 function initialsFromName(name?: string | null) {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -686,7 +686,7 @@ export function ActivityFeed({
                   if (pottyAttachmentActivity) {
                     return (
                       <div key={activity.id} className={`rounded-2xl p-4 ring-1 ${style.card}`}>
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                           <button className="min-w-0 flex-1 text-left" onClick={() => onSelectActivity?.(activity)}>
                             <div className="flex items-center gap-3">
                               <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
@@ -710,12 +710,12 @@ export function ActivityFeed({
                   return (
                     <div key={activity.id} className={`rounded-2xl p-4 ring-1 ${style.card}`}>
                       <button className="block w-full text-left" onClick={() => onSelectActivity?.(activity)}>
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
                             <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
                               {Icon ? <Icon className="size-4.5" /> : <span className="text-lg leading-none">{style.iconText}</span>}
                             </span>
-                            <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
+                            <p className="min-w-0 font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
                           </div>
                           <p className={timelineTimeBadgeClassName}>{customCareDisplayTime(activity)}</p>
                         </div>
@@ -788,12 +788,12 @@ export function ActivityFeed({
                         className="block w-full text-left"
                         onClick={() => onSelectActivity?.(activity)}
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
                             <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
                               {Icon ? <Icon className="size-4.5" /> : <span className="text-lg leading-none">{style.iconText}</span>}
                             </span>
-                            <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
+                            <p className="min-w-0 font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
                           </div>
                           <p className={timelineTimeBadgeClassName}>{customCareDisplayTime(activity)}</p>
                         </div>
@@ -831,7 +831,7 @@ export function ActivityFeed({
     const loggedBy = timelineInitialsName(item.activity);
     const content = (
       <>
-        <div className="flex items-start justify-between gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <p className={timelineTitleClassName}>{item.label}</p>
           </div>

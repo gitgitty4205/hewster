@@ -144,6 +144,25 @@ time {
   width: 7rem;
 }
 
+.hewie-time-badge {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 9999px;
+  box-sizing: border-box;
+  color: #71717a;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  height: 1.75rem;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  white-space: nowrap;
+  width: 4.35rem;
+  box-shadow: 0 0 0 1px rgba(228, 228, 231, 0.8);
+}
+
 .hewie-date-input {
   appearance: none;
   -webkit-appearance: none;
