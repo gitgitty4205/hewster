@@ -808,7 +808,7 @@ export default function AccountSettingsPage() {
           </div>
 
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
               <label className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
                 First Name
                 <input
@@ -876,7 +876,7 @@ export default function AccountSettingsPage() {
           ) : null}
 
           {ownerInfoEditing ? (
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
               <Button
                 type="button"
                 variant="outline"
@@ -970,7 +970,7 @@ export default function AccountSettingsPage() {
                           {item.title === "Advance reminders" ? (
                             <label className="block text-xs font-semibold text-zinc-600">
                               Remind me before
-                              <div className="mt-2 grid grid-cols-[minmax(0,1fr)_7rem] gap-2">
+                              <div className="mt-2 grid grid-cols-1 gap-2 min-[390px]:grid-cols-[minmax(0,1fr)_7rem]">
                                 <div className="flex h-11 items-center rounded-2xl border border-zinc-200 bg-white px-3 focus-within:border-[var(--hewie-accent,#64748b)]">
                                   <input
                                     type="number"
@@ -986,7 +986,7 @@ export default function AccountSettingsPage() {
                                 <select
                                   value={upcomingReminderUnit}
                                   onChange={(event) => handleUpcomingReminderUnitChange(event.target.value as ReminderTimeUnit)}
-                                  className="h-11 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                  className="h-11 w-full min-w-0 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
                                 >
                                   <option value="minutes">{reminderUnitLabel("minutes", upcomingReminderAmount)}</option>
                                   <option value="hours">{reminderUnitLabel("hours", upcomingReminderAmount)}</option>
@@ -1012,7 +1012,7 @@ export default function AccountSettingsPage() {
                                       type="button"
                                       aria-pressed={selected}
                                       onClick={() => toggleNotificationChannel(channel.id)}
-                                      className={`h-10 rounded-2xl px-2 text-xs font-semibold ring-1 transition ${
+                                      className={`h-10 min-w-0 overflow-hidden text-ellipsis rounded-2xl px-2 text-xs font-semibold ring-1 transition ${
                                         selected
                                           ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-zinc-900 ring-[var(--hewie-ring,#cbd5e1)]"
                                           : "bg-white text-zinc-500 ring-zinc-200"
@@ -1143,7 +1143,7 @@ export default function AccountSettingsPage() {
 
           {!passwordResetRequired ? (
           <div className="mt-2">
-            <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2">
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2">
               <p className="shrink-0 text-sm font-semibold text-zinc-800">2FA</p>
               <button
                 type="button"
@@ -1157,7 +1157,7 @@ export default function AccountSettingsPage() {
               >
                 <span className="size-5 rounded-full bg-white shadow-sm" />
               </button>
-              <div className={`grid min-w-0 flex-1 grid-cols-2 gap-1.5 ${twoFactorEnabled ? "" : "opacity-60"}`}>
+              <div className={`grid min-w-full flex-1 grid-cols-2 gap-1.5 min-[360px]:min-w-0 ${twoFactorEnabled ? "" : "opacity-60"}`}>
                 <button
                   type="button"
                   onClick={() => void handleSaveTwoFactorSettings(true, "email")}
@@ -1196,7 +1196,7 @@ export default function AccountSettingsPage() {
           ) : null}
 
           {passwordEditing ? (
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
               {passwordResetRequired ? <div /> : (
                 <Button
                   type="button"
