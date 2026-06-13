@@ -24,20 +24,20 @@ type GuideRect = {
 };
 
 const guideSteps: GuideStep[] = [
-  { title: "Today's Page", href: "/hewie", target: "today-upcoming", text: "View upcoming meals, supplements, medications, and reminders." },
-  { title: "Quick Log", href: "/hewie", target: "today-quick-log", text: "Tap an icon to quickly log an event. Swipe for more event types." },
-  { title: "Poop Records", href: "/hewie", target: "today-poop-records", text: "View recent stool history." },
-  { title: "Manage Events", href: "/hewie/log", target: "log-events", text: "Open the log menu to add new events." },
-  { title: "Today's Events", href: "/hewie/log", target: "log-review", text: "Logged events show here. After you add one, tap it to view or edit details." },
-  { title: "Today's Meal Plan", href: "/hewie/log", target: "log-meal-plan", text: "Meals from your saved meal plan appear here. Tap any meal to view or edit details." },
-  { title: "Health Records", href: "/hewie/medical-records", target: "medical-records", text: "Quickly find health records, medications, and documents." },
-  { title: "Alerts & Reminders", href: "/hewie/alerts", target: "alerts-reminders", text: "Keep everyone on the same page with alerts, reminders, and important care notes." },
-  { title: "Notebook Sharing", href: "/hewie/profile", target: "profile-sharing", text: "Invite family, caretakers, and pet sitters to help care for your pet and log events together." },
-  { title: "Settings", href: "/hewie/settings", target: "settings-schedules", text: "Create meal, supplement, and medication schedules. PetNotebook uses them to generate reminders and upcoming items automatically." },
+  { title: "Today's Page", href: "/notebook", target: "today-upcoming", text: "View upcoming meals, supplements, medications, and reminders." },
+  { title: "Quick Log", href: "/notebook", target: "today-quick-log", text: "Tap an icon to quickly log an event. Swipe for more event types." },
+  { title: "Poop Records", href: "/notebook", target: "today-poop-records", text: "View recent stool history." },
+  { title: "Manage Events", href: "/notebook/log", target: "log-events", text: "Open the log menu to add new events." },
+  { title: "Today's Events", href: "/notebook/log", target: "log-review", text: "Logged events show here. After you add one, tap it to view or edit details." },
+  { title: "Today's Meal Plan", href: "/notebook/log", target: "log-meal-plan", text: "Meals from your saved meal plan appear here. Tap any meal to view or edit details." },
+  { title: "Health Records", href: "/notebook/medical-records", target: "medical-records", text: "Quickly find health records, medications, and documents." },
+  { title: "Alerts & Reminders", href: "/notebook/alerts", target: "alerts-reminders", text: "Keep everyone on the same page with alerts, reminders, and important care notes." },
+  { title: "Notebook Sharing", href: "/notebook/profile", target: "profile-sharing", text: "Invite family, caretakers, and pet sitters to help care for your pet and log events together." },
+  { title: "Settings", href: "/notebook/settings", target: "settings-schedules", text: "Create meal, supplement, and medication schedules. PetNotebook uses them to generate reminders and upcoming items automatically." },
 ];
 
 function currentPathMatches(pathname: string, href: string) {
-  return pathname === href || (href === "/hewie" && pathname === "/");
+  return pathname === href || (href === "/notebook" && pathname === "/");
 }
 
 function clampStepIndex(value: number) {

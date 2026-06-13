@@ -12,7 +12,7 @@ export default function ActivityPage() {
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Fitness</h1>
             </div>
             <PetAvatarMenu shape="tile" />

@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth-provider";
 import { cacheSupabaseCurrentSession, getSupabaseBrowserClient, PASSWORD_RESET_REQUIRED_STORAGE_KEY } from "@/lib/supabase";
 
 const AUTH_CALLBACK_TIMEOUT_MS = 12_000;
-const PASSWORD_RESET_PATH = "/hewie/account-settings?resetPassword=1";
+const PASSWORD_RESET_PATH = "/notebook/account-settings?resetPassword=1";
 
 function getHashParams() {
   if (typeof window === "undefined") return new URLSearchParams();
@@ -54,7 +54,7 @@ export function AuthCallbackContent({ forcePasswordRecovery = false }: { forcePa
   const nextPath = useMemo(() => {
     if (isPasswordRecovery) return PASSWORD_RESET_PATH;
     const next = searchParams.get("next");
-    return next?.startsWith("/") ? next : "/hewie";
+    return next?.startsWith("/") ? next : "/notebook";
   }, [isPasswordRecovery, searchParams]);
   const error = useMemo(() => {
     const queryError = searchParams.get("error_description") ?? searchParams.get("error");

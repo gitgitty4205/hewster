@@ -289,7 +289,7 @@ export default function ProfilePage() {
 
   function openNotebookSharingUpgrade() {
     if (typeof window === "undefined") return;
-    window.location.href = "/hewie/account-settings?upgrade=plus";
+    window.location.href = "/notebook/account-settings?upgrade=plus";
   }
 
   async function handleSaveMemberAccess(member: NotebookMember) {
@@ -414,7 +414,7 @@ export default function ProfilePage() {
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Pet Profile</h1>
             </div>
             <PetAvatarMenu shape="tile" />

@@ -398,7 +398,7 @@ export default function AccountSettingsPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("returnToAddPet") !== "1") return;
 
-    const returnPath = window.sessionStorage.getItem(ADD_PET_UPGRADE_RETURN_PATH_KEY) || "/hewie";
+    const returnPath = window.sessionStorage.getItem(ADD_PET_UPGRADE_RETURN_PATH_KEY) || "/notebook";
     window.sessionStorage.removeItem(ADD_PET_UPGRADE_RETURN_PATH_KEY);
     window.sessionStorage.setItem(OPEN_ADD_PET_UPGRADE_DIALOG_KEY, "1");
     window.location.href = returnPath;
@@ -766,7 +766,7 @@ export default function AccountSettingsPage() {
         <header className="mb-5">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Account Settings</h1>
             </div>
             <PetAvatarMenu shape="tile" />

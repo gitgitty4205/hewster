@@ -30,7 +30,7 @@ type Props = {
   alertsCount?: number;
 };
 
-const APP_BASE = "/hewie";
+const APP_BASE = "/notebook";
 const FLOATING_MENU_POSITION_STORAGE_KEY = "hewster.floatingMenuPosition";
 const PAGES_BACKGROUND_MODE_STORAGE_KEY = "hewster.pagesBackgroundMode";
 const FLOATING_MENU_EDGE_GAP = 12;

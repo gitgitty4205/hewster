@@ -27,7 +27,7 @@ export function LoginForm() {
     }
 
     setIsWorking(true);
-    const nextPath = nextParam?.startsWith("/") ? nextParam : "/hewie";
+    const nextPath = nextParam?.startsWith("/") ? nextParam : "/notebook";
     const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",

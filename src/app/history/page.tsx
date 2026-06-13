@@ -2629,12 +2629,12 @@ export default function HistoryPage() {
 
   const openHistoryCopyUpgrade = () => {
     setShowHistoryCopyUpgradeDialog(false);
-    router.push("/hewie/account-settings?upgrade=plus");
+    router.push("/notebook/account-settings?upgrade=plus");
   };
 
   const openHistoryAccessUpgrade = () => {
     setShowHistoryAccessUpgradeDialog(false);
-    router.push("/hewie/account-settings?upgrade=plus");
+    router.push("/notebook/account-settings?upgrade=plus");
   };
 
   const selectHistoryDay = (dayKey: string) => {
@@ -2648,12 +2648,12 @@ export default function HistoryPage() {
 
   const openHistoryMealEditor = (dayKey: string, mealId: number) => {
     if (!historyEditUnlocked) return;
-    router.push(`/hewie/log?date=${dayKey}&editMeal=${mealId}`);
+    router.push(`/notebook/log?date=${dayKey}&editMeal=${mealId}`);
   };
 
   const openHistoryActivityEditor = (dayKey: string, activityId: string) => {
     if (!historyEditUnlocked) return;
-    router.push(`/hewie/log?date=${dayKey}&editActivity=${encodeURIComponent(activityId)}`);
+    router.push(`/notebook/log?date=${dayKey}&editActivity=${encodeURIComponent(activityId)}`);
   };
 
   const editableHistoryCardClassName = historyEditUnlocked ? "cursor-pointer transition hover:brightness-[0.98] active:scale-[0.99]" : "";
@@ -2688,7 +2688,7 @@ export default function HistoryPage() {
 
             <div>
 
-              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
 
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">History</h1>
 
@@ -3694,7 +3694,7 @@ export default function HistoryPage() {
               <p className="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-500 ring-1 ring-zinc-200">No records yet for this day.</p>
 
               <Button asChild className="h-9 rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90">
-                <Link href={`/hewie/log?date=${selectedEmptyDay}`}>Log This Day</Link>
+                <Link href={`/notebook/log?date=${selectedEmptyDay}`}>Log This Day</Link>
               </Button>
 
             </div>

@@ -355,7 +355,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
       ADD_PET_UPGRADE_RETURN_PATH_KEY,
       `${window.location.pathname}${window.location.search}${window.location.hash}`,
     );
-    window.location.href = "/hewie/account-settings?upgrade=plus&returnToAddPet=1";
+    window.location.href = "/notebook/account-settings?upgrade=plus&returnToAddPet=1";
   };
 
   const switchNotebook = (ownerId: string) => {

@@ -1053,7 +1053,7 @@ export default function HomeApp() {
     if (window.location.hostname !== "www.petnotebook.com" && window.location.hostname !== "petnotebook.com") return;
 
     const iframe = document.createElement("iframe");
-    iframe.src = `${HEWSTER_BRIDGE_SOURCE}/hewie?hewsterBridge=1`;
+    iframe.src = `${HEWSTER_BRIDGE_SOURCE}/notebook?hewsterBridge=1`;
     iframe.title = "PetNoteBook local data bridge";
     iframe.style.display = "none";
 
@@ -2197,7 +2197,7 @@ export default function HomeApp() {
         <header className="relative mb-6 min-h-[72px]">
           <div className="flex min-h-[4.5rem] items-center pr-24">
             <div>
-              <PetNotebookTitle href="/hewie" className="block text-sm font-bold leading-[18px] text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="block text-sm font-bold leading-[18px] text-[var(--hewie-active-text,#6d28d9)]" />
               <div className="mt-1 flex flex-col">
                 <h1 className="text-[1.26rem] font-bold leading-[1.2] text-[#252a26]">Today, {headerDateTime}</h1>
                 <p className="text-xs font-normal leading-4 text-[#252a26]">

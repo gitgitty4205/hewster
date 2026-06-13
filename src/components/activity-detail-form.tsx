@@ -957,7 +957,7 @@ export function ActivityDetailForm({
   const [attachmentUpgradeOpen, setAttachmentUpgradeOpen] = useState(false);
   const openAttachmentUpgrade = () => setAttachmentUpgradeOpen(true);
   const openPlusFeatures = () => {
-    window.location.href = "/hewie/account-settings?upgrade=plus";
+    window.location.href = "/notebook/account-settings?upgrade=plus";
   };
 
 

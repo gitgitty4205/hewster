@@ -140,7 +140,7 @@ export function CareSettingsPage({
     if (window.location.hostname !== "www.petnotebook.com" && window.location.hostname !== "petnotebook.com") return;
 
     const iframe = document.createElement("iframe");
-    iframe.src = `${HEWSTER_BRIDGE_SOURCE}/hewie?hewsterBridge=1`;
+    iframe.src = `${HEWSTER_BRIDGE_SOURCE}/notebook?hewsterBridge=1`;
     iframe.title = "PetNoteBook care settings bridge";
     iframe.style.display = "none";
 
@@ -335,7 +335,7 @@ export function CareSettingsPage({
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">{title}</h1>
             </div>
             <PetAvatarMenu shape="tile" />

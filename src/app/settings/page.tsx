@@ -22,7 +22,7 @@ const settingsItems = [
   {
     title: "Pet Profile",
     description: "Pet information, notebook sharing, and profile photo.",
-    href: "/hewie/profile",
+    href: "/notebook/profile",
     icon: null,
     iconKind: "paw",
     accent: "bg-slate-50 text-slate-700",
@@ -31,7 +31,7 @@ const settingsItems = [
   {
     title: "Meal Plan Settings",
     description: "Feeding schedules, foods, notes, and reminders.",
-    href: "/hewie/meals",
+    href: "/notebook/meals",
     icon: null,
     iconText: "\u{1F969}",
     accent: "bg-[#f4eadf]/90 text-[#6b3f22]",
@@ -40,7 +40,7 @@ const settingsItems = [
   {
     title: "Supplement Settings",
     description: "Supplement schedules, doses, notes, and reminders.",
-    href: "/hewie/supplements",
+    href: "/notebook/supplements",
     icon: Tablets,
     accent: "bg-[#eaf0f8] text-[#1f3d5c]",
     iconAccent: "bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]",
@@ -48,7 +48,7 @@ const settingsItems = [
   {
     title: "Medication Settings",
     description: "Medication schedules, doses, notes, and reminders.",
-    href: "/hewie/medications",
+    href: "/notebook/medications",
     icon: MedicationPillIcon,
     accent: "bg-sky-50 text-sky-700",
     iconAccent: "bg-sky-100 text-sky-600",
@@ -56,7 +56,7 @@ const settingsItems = [
   {
     title: "Account Settings",
     description: "Account information, notifications, security, and membership.",
-    href: "/hewie/account-settings",
+    href: "/notebook/account-settings",
     icon: UserRound,
     iconKind: "theme",
     accent: "bg-slate-50 text-slate-700",
@@ -136,7 +136,7 @@ export default function SettingsPage() {
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/hewie" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Settings</h1>
             </div>
             <PetAvatarMenu shape="tile" />

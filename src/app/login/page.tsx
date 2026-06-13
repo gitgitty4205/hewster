@@ -126,7 +126,7 @@ function LoginPageContent() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/hewie");
+      router.replace("/notebook");
     }
   }, [loading, router, user]);
 
@@ -226,7 +226,7 @@ function LoginPageContent() {
 
         if (data.session) {
           window.localStorage.removeItem(PASSWORD_RESET_REQUIRED_STORAGE_KEY);
-          router.replace("/hewie");
+          router.replace("/notebook");
           return;
         }
 
@@ -249,7 +249,7 @@ function LoginPageContent() {
       }
 
       window.localStorage.removeItem(PASSWORD_RESET_REQUIRED_STORAGE_KEY);
-      router.replace("/hewie");
+      router.replace("/notebook");
     } catch (signInError) {
       setError(getAuthErrorMessage(signInError));
       setAuthServiceDown(isLoginServiceDownError(signInError));
@@ -460,7 +460,7 @@ function LoginPageContent() {
                 <p>Supabase login is not answering right now. You can still open PetNoteBook in local mode while Auth recovers.</p>
                 <Button
                   type="button"
-                  onClick={() => router.push("/hewie")}
+                  onClick={() => router.push("/notebook")}
                   className="mt-3 h-10 w-full rounded-full bg-[#3f4540] text-white shadow-sm hover:bg-[#30352f]"
                 >
                   Open PetNoteBook
