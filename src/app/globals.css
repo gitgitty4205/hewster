@@ -131,9 +131,14 @@ time {
 .hewie-time-input {
   appearance: none;
   -webkit-appearance: none;
+  box-sizing: border-box;
+  display: block;
   line-height: 2.75rem;
+  max-width: 100%;
+  overflow: hidden;
   padding-bottom: 0;
   padding-top: 0;
+  width: 100%;
 }
 
 .hewie-time-input::-webkit-date-and-time-value {
