@@ -34,6 +34,7 @@ const settingsItems = [
     href: "/notebook/meals",
     icon: null,
     iconText: "\u{1F969}",
+    iconTextClass: "text-[2rem] scale-110",
     accent: "bg-[#f4eadf]/90 text-[#6b3f22]",
     iconAccent: "bg-[#9a6940]/70 text-white",
   },
@@ -118,7 +119,7 @@ export default function SettingsPage() {
             className={`flex size-14 shrink-0 items-center justify-center rounded-full ${usesThemeAccent ? "" : item.iconAccent}`}
             style={usesThemeAccent ? { backgroundColor: theme.accent, color: theme.accentText } : undefined}
           >
-            {usesPetTheme ? <CutePawIcon /> : Icon ? <Icon className="size-6" /> : <span className="text-2xl leading-none">{item.iconText}</span>}
+            {usesPetTheme ? <CutePawIcon /> : Icon ? <Icon className="size-6" /> : <span className={`inline-block ${"iconTextClass" in item ? item.iconTextClass : "text-2xl"} leading-none`}>{item.iconText}</span>}
           </span>
           <span className="min-w-0">
             <span className="block text-base font-semibold">{item.title}</span>

@@ -269,7 +269,7 @@ export default function MealsPage() {
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#8a5a35]/75 text-xl text-white ring-1 ring-[#caa57f]">
-                🥩
+                <span className="inline-block scale-110 text-[1.9rem] leading-none">🥩</span>
               </span>
               <div className="min-w-0">
                 <h2 className="text-lg font-semibold">Saved Meal Plan</h2>
