@@ -402,7 +402,7 @@ export default function ProfilePage() {
   const profilePhotoIsDefault = !profile.photoUrl || profile.photoUrl === DEFAULT_PET_PHOTO_URL;
   const rememberedDateLabel = formatRememberedDate(profile.passedAwayDate);
   const petInfoInputClass = (field?: RequiredPetInfoField) =>
-    `w-full rounded-2xl border bg-white px-3 py-2.5 text-sm outline-none transition focus:ring-4 ${
+    `min-w-0 max-w-full w-full rounded-2xl border bg-white px-3 py-2.5 text-sm outline-none transition focus:ring-4 ${
       field && missingPetInfoFields.has(field)
         ? "border-rose-300 focus:border-rose-300 focus:ring-rose-100"
         : "border-zinc-200 focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-zinc-100"
@@ -531,7 +531,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm">
+              <label className="block min-w-0 text-sm">
                 <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Birthday <RequiredMark show={isEditingProfile} /></span>
                 <input
                   type="date"
@@ -541,7 +541,7 @@ export default function ProfilePage() {
                   className={petInfoInputClass("birthday")}
                 />
               </label>
-              <label className="block text-sm">
+              <label className="block min-w-0 text-sm">
                 <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Age</span>
                 <input
                   type="text"
