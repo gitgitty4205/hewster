@@ -47,7 +47,7 @@ type TextModal = {
 const timelineTitleClassName = "min-w-0 text-sm font-semibold text-zinc-900";
 const timelineDetailClassName = "mt-1 text-sm text-zinc-500";
 const timelineSecondaryDetailClassName = "mt-1 text-sm text-zinc-500";
-const timelineTimeBadgeClassName = "inline-flex h-6 min-w-[3.6rem] shrink-0 items-center justify-center rounded-full bg-white/80 px-2 text-[11px] font-semibold leading-none text-zinc-500 ring-1 ring-zinc-200/80";
+const timelineTimeBadgeClassName = "inline-flex h-7 w-[4.35rem] shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white/80 px-0 text-xs font-semibold leading-none text-zinc-500 ring-1 ring-zinc-200/80";
 
 function initialsFromName(name?: string | null) {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
