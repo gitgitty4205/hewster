@@ -1027,23 +1027,23 @@ export default function AccountSettingsPage() {
                           ) : null}
 
                           {item.title === "Quiet hours" ? (
-                            <div className="grid grid-cols-2 gap-2">
-                              <label className="block text-xs font-semibold text-zinc-600">
+                            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                              <label className="block min-w-0 text-xs font-semibold text-zinc-600">
                                 Start
                                 <input
                                   type="time"
                                   value={quietHoursStart}
                                   onChange={(event) => setQuietHoursStart(event.target.value)}
-                                  className="mt-2 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                  className="mt-2 h-11 w-full min-w-0 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
                                 />
                               </label>
-                              <label className="block text-xs font-semibold text-zinc-600">
+                              <label className="block min-w-0 text-xs font-semibold text-zinc-600">
                                 End
                                 <input
                                   type="time"
                                   value={quietHoursEnd}
                                   onChange={(event) => setQuietHoursEnd(event.target.value)}
-                                  className="mt-2 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                  className="mt-2 h-11 w-full min-w-0 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
                                 />
                               </label>
                             </div>
