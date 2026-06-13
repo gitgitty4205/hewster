@@ -361,6 +361,7 @@ export function BottomNav({ alertsCount }: Props) {
     setPagesBackgroundMode(mode);
     window.localStorage.setItem(pagesBackgroundModeStorageKey(user?.id), mode);
   };
+  const pagesBackgroundIsDefaultPaw = !profilePhotoUrl || profilePhotoUrl === DEFAULT_PET_PHOTO_URL;
 
   return (
     <>
@@ -373,10 +374,15 @@ export function BottomNav({ alertsCount }: Props) {
             className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]"
           >
             <div
-              className={`absolute inset-0 bg-cover bg-center transition duration-300 ease-out ${
+              className={`absolute inset-0 transition duration-300 ease-out ${
                 showingFullColorBackground ? "opacity-100 contrast-100 saturate-100" : "opacity-[0.82] grayscale contrast-90 saturate-80"
               }`}
-              style={{ backgroundImage: `url("${profilePhotoUrl}")` }}
+              style={{
+                backgroundImage: `url("${profilePhotoUrl}")`,
+                backgroundPosition: pagesBackgroundIsDefaultPaw ? "center 58%" : "center",
+                backgroundRepeat: "no-repeat",
+                backgroundSize: pagesBackgroundIsDefaultPaw ? "68% auto" : "cover",
+              }}
               aria-hidden="true"
             />
             <div
