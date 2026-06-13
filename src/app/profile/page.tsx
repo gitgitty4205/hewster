@@ -1084,7 +1084,7 @@ export default function ProfilePage() {
                 <div key={member.id} className="rounded-2xl bg-white/70 p-3 text-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-[var(--hewie-active-text,#334155)]/85">{member.memberEmail}</p>
+                      <p className="truncate font-semibold text-[var(--hewie-active-text,#334155)]/85 no-underline decoration-transparent">{member.memberEmail}</p>
                       <p className="mt-0.5 text-xs text-[var(--hewie-active-text,#334155)]/72">
                         {notebookRoleLabel(member.role)} - {accessStatusLabel(member.status)}
                       </p>
