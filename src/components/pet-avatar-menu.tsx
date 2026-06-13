@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 const PET_ROSTER_STORAGE_KEY = "hewster.petRoster";
 const ADD_PET_UPGRADE_RETURN_PATH_KEY = "petnotebook.addPetUpgradeReturnPath";
 const OPEN_ADD_PET_UPGRADE_DIALOG_KEY = "petnotebook.openAddPetUpgradeDialog";
+const addPetInputClassName = "mt-1 h-11 min-w-0 max-w-full w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm font-medium outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45";
 
 type RosterPet = {
   id: string;
@@ -502,7 +503,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                       onChange={(event) => setNewPetName(clampText(event.target.value, TEXT_LIMITS.shortName))}
                       maxLength={TEXT_LIMITS.shortName}
                       placeholder="e.g. Miso"
-                      className="mt-1 w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm font-medium outline-none focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                      className={addPetInputClassName}
                     />
                   </label>
                   <label className="block text-sm font-semibold">
@@ -512,7 +513,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                       onChange={(event) => setNewPetSpecies(clampText(event.target.value, TEXT_LIMITS.shortName))}
                       maxLength={TEXT_LIMITS.shortName}
                       placeholder="Dog, cat, rabbit..."
-                      className="mt-1 w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm font-medium outline-none focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                      className={addPetInputClassName}
                     />
                   </label>
                   <div className="flex gap-2">
