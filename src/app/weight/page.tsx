@@ -328,7 +328,7 @@ export default function WeightPage() {
               type="date"
               value={editingDateValue}
               onChange={(event) => setEditingDateValue(event.target.value)}
-              className={formInputClass}
+              className={`${formInputClass} hewie-date-input`}
             />
           </label>
 
@@ -435,7 +435,7 @@ export default function WeightPage() {
                 type="date"
                 value={dateValue}
                 onChange={(event) => setDateValue(event.target.value)}
-                className={formInputClass}
+                className={`${formInputClass} hewie-date-input`}
               />
             </label>
 

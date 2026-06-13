@@ -107,24 +107,24 @@ time {
   font-variant-numeric: tabular-nums;
 }
 
-.pet-profile-date-input {
+.hewie-date-input {
   appearance: none;
   -webkit-appearance: none;
   line-height: 1.25rem;
 }
 
-.pet-profile-date-input::-webkit-date-and-time-value {
+.hewie-date-input::-webkit-date-and-time-value {
   min-height: 1.25rem;
   text-align: left;
 }
 
-.pet-profile-date-input::-webkit-calendar-picker-indicator {
+.hewie-date-input::-webkit-calendar-picker-indicator {
   margin: 0;
   padding: 0;
 }
 
-.pet-profile-date-input::-webkit-clear-button,
-.pet-profile-date-input::-webkit-inner-spin-button {
+.hewie-date-input::-webkit-clear-button,
+.hewie-date-input::-webkit-inner-spin-button {
   display: none;
 }
 

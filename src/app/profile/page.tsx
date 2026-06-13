@@ -538,7 +538,7 @@ export default function ProfilePage() {
                   value={profile.birthday}
                   onChange={(event) => updateProfile({ birthday: event.target.value })}
                   required
-                  className={`${petInfoInputClass("birthday")} pet-profile-date-input`}
+                  className={`${petInfoInputClass("birthday")} hewie-date-input`}
                 />
               </label>
               <label className="block min-w-0 text-sm">
