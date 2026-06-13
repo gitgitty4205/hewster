@@ -2733,9 +2733,9 @@ export default function HomeApp() {
               </div>
               ) : (
                 <div className="flex min-h-28 flex-col justify-center rounded-2xl bg-white/32 px-4 py-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/55">
-                  <p className="text-[10px] font-bold uppercase leading-3 tracking-wide text-current/55">Upcoming</p>
-                  <p className="mt-1 text-sm font-semibold leading-5 text-current/88">No upcoming items yet.</p>
-                  <p className="mt-0.5 text-xs leading-4 text-current/58">Meals, supplements, medications, and reminders will appear here.</p>
+                  <h2 className="text-lg font-semibold leading-6 text-current/88">Upcoming</h2>
+                  <p className="mt-2 text-sm font-semibold leading-5 text-current/78">No upcoming items yet.</p>
+                  <p className="mt-1 text-sm leading-5 text-current/58">Meals, supplements, medications, and reminders will appear here.</p>
                 </div>
               )}
               {hiddenUpcomingScheduleCards.length ? (
