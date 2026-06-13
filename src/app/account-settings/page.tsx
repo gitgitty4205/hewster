@@ -1379,7 +1379,7 @@ export default function AccountSettingsPage() {
                     alt="Pet profile"
                     fill
                     sizes="56px"
-                    className="object-cover object-center"
+                    className="object-contain object-center p-1.5"
                   />
                 </span>
                 {[
