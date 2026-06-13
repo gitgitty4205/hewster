@@ -369,7 +369,7 @@ export default function ProfilePage() {
     const missing = missingRequiredPetInfoFields(profile);
     if (missing.length > 0) {
       setMissingPetInfoFields(new Set(missing));
-      setProfileValidationMessage("Fill in the required Pet Info fields before saving.");
+      setProfileValidationMessage("Please fill in the highlighted fields before saving.");
       return;
     }
 
@@ -470,7 +470,7 @@ export default function ProfilePage() {
             </div>
           </div>
           {profileValidationMessage ? (
-            <p className="mb-3 rounded-2xl bg-rose-50 p-3 text-xs font-semibold leading-5 text-rose-700 ring-1 ring-rose-100">
+            <p className="mb-3 rounded-2xl bg-rose-50 p-3 text-xs leading-5 text-rose-700 ring-1 ring-rose-100">
               {profileValidationMessage}
             </p>
           ) : null}
