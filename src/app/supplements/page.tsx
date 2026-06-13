@@ -10,7 +10,7 @@ export default function SupplementsPage() {
       kind="supplement"
       title="Supplement Settings"
       description="Create supplement schedules, reminders, and daily logs."
-      emptyLabel="No supplements yet. Add daily supplements or anything that should appear with meals."
+      emptyLabel="No supplements yet. Add supplements to appear with meals or as separate reminders."
       icon={Tablets}
       accentClassName="bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]"
       iconClassName="bg-[#eaf0f8] text-[#1f3d5c] ring-[#b8c9dd]"
