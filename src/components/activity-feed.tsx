@@ -47,6 +47,7 @@ type TextModal = {
 const timelineTitleClassName = "min-w-0 text-sm font-semibold text-zinc-900";
 const timelineDetailClassName = "mt-1 text-sm text-zinc-500";
 const timelineSecondaryDetailClassName = "mt-1 text-sm text-zinc-500";
+const timelineTimeBadgeClassName = "inline-flex h-6 min-w-[3.6rem] shrink-0 items-center justify-center rounded-full bg-white/80 px-2 text-[11px] font-semibold leading-none text-zinc-500 ring-1 ring-zinc-200/80";
 
 function initialsFromName(name?: string | null) {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -696,7 +697,7 @@ export function ActivityFeed({
                             <PottyDetailBadges detail={pottyDetailForBadge(activity)} />
                           </button>
                           <div className="shrink-0 text-right">
-                            <p className="whitespace-nowrap text-sm text-zinc-500">{customCareDisplayTime(activity)}</p>
+                            <p className={timelineTimeBadgeClassName}>{customCareDisplayTime(activity)}</p>
                             <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="mt-2 flex flex-wrap justify-end gap-2" />
                           </div>
                         </div>
@@ -716,7 +717,7 @@ export function ActivityFeed({
                             </span>
                             <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
                           </div>
-                          <p className="shrink-0 text-sm text-zinc-500">{customCareDisplayTime(activity)}</p>
+                          <p className={timelineTimeBadgeClassName}>{customCareDisplayTime(activity)}</p>
                         </div>
                         {isPottyActivity ? (
                           <PottyDetailBadges detail={pottyDetailForBadge(activity)} />
@@ -740,7 +741,7 @@ export function ActivityFeed({
                         <Check className="size-4.5" strokeWidth={3} />
                       </span>
                       <p className="self-center font-medium text-zinc-900">{item.label}</p>
-                      <p className="self-center justify-self-end text-sm text-zinc-500">{item.time}</p>
+                      <p className={`self-center justify-self-end ${timelineTimeBadgeClassName}`}>{item.time}</p>
                       <div className="col-span-2 col-start-2 min-w-0">
                         {item.detail.includes(" • Notes: ") ? (
                           <>
@@ -794,7 +795,7 @@ export function ActivityFeed({
                             </span>
                             <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
                           </div>
-                          <p className="text-sm text-zinc-500">{customCareDisplayTime(activity)}</p>
+                          <p className={timelineTimeBadgeClassName}>{customCareDisplayTime(activity)}</p>
                         </div>
                         {["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity) ? (
                           <PottyDetailBadges detail={pottyDetailForBadge(activity)} />
@@ -837,7 +838,7 @@ export function ActivityFeed({
           {!showRightPhotoControls ? (
             <div className="flex shrink-0 items-center gap-1.5">
               <InitialsBadge name={loggedBy} />
-              <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+              <span className={timelineTimeBadgeClassName}>
                 {item.time}
               </span>
             </div>
@@ -884,7 +885,7 @@ export function ActivityFeed({
             <div className="flex shrink-0 flex-col items-end gap-2">
               <div className="flex items-center gap-1.5">
                 <InitialsBadge name={loggedBy} />
-                <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80">
+                <span className={timelineTimeBadgeClassName}>
                   {item.time}
                 </span>
               </div>
