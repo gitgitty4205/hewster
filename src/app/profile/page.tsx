@@ -532,7 +532,7 @@ export default function ProfilePage() {
               </label>
             </div>
 
-            <div className="grid grid-cols-[minmax(0,8.7rem)_minmax(0,1fr)] gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-[minmax(0,10.25rem)_minmax(0,1fr)]">
               <label className="block min-w-0 text-sm">
                 <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Birthday <RequiredMark show={isEditingProfile} /></span>
                 <input
