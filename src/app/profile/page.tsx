@@ -402,10 +402,10 @@ export default function ProfilePage() {
   const profilePhotoIsDefault = !profile.photoUrl || profile.photoUrl === DEFAULT_PET_PHOTO_URL;
   const rememberedDateLabel = formatRememberedDate(profile.passedAwayDate);
   const petInfoInputClass = (field?: RequiredPetInfoField) =>
-    `h-11 min-w-0 max-w-full w-full rounded-2xl border bg-white px-3 py-2.5 text-sm outline-none transition focus:ring-4 ${
+    `hewie-input-bubble ${
       field && missingPetInfoFields.has(field)
-        ? "border-rose-300 focus:border-rose-300 focus:ring-rose-100"
-        : "border-zinc-200 focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-zinc-100"
+        ? "hewie-input-bubble-error"
+        : ""
     }`;
 
   return (

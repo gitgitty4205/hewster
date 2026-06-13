@@ -107,6 +107,43 @@ time {
   font-variant-numeric: tabular-nums;
 }
 
+.hewie-input-bubble {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 1rem;
+  box-sizing: border-box;
+  display: block;
+  font-size: 0.875rem;
+  height: 2.75rem;
+  line-height: 1.25rem;
+  max-width: 100%;
+  min-width: 0;
+  outline: none;
+  padding: 0.625rem 0.75rem;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+  width: 100%;
+}
+
+.hewie-input-bubble:focus {
+  border-color: var(--hewie-ring, #cbd5e1);
+  box-shadow: 0 0 0 4px rgba(244, 244, 245, 0.92);
+}
+
+.hewie-input-bubble-error {
+  border-color: #fda4af;
+}
+
+.hewie-input-bubble-error:focus {
+  border-color: #fda4af;
+  box-shadow: 0 0 0 4px #ffe4e6;
+}
+
+.hewie-input-bubble-compact {
+  width: 7rem;
+}
+
 .hewie-date-input {
   appearance: none;
   -webkit-appearance: none;

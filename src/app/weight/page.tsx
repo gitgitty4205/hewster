@@ -32,8 +32,7 @@ import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 const WEIGHT_VALUE_MAX_LENGTH = 12;
-const formInputClass =
-  "h-11 min-w-0 w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45";
+const formInputClass = "hewie-input-bubble";
 
 function todayInputValue() {
   return new Intl.DateTimeFormat("en-CA", {

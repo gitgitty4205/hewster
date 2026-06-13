@@ -361,7 +361,7 @@ export default function MealsPage() {
                         disabled={!isEditing}
                         maxLength={MEAL_NAME_MAX_LENGTH}
                         onChange={(event) => updateDraft("name", event.target.value)}
-                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                        className="hewie-input-bubble disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
                       {isEditing ? (
                         <span className="mt-1 block text-xs text-zinc-400">
@@ -389,7 +389,7 @@ export default function MealsPage() {
                         maxLength={MEAL_FOOD_MAX_LENGTH}
                         placeholder="e.g. food name and amount"
                         onChange={(event) => updateDraft("food", event.target.value)}
-                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                        className="hewie-input-bubble hewie-time-input disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
                       {isEditing ? (
                         <span className="mt-1 block text-xs text-zinc-400">

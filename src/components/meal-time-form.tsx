@@ -61,7 +61,7 @@ export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote
           type="time"
           value={toTimeInputValue(actualTime)}
           onChange={(event) => onActualTimeChange(fromTimeInputValue(event.target.value))}
-          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+          className="hewie-input-bubble hewie-time-input"
         />
       </label>
 

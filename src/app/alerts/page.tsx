@@ -783,7 +783,7 @@ export default function AlertsPage() {
                     type="time"
                     value={alertTimeValue}
                     onChange={(event) => setAlertTimeValue(event.target.value)}
-                    className="w-28 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                    className="hewie-input-bubble hewie-input-bubble-compact hewie-time-input"
                   />
                 </div>
                 {scopeValue === "date" ? (
@@ -897,7 +897,7 @@ export default function AlertsPage() {
                                 value={reviewMealTimeValue(alert.id, reviewPlannedTime)}
                                 onClick={(event) => event.stopPropagation()}
                                 onChange={(event) => updateReviewMealTime(alert.id, event.target.value)}
-                                className="h-10 w-full min-w-0 rounded-full border border-[#8f1739] bg-white px-3 text-sm font-semibold text-[#8f1739] outline-none transition focus:ring-4 focus:ring-[#e6c8ce]/55"
+                                className="hewie-input-bubble hewie-time-input font-semibold text-[#8f1739]"
                               />
                             </label>
                           ) : null}
@@ -1022,7 +1022,7 @@ export default function AlertsPage() {
                           type="time"
                           value={editingAlertTimeValue}
                           onChange={(event) => setEditingAlertTimeValue(event.target.value)}
-                          className="w-28 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                          className="hewie-input-bubble hewie-input-bubble-compact hewie-time-input"
                         />
                       </div>
                       {editingScopeValue === "date" ? (
@@ -1136,7 +1136,7 @@ export default function AlertsPage() {
                 type="time"
                 value={reminderTimeValue}
                 onChange={(event) => setReminderTimeValue(event.target.value)}
-                className="w-28 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                className="hewie-input-bubble hewie-input-bubble-compact hewie-time-input"
               />
             </div>
                 <div className="flex flex-wrap gap-2">
@@ -1187,7 +1187,7 @@ export default function AlertsPage() {
                             type="time"
                             value={editingReminderTimeValue}
                             onChange={(event) => setEditingReminderTimeValue(event.target.value)}
-                            className="w-28 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                            className="hewie-input-bubble hewie-input-bubble-compact hewie-time-input"
                           />
                         </div>
                         <div className="grid grid-cols-3 gap-2">

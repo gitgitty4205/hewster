@@ -1034,7 +1034,7 @@ export default function AccountSettingsPage() {
                                   type="time"
                                   value={quietHoursStart}
                                   onChange={(event) => setQuietHoursStart(event.target.value)}
-                                  className="hewie-time-input mt-2 block h-11 w-full min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white px-2 text-center text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                  className="hewie-input-bubble hewie-time-input mt-2 text-center font-semibold text-zinc-800"
                                 />
                               </label>
                               <label className="block min-w-0 text-xs font-semibold text-zinc-600">
@@ -1043,7 +1043,7 @@ export default function AccountSettingsPage() {
                                   type="time"
                                   value={quietHoursEnd}
                                   onChange={(event) => setQuietHoursEnd(event.target.value)}
-                                  className="hewie-time-input mt-2 block h-11 w-full min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white px-2 text-center text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                  className="hewie-input-bubble hewie-time-input mt-2 text-center font-semibold text-zinc-800"
                                 />
                               </label>
                             </div>
