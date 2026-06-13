@@ -1465,7 +1465,7 @@ export function ActivityDetailForm({
 
           onChange={(event) => onHappenedAtChange(event.target.value)}
 
-          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+          className="hewie-time-input h-11 min-w-0 max-w-full w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
 
         />
 
