@@ -65,10 +65,10 @@ function petProfileStorageKey() {
 }
 
 export const defaultPetProfile: PetProfile = {
-  petName: "Pet",
-  petFirstName: "Pet",
+  petName: "My Pet",
+  petFirstName: "My Pet",
   petLastName: "",
-  species: "Dog",
+  species: "",
   breed: "",
   birthday: "",
   manualAge: "",

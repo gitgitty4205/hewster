@@ -148,7 +148,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
   const [addPetMessage, setAddPetMessage] = useState("");
   const [freePetUpgradeDialogOpen, setFreePetUpgradeDialogOpen] = useState(false);
   const [newPetName, setNewPetName] = useState("");
-  const [newPetSpecies, setNewPetSpecies] = useState("Dog");
+  const [newPetSpecies, setNewPetSpecies] = useState("");
 
   useEffect(() => {
     const refreshPlan = () => setSubscriptionPlan(loadStoredSubscriptionPlan());
@@ -304,7 +304,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
 
   const addPet = async () => {
     const name = clampText(newPetName.trim(), TEXT_LIMITS.shortName);
-    const species = clampText(newPetSpecies.trim(), TEXT_LIMITS.shortName) || "Pet";
+    const species = clampText(newPetSpecies.trim(), TEXT_LIMITS.shortName);
     const supabase = getSupabaseBrowserClient();
     if (!name || !user || !supabase) return;
     if (ownedPetCount >= ownedPetLimit) {
@@ -358,7 +358,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
     setActiveNotebookOwnerId(user.id);
     setNotebookRole("owner");
     setNewPetName("");
-    setNewPetSpecies("Dog");
+    setNewPetSpecies("");
     setAddPetMessage("");
     setAdding(false);
   };
