@@ -7,6 +7,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "PetNoteBook",
   description: "A calm pet care tracker for meals, activity, alerts, and weight.",
+  formatDetection: {
+    address: false,
+    email: false,
+    telephone: false,
+  },
 };
 
 export const viewport: Viewport = {

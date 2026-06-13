@@ -93,6 +93,16 @@ body {
   overflow-x: hidden;
 }
 
+.notebook-member-email,
+.notebook-member-email a,
+.notebook-member-email * {
+  color: inherit;
+  text-decoration: none !important;
+  -webkit-text-decoration-line: none !important;
+  text-decoration-line: none !important;
+  -webkit-touch-callout: none;
+}
+
 time {
   font-variant-numeric: tabular-nums;
 }
