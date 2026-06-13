@@ -32,7 +32,7 @@ export const REMINDER_ALERT_RULES_STORAGE_KEY = "hewster.reminderAlertRules";
 export const ALERT_BADGE_COUNT_STORAGE_KEY = "hewster.alertBadgeCount";
 const DUE_REVIEW_GRACE_MINUTES = 60;
 
-export const defaultReminderAlertRules: ReminderAlertRule[] = [
+const hewieDefaultReminderAlertRules: ReminderAlertRule[] = [
   {
     id: "rule-potty-3pm",
     eventType: "potty",
@@ -129,7 +129,7 @@ function removeLeakedDefaultPottyReminderRules(rules: ReminderAlertRule[]) {
 }
 
 function ensureDefaultReminderRules(rules: ReminderAlertRule[]) {
-  const missingDefaults = defaultReminderAlertRules.filter(
+  const missingDefaults = hewieDefaultReminderAlertRules.filter(
     (defaultRule) => !rules.some((rule) => rule.id === defaultRule.id || (rule.eventType === defaultRule.eventType && rule.time === defaultRule.time))
   );
   return [...missingDefaults, ...rules];
@@ -176,7 +176,7 @@ type ReminderAlertRulesStorageOptions = {
 };
 
 export function loadReminderAlertRules(options: ReminderAlertRulesStorageOptions = {}) {
-  const fallbackRules = options.includeDefaults ? defaultReminderAlertRules : [];
+  const fallbackRules = options.scope === "hewie" && options.includeDefaults ? hewieDefaultReminderAlertRules : [];
   if (typeof window === "undefined") return fallbackRules;
 
   try {
@@ -185,7 +185,7 @@ export function loadReminderAlertRules(options: ReminderAlertRulesStorageOptions
       scrubDefaultReminderRuleStorageKeys(storageKey);
     }
 
-    const stored = window.localStorage.getItem(storageKey) ?? (options.includeDefaults ? window.localStorage.getItem(REMINDER_ALERT_RULES_STORAGE_KEY) : null);
+    const stored = window.localStorage.getItem(storageKey);
     const parsed = stored ? JSON.parse(stored) : null;
     if (!isReminderAlertRuleArray(parsed)) return fallbackRules;
     const normalizedRules = normalizeReminderAlertRules(parsed);
