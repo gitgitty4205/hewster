@@ -1,7 +1,7 @@
 import type { ActivityLog, DailyMealState, ManualAlert } from "@/lib/hewster-data";
 import { careItemOccursWithMeal, customScheduledCareItems, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 import { formatActivityTime } from "@/lib/activity";
-import type { MealTemplate } from "@/lib/meal-templates";
+import { isMealTemplateActiveForDay, type MealTemplate } from "@/lib/meal-templates";
 import { getActiveProfileSlug, UNSCOPED_PROFILE_SLUG } from "@/lib/supabase";
 
 export type ResolvedAlert = {
@@ -465,10 +465,11 @@ export function resolveAlerts(
   const stateByMealId = new Map(dailyMealState.map((entry) => [entry.mealId, entry]));
   const currentMinutes = nowMinutes();
   const todayKey = dayKeyFromDate(new Date());
+  const activeMealTemplates = templates.filter((meal) => isMealTemplateActiveForDay(meal, todayKey));
 
   const pushMealLinkedCareReviewAlerts = (meal: MealTemplate, mealAt: Date, skippedCareItemIds: string[] = [], mealLogged = false) => {
     careTemplates
-      .filter((item) => item.scheduleKind === "meal" && careItemOccursWithMeal(item, meal, templates, todayKey))
+      .filter((item) => item.scheduleKind === "meal" && careItemOccursWithMeal(item, meal, activeMealTemplates, todayKey))
       .forEach((item) => {
         const occurrenceKey = `${item.kind}-${item.id}-meal-${meal.id}-${todayKey}`;
         if (skippedCareItemIds.includes(`${item.kind}-${item.id}`)) return;
@@ -505,7 +506,7 @@ export function resolveAlerts(
       });
   };
 
-  templates.forEach((meal) => {
+  activeMealTemplates.forEach((meal) => {
     const state = stateByMealId.get(meal.id);
     const plannedMinutes = parsePlannedTimeToMinutes(meal.plannedTime);
     const isLogged = Boolean(state?.actualTime);
@@ -519,7 +520,7 @@ export function resolveAlerts(
         kind: needsReview ? "review" : "reminder",
         title: needsReview ? `${meal.name} missing` : `${meal.name} is overdue`,
         detail: `Planned for ${meal.plannedTime}.`,
-        expandedDetail: mealExpandedDetail(meal, templates, todayKey, careTemplates) || `Planned for ${meal.plannedTime}.`,
+        expandedDetail: mealExpandedDetail(meal, activeMealTemplates, todayKey, careTemplates) || `Planned for ${meal.plannedTime}.`,
         severity: needsReview ? "warning" : "info",
         reviewAction: needsReview ? { type: "meal", mealId: meal.id, plannedTime: meal.plannedTime } : undefined,
       });
