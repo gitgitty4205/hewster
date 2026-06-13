@@ -1027,14 +1027,14 @@ export default function AccountSettingsPage() {
                           ) : null}
 
                           {item.title === "Quiet hours" ? (
-                            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                            <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                               <label className="block min-w-0 text-xs font-semibold text-zinc-600">
                                 Start
                                 <input
                                   type="time"
                                   value={quietHoursStart}
                                   onChange={(event) => setQuietHoursStart(event.target.value)}
-                                  className="mt-2 h-11 w-full min-w-0 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                  className="mt-2 block h-11 w-full min-w-0 appearance-none overflow-hidden rounded-2xl border border-zinc-200 bg-white px-2 text-center text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
                                 />
                               </label>
                               <label className="block min-w-0 text-xs font-semibold text-zinc-600">
@@ -1043,7 +1043,7 @@ export default function AccountSettingsPage() {
                                   type="time"
                                   value={quietHoursEnd}
                                   onChange={(event) => setQuietHoursEnd(event.target.value)}
-                                  className="mt-2 h-11 w-full min-w-0 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                  className="mt-2 block h-11 w-full min-w-0 appearance-none overflow-hidden rounded-2xl border border-zinc-200 bg-white px-2 text-center text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
                                 />
                               </label>
                             </div>
