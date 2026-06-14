@@ -81,6 +81,15 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Canonical pet-notebook theme — mirrors Hewie's appThemes.slate values. */
+  --hewie-bg: #999b96;
+  --hewie-active-bg: #f1f1ed;
+  --hewie-active-text: #3f4540;
+  --hewie-accent: #686d67;
+  --hewie-accent-text: #ffffff;
+  --hewie-ring: #cccec8;
+  --hewie-field-border: color-mix(in srgb, var(--hewie-ring) 64%, white);
 }
 
 html {
@@ -109,7 +118,7 @@ time {
 
 .hewie-input-bubble {
   background: #ffffff;
-  border: 1px solid #e4e4e7;
+  border: 1px solid var(--hewie-field-border);
   border-radius: 1rem;
   box-sizing: border-box;
   display: block;
@@ -127,7 +136,7 @@ time {
 }
 
 .hewie-input-bubble:focus {
-  border-color: var(--hewie-ring, #cbd5e1);
+  border-color: var(--hewie-ring);
   box-shadow: 0 0 0 4px rgba(244, 244, 245, 0.92);
 }
 
@@ -142,6 +151,55 @@ time {
 
 .hewie-input-bubble-compact {
   width: 7rem;
+}
+
+.account-settings-reminder-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, 38%);
+}
+
+.account-settings-quiet-hours-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.account-settings-reminder-grid > *,
+.account-settings-quiet-hours-grid > * {
+  min-width: 0;
+  width: 100%;
+}
+
+.history-date-range-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.history-date-range-grid > * {
+  min-width: 0;
+  width: 100%;
+}
+
+.history-date-range-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-clip: padding-box;
+  border: 1px solid rgb(228 228 231) !important;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+  box-shadow: none !important;
+}
+
+.history-date-range-input::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+}
+
+.history-date-range-input::-webkit-calendar-picker-indicator {
+  margin: 0;
+  padding: 0;
 }
 
 .hewie-time-badge {
@@ -321,7 +379,7 @@ time {
 }
 
 .hewie-priority-border {
-  --hewie-priority-color: color-mix(in srgb, var(--hewie-accent, #78608f) 58%, white);
+  --hewie-priority-color: color-mix(in srgb, var(--hewie-accent) 58%, white);
   outline: 2px solid var(--hewie-priority-color);
   animation: hewiePriorityBorderPulse 1.45s ease-in-out infinite;
 }

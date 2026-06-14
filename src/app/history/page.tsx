@@ -18,7 +18,7 @@ import { useAuth } from "@/components/auth-provider";
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import {
 
@@ -1513,6 +1513,8 @@ function timelineItemMatchesHistoryFilter(item: HistoryDay["timelineItems"][numb
 export default function HistoryPage() {
 
   const router = useRouter();
+  const pathname = usePathname();
+  const isHewieHistoryRoute = pathname?.startsWith("/hewie") ?? false;
 
   const { loading: authLoading } = useAuth();
 
@@ -2664,7 +2666,7 @@ export default function HistoryPage() {
 
     return (
 
-      <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+      <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
 
         <CenteredLoadingIcon className="min-h-screen" />
 
@@ -2678,7 +2680,7 @@ export default function HistoryPage() {
 
   return (
 
-    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
 
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
 
@@ -2688,7 +2690,7 @@ export default function HistoryPage() {
 
             <div>
 
-              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text)]" />
 
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">History</h1>
 
@@ -2700,9 +2702,9 @@ export default function HistoryPage() {
 
         </header>
 
-        <section data-guide="history-calendar" className="mb-4 overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+        <section data-guide="history-calendar" className="mb-4 overflow-hidden rounded-3xl bg-[var(--hewie-active-bg)] text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)]">
 
-          <div className="bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)]">
+          <div className="bg-[var(--hewie-accent)] px-5 py-4 text-[var(--hewie-accent-text)]">
 
             <div className="flex items-center justify-between gap-3">
 
@@ -2727,7 +2729,7 @@ export default function HistoryPage() {
 
                   data-guide="history-filters"
 
-                  className="size-9 rounded-full border-white/45 bg-white/15 p-0 text-[var(--hewie-accent-text,#ffffff)] hover:bg-white/25"
+                  className="size-9 rounded-full border-white/45 bg-white/15 p-0 text-[var(--hewie-accent-text)] hover:bg-white/25"
 
                   onClick={openFilters}
 
@@ -2743,7 +2745,7 @@ export default function HistoryPage() {
 
                   variant="outline"
 
-                  className="size-9 rounded-full border-white/45 bg-white/15 p-0 text-[var(--hewie-accent-text,#ffffff)] hover:bg-white/25"
+                  className="size-9 rounded-full border-white/45 bg-white/15 p-0 text-[var(--hewie-accent-text)] hover:bg-white/25"
 
                   onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
 
@@ -2759,7 +2761,7 @@ export default function HistoryPage() {
 
                   variant="outline"
 
-                  className="size-9 rounded-full border-white/45 bg-white/15 p-0 text-[var(--hewie-accent-text,#ffffff)] hover:bg-white/25"
+                  className="size-9 rounded-full border-white/45 bg-white/15 p-0 text-[var(--hewie-accent-text)] hover:bg-white/25"
 
                   onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
 
@@ -2781,9 +2783,9 @@ export default function HistoryPage() {
 
           {showFilters ? (
 
-            <div className="border-b border-[var(--hewie-ring,#cbd5e1)]/70 bg-[var(--hewie-active-bg,#f1f5f9)] p-5">
+            <div className="border-b border-[var(--hewie-ring)]/70 bg-[var(--hewie-active-bg)] p-5">
 
-              <div className="space-y-4 rounded-2xl bg-white/60 p-4 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+              <div className="space-y-4 rounded-2xl bg-white/60 p-4 ring-1 ring-[var(--hewie-ring)]/70">
 
                 <div>
 
@@ -2805,9 +2807,9 @@ export default function HistoryPage() {
 
                           draftFilter === option.id
 
-                            ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] ring-white/45"
+                            ? "bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] ring-white/45"
 
-                            : "bg-white/65 text-[var(--hewie-active-text,#334155)]/75 ring-[var(--hewie-ring,#cbd5e1)]/70"
+                            : "bg-white/65 text-[var(--hewie-active-text)]/75 ring-[var(--hewie-ring)]/70"
 
                         }`}
 
@@ -2845,9 +2847,9 @@ export default function HistoryPage() {
 
                           draftFilter === option.id
 
-                            ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] ring-white/45"
+                            ? "bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] ring-white/45"
 
-                            : "bg-white/65 text-[var(--hewie-active-text,#334155)]/75 ring-[var(--hewie-ring,#cbd5e1)]/70"
+                            : "bg-white/65 text-[var(--hewie-active-text)]/75 ring-[var(--hewie-ring)]/70"
 
                         }`}
 
@@ -2865,13 +2867,13 @@ export default function HistoryPage() {
 
 
 
-                <div className="space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/60 pt-3">
+                <div className="space-y-3 border-t border-[var(--hewie-ring)]/60 pt-3">
 
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Date Range</p>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={isHewieHistoryRoute ? "grid grid-cols-2 gap-2 overflow-hidden" : "history-date-range-grid grid gap-2"}>
 
-                    <label className="text-xs font-semibold text-zinc-500">
+                    <label className={isHewieHistoryRoute ? "text-xs font-semibold text-zinc-500" : "block min-w-0 text-xs font-semibold text-zinc-500"}>
 
                       From
 
@@ -2883,13 +2885,13 @@ export default function HistoryPage() {
 
                         onChange={(event) => setDraftStartDate(event.target.value)}
 
-                        className="mt-1 w-full rounded-2xl border-0 bg-white px-3 py-2 text-sm font-medium text-zinc-800 ring-1 ring-zinc-200"
+                        className={isHewieHistoryRoute ? "mt-1 w-full rounded-2xl border-0 bg-white px-3 py-2 text-sm font-medium text-zinc-800 ring-1 ring-zinc-200" : "history-date-range-input mt-1 block w-full min-w-0 max-w-full rounded-2xl border-0 bg-white px-2 py-2 text-xs font-medium text-zinc-800 ring-1 ring-zinc-200"}
 
                       />
 
                     </label>
 
-                    <label className="text-xs font-semibold text-zinc-500">
+                    <label className={isHewieHistoryRoute ? "text-xs font-semibold text-zinc-500" : "block min-w-0 text-xs font-semibold text-zinc-500"}>
 
                       To
 
@@ -2901,7 +2903,7 @@ export default function HistoryPage() {
 
                         onChange={(event) => setDraftEndDate(event.target.value)}
 
-                        className="mt-1 w-full rounded-2xl border-0 bg-white px-3 py-2 text-sm font-medium text-zinc-800 ring-1 ring-zinc-200"
+                        className={isHewieHistoryRoute ? "mt-1 w-full rounded-2xl border-0 bg-white px-3 py-2 text-sm font-medium text-zinc-800 ring-1 ring-zinc-200" : "history-date-range-input mt-1 block w-full min-w-0 max-w-full rounded-2xl border-0 bg-white px-2 py-2 text-xs font-medium text-zinc-800 ring-1 ring-zinc-200"}
 
                       />
 
@@ -2911,7 +2913,7 @@ export default function HistoryPage() {
 
                   <div className="flex flex-wrap gap-2">
 
-                    <Button type="button" className="rounded-full bg-[var(--hewie-accent,#64748b)] !font-bold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90" onClick={applyFilters}>
+                    <Button type="button" className="rounded-full bg-[var(--hewie-accent)] !font-bold text-[var(--hewie-accent-text)] hover:opacity-90" onClick={applyFilters}>
 
                       Apply Filters
 
@@ -2931,17 +2933,17 @@ export default function HistoryPage() {
 
           {isFilteredView ? (
 
-            <div className="border-b border-[var(--hewie-ring,#cbd5e1)]/70 bg-white/45 px-5 py-3">
+            <div className="border-b border-[var(--hewie-ring)]/70 bg-white/45 px-5 py-3">
 
-              <div className="space-y-3 rounded-2xl bg-white/70 px-3 py-3 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+              <div className="space-y-3 rounded-2xl bg-white/70 px-3 py-3 ring-1 ring-[var(--hewie-ring)]/70">
 
                 <div>
 
-                  <p className="text-base font-extrabold text-[var(--hewie-active-text,#334155)]">
+                  <p className="text-base font-extrabold text-[var(--hewie-active-text)]">
                     {historyFilterLabels.get(activeFilter) ?? "All"}
                   </p>
 
-                  <p className="mt-0.5 text-sm font-semibold text-[var(--hewie-active-text,#334155)]/60">
+                  <p className="mt-0.5 text-sm font-semibold text-[var(--hewie-active-text)]/60">
 
                     {historyCopyDateRange(startDate, endDate)}
 
@@ -2961,7 +2963,7 @@ export default function HistoryPage() {
 
                   {sentCopyEmail ? (
 
-                    <p className="mt-1 text-xs font-bold text-[var(--hewie-active-text,#334155)]">
+                    <p className="mt-1 text-xs font-bold text-[var(--hewie-active-text)]">
                       PDF report emailed to {sentCopyEmail}
                     </p>
 
@@ -2976,7 +2978,7 @@ export default function HistoryPage() {
                       type="checkbox"
                       checked={includeLogDetails}
                       onChange={(event) => setIncludeLogDetails(event.target.checked)}
-                      className="mt-0.5 size-4 rounded border-zinc-300 accent-[var(--hewie-accent,#64748b)]"
+                      className="mt-0.5 size-4 rounded border-zinc-300 accent-[var(--hewie-accent)]"
                     />
                     <span className="inline-flex min-w-0 items-center gap-1">
                       <label htmlFor="include-logging-details">
@@ -2986,7 +2988,7 @@ export default function HistoryPage() {
                         type="button"
                         aria-label={LOGGING_DETAILS_HELP_TEXT}
                         title={LOGGING_DETAILS_HELP_TEXT}
-                        className="group relative inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[var(--hewie-active-text,#334155)]/50 transition hover:bg-[var(--hewie-active-bg,#f1f5f9)] hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-ring,#cbd5e1)]"
+                        className="group relative inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[var(--hewie-active-text)]/50 transition hover:bg-[var(--hewie-active-bg)] hover:text-[var(--hewie-active-text)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-ring)]"
                       >
                         <CircleHelp className="size-3.5" strokeWidth={2.4} />
                         <span className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-64 -translate-x-1/2 rounded-2xl bg-zinc-900 px-3 py-2 text-left text-xs font-medium leading-5 text-white shadow-lg group-hover:block group-focus:block">
@@ -3001,7 +3003,7 @@ export default function HistoryPage() {
 
                   {!sentCopyEmail ? (
 
-                    <Button type="button" className="h-8 rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60" onClick={() => void handleSendCopy()} disabled={isSendingCopy}>
+                    <Button type="button" className="h-8 rounded-full bg-[var(--hewie-accent)] px-3 text-xs font-bold text-[var(--hewie-accent-text)] disabled:opacity-60" onClick={() => void handleSendCopy()} disabled={isSendingCopy}>
 
                       {isSendingCopy ? "Sending..." : "Email History Report"}
 
@@ -3027,7 +3029,7 @@ export default function HistoryPage() {
 
           <div className="p-5">
 
-          <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--hewie-active-text,#334155)]/55">
+          <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--hewie-active-text)]/55">
 
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((dayName) => <span key={dayName}>{dayName}</span>)}
 
@@ -3055,19 +3057,19 @@ export default function HistoryPage() {
 
                     !cell.inMonth
 
-                      ? "text-[var(--hewie-active-text,#334155)]/15"
+                      ? "text-[var(--hewie-active-text)]/15"
 
                       : selected
 
-                        ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] ring-1 ring-white/60"
+                        ? "bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] ring-1 ring-white/60"
 
                         : cell.hasData
 
-                          ? "bg-white/70 text-[var(--hewie-active-text,#334155)] ring-1 ring-[var(--hewie-ring,#cbd5e1)] hover:bg-white/85"
+                          ? "bg-white/70 text-[var(--hewie-active-text)] ring-1 ring-[var(--hewie-ring)] hover:bg-white/85"
 
                           : cell.selectable
-                            ? "bg-white/45 text-[var(--hewie-active-text,#334155)]/60 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/45 hover:bg-white/65"
-                            : "bg-white/25 text-[var(--hewie-active-text,#334155)]/30 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/25"
+                            ? "bg-white/45 text-[var(--hewie-active-text)]/60 ring-1 ring-[var(--hewie-ring)]/45 hover:bg-white/65"
+                            : "bg-white/25 text-[var(--hewie-active-text)]/30 ring-1 ring-[var(--hewie-ring)]/25"
 
                   }`}
 
@@ -3693,7 +3695,7 @@ export default function HistoryPage() {
 
               <p className="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-500 ring-1 ring-zinc-200">No records yet for this day.</p>
 
-              <Button asChild className="h-9 rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90">
+              <Button asChild className="h-9 rounded-full bg-[var(--hewie-accent)] px-4 text-xs font-bold text-[var(--hewie-accent-text)] hover:opacity-90">
                 <Link href={`/notebook/log?date=${selectedEmptyDay}`}>Log This Day</Link>
               </Button>
 
@@ -3715,11 +3717,11 @@ export default function HistoryPage() {
               <div className="mb-4">
                 <h3 id="history-copy-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
                   <span>Email History Reports</span>
-                  <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+                  <span className="inline-flex rounded-full border border-[var(--hewie-accent)] bg-[var(--hewie-active-bg)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text)]">
                     Plus
                   </span>
                 </h3>
-                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text)]">
                   Upgrade to Plus for unlimited PDF reports.
                 </p>
               </div>
@@ -3738,7 +3740,7 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={openHistoryCopyUpgrade}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text,#334155)]"
+                  className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text)]"
                 >
                   <span className="flex items-start gap-2">
                     <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
@@ -3759,7 +3761,7 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={openHistoryCopyUpgrade}
-                  className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
+                  className="h-11 rounded-full bg-[var(--hewie-active-text)] px-4 text-sm font-bold text-white"
                 >
                   Upgrade to Plus
                 </button>
@@ -3775,11 +3777,11 @@ export default function HistoryPage() {
               <div className="mb-4">
                 <h3 id="history-access-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
                   <span>Unlock lifetime history with</span>
-                  <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+                  <span className="inline-flex rounded-full border border-[var(--hewie-accent)] bg-[var(--hewie-active-bg)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text)]">
                     Plus
                   </span>
                 </h3>
-                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text)]">
                   Free includes the latest 3 months. Upgrade to Plus to view older history.
                 </p>
               </div>
@@ -3798,7 +3800,7 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={openHistoryAccessUpgrade}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text,#334155)]"
+                  className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text)]"
                 >
                   <span className="flex items-start gap-2">
                     <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
@@ -3819,7 +3821,7 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={openHistoryAccessUpgrade}
-                  className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
+                  className="h-11 rounded-full bg-[var(--hewie-active-text)] px-4 text-sm font-bold text-white"
                 >
                   Upgrade to Plus
                 </button>
