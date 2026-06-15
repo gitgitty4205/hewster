@@ -169,7 +169,7 @@ function InlineDetails({
   if (!expanded) return null;
 
   return (
-    <div className={`mt-2 whitespace-pre-line rounded-2xl px-3 py-2 text-xs leading-4 ${className}`}>
+    <div className={`mt-2 max-w-full whitespace-pre-line break-words rounded-2xl px-3 py-2 text-xs leading-4 [overflow-wrap:anywhere] ${className}`}>
       {children}
     </div>
   );
@@ -2282,7 +2282,8 @@ export default function HomeApp() {
         {overdueActionCards.length ? (
           <section className="mb-3 space-y-2">
             {overdueActionCards.slice(0, 4).map((card) => {
-              const title = card.type === "meal" ? `${card.meal.name} due ${card.meal.plannedTime}` : `${card.occurrence.item.name} due ${card.occurrence.timeLabel}`;
+              const titleName = card.type === "meal" ? card.meal.name : card.occurrence.item.name;
+              const dueLabel = card.type === "meal" ? card.meal.plannedTime : card.occurrence.timeLabel;
               const expandedDetail = card.type === "meal"
                 ? mealExpandedDetailText(careTemplates, card.meal, dailyMeals, todayKey || currentTodayKey())
                 : customCareExpandedDetailText(card.occurrence);
@@ -2305,8 +2306,9 @@ export default function HomeApp() {
                       <MedicationPillIcon className="size-4 shrink-0 text-sky-600" />
                     )}
                     <div className="min-w-0 flex-1 text-left">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="truncate text-sm font-semibold leading-4 text-[var(--hewie-active-text)]">{title}</p>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <p className="min-w-0 truncate text-sm font-semibold leading-4 text-[var(--hewie-active-text)]">{titleName}</p>
+                        <span className="shrink-0 text-sm font-semibold leading-4 text-[var(--hewie-active-text)]">due {dueLabel}</span>
                         {card.type === "custom-care" && card.occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
                       </div>
                     </div>
