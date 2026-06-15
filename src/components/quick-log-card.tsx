@@ -106,18 +106,18 @@ export function QuickLogCard({ activityState, onQuickLog, includeOther = true, v
   const useAccentBackground = iconOnly || accentBackground;
 
   return (
-    <section className={`mb-4 rounded-3xl p-5 shadow-sm ring-1 ${useAccentBackground ? "bg-[var(--hewie-accent,#64748b)] ring-[var(--hewie-accent,#64748b)]/35" : "bg-white ring-zinc-200"}`}>
+    <section className={`mb-4 rounded-3xl p-5 shadow-sm ring-1 ${useAccentBackground ? "bg-[var(--hewie-accent)] ring-[var(--hewie-accent)]/35" : "bg-white ring-zinc-200"}`}>
       {title || activityState !== "idle" ? (
         onHeaderClick ? (
           <button
             type="button"
             onClick={onHeaderClick}
-            className={`mb-4 flex w-full items-center rounded-2xl transition active:translate-y-px ${useAccentBackground ? "justify-center text-center text-[var(--hewie-accent-text,#ffffff)] hover:bg-white/5" : "justify-between hover:bg-zinc-50"}`}
+            className={`mb-4 flex w-full items-center rounded-2xl transition active:translate-y-px ${useAccentBackground ? "justify-center text-center text-[var(--hewie-accent-text)] hover:bg-white/5" : "justify-between hover:bg-zinc-50"}`}
             aria-label={headerClickLabel}
           >
             <div>{title ? <h2 className="text-lg font-semibold">{title}</h2> : null}</div>
-            <div className={`text-right text-xs ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]/75" : "text-zinc-500"}`}>
-              <div className={`flex items-center justify-end gap-1.5 ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]" : "text-emerald-600"}`}>
+            <div className={`text-right text-xs ${useAccentBackground ? "text-[var(--hewie-accent-text)]/75" : "text-zinc-500"}`}>
+              <div className={`flex items-center justify-end gap-1.5 ${useAccentBackground ? "text-[var(--hewie-accent-text)]" : "text-emerald-600"}`}>
                 {activityState === "saving"
                   ? "Saving Event..."
                   : activityState === "saved"
@@ -130,9 +130,9 @@ export function QuickLogCard({ activityState, onQuickLog, includeOther = true, v
           </button>
         ) : (
           <div className={`mb-4 flex items-center ${useAccentBackground ? "justify-center text-center" : "justify-between"}`}>
-            <div>{title ? <h2 className={`text-lg font-semibold ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]" : ""}`}>{title}</h2> : null}</div>
-            <div className={`text-right text-xs ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]/75" : "text-zinc-500"}`}>
-              <div className={`flex items-center justify-end gap-1.5 ${useAccentBackground ? "text-[var(--hewie-accent-text,#ffffff)]" : "text-emerald-600"}`}>
+            <div>{title ? <h2 className={`text-lg font-semibold ${useAccentBackground ? "text-[var(--hewie-accent-text)]" : ""}`}>{title}</h2> : null}</div>
+            <div className={`text-right text-xs ${useAccentBackground ? "text-[var(--hewie-accent-text)]/75" : "text-zinc-500"}`}>
+              <div className={`flex items-center justify-end gap-1.5 ${useAccentBackground ? "text-[var(--hewie-accent-text)]" : "text-emerald-600"}`}>
                 {activityState === "saving"
                   ? "Saving Event..."
                   : activityState === "saved"

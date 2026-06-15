@@ -293,7 +293,7 @@ export default function WeightPage() {
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-zinc-600">{formatWeightDate(entry.date)}</p>
-          {entry.note ? <ExpandableNoteText className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/75">{entry.note}</ExpandableNoteText> : null}
+          {entry.note ? <ExpandableNoteText className="mt-1 text-sm text-[var(--hewie-active-text)]/75">{entry.note}</ExpandableNoteText> : null}
         </div>
         <p className="max-w-[8.5rem] shrink-0 truncate text-right text-sm font-semibold">{formatWeightWithUnit(entry.weight, profile.weightUnit)}</p>
       </div>
@@ -306,7 +306,7 @@ export default function WeightPage() {
           type="button"
           onClick={canEditEntries ? () => editWeight(entry) : undefined}
           disabled={!canEditEntries}
-          className="w-full rounded-2xl bg-white/70 p-4 text-left text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.045)] transition enabled:hover:bg-white/85 disabled:cursor-default"
+          className="w-full rounded-2xl bg-white/70 p-4 text-left text-[var(--hewie-active-text)] shadow-[0_8px_18px_rgba(15,23,42,0.045)] transition enabled:hover:bg-white/85 disabled:cursor-default"
           aria-label={`Edit weight from ${formatWeightDate(entry.date)}`}
         >
           {summary}
@@ -317,12 +317,12 @@ export default function WeightPage() {
     return (
       <article
         key={entry.id}
-        className="relative rounded-2xl bg-white/70 p-4 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.045)]"
+        className="relative rounded-2xl bg-white/70 p-4 text-[var(--hewie-active-text)] shadow-[0_8px_18px_rgba(15,23,42,0.045)]"
       >
       {summary}
-        <div className="mt-4 space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-4">
+        <div className="mt-4 space-y-3 border-t border-[var(--hewie-ring)]/70 pt-4">
           <label className="block min-w-0 text-sm">
-            <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Date</span>
+            <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Date</span>
             <input
               type="date"
               value={editingDateValue}
@@ -333,7 +333,7 @@ export default function WeightPage() {
 
           <div className="grid grid-cols-[minmax(0,1fr)_6rem] gap-3">
             <label className="block min-w-0 text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Weight</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Weight</span>
               <input
                 inputMode="decimal"
                 value={editingWeightValue}
@@ -345,7 +345,7 @@ export default function WeightPage() {
             </label>
 
             <label className="block min-w-0 text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Unit</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Unit</span>
               <select
                 value={profile.weightUnit}
                 onChange={(event) => updateWeightUnit(event.target.value as PetProfile["weightUnit"])}
@@ -358,7 +358,7 @@ export default function WeightPage() {
           </div>
 
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Notes</span>
+            <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Notes</span>
               <input
                 value={editingNoteValue}
                 onChange={(event) => setEditingNoteValue(clampText(event.target.value, TEXT_LIMITS.note))}
@@ -392,31 +392,31 @@ export default function WeightPage() {
 
   if (!hydrated) {
     return (
-      <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+      <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
         <CenteredLoadingIcon className="min-h-screen" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Weight</h1>
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
         </header>
 
-        <section data-guide="weight-log" className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+        <section data-guide="weight-log" className="mb-4 rounded-3xl bg-[var(--hewie-active-bg)] p-5 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)]">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Add Weight</h2>
             </div>
-            <div className="text-right text-xs text-[var(--hewie-active-text,#334155)]/60">
+            <div className="text-right text-xs text-[var(--hewie-active-text)]/60">
               {saveState === "saving"
                 ? "Saving..."
                 : saveState === "saved"
@@ -429,7 +429,7 @@ export default function WeightPage() {
 
           <div className="space-y-3">
             <label className="block min-w-0 text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Date</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Date</span>
               <input
                 type="date"
                 value={dateValue}
@@ -440,7 +440,7 @@ export default function WeightPage() {
 
             <div className="grid grid-cols-[minmax(0,1fr)_6rem] gap-3">
               <label className="block min-w-0 text-sm">
-                <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Weight</span>
+                <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Weight</span>
                 <input
                   inputMode="decimal"
                   value={weightValue}
@@ -452,7 +452,7 @@ export default function WeightPage() {
               </label>
 
               <label className="block min-w-0 text-sm">
-                <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Unit</span>
+                <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Unit</span>
                 <select
                   value={profile.weightUnit}
                   onChange={(event) => updateWeightUnit(event.target.value as PetProfile["weightUnit"])}
@@ -465,7 +465,7 @@ export default function WeightPage() {
             </div>
 
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Notes</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Notes</span>
               <input
                 value={noteValue}
                 onChange={(event) => setNoteValue(clampText(event.target.value, TEXT_LIMITS.note))}
@@ -487,8 +487,8 @@ export default function WeightPage() {
           </div>
         </section>
 
-        <section className="mb-4 overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-sm">
-          <div className="bg-[var(--hewie-accent,#64748b)] px-5 py-4 text-[var(--hewie-accent-text,#ffffff)]">
+        <section className="mb-4 overflow-hidden rounded-3xl bg-[var(--hewie-active-bg)] text-[var(--hewie-active-text)] shadow-sm">
+          <div className="bg-[var(--hewie-accent)] px-5 py-4 text-[var(--hewie-accent-text)]">
             <h2 className="text-lg font-semibold">Weight History</h2>
           </div>
 
@@ -508,7 +508,7 @@ export default function WeightPage() {
                       >
                         <span className="flex items-center gap-2">
                           {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-                          <span className="text-sm font-bold text-[var(--hewie-active-text,#334155)]/85">{group.year}</span>
+                          <span className="text-sm font-bold text-[var(--hewie-active-text)]/85">{group.year}</span>
                         </span>
                       </button>
 
@@ -522,7 +522,7 @@ export default function WeightPage() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">No weight entries yet.</p>
+              <p className="text-sm text-[var(--hewie-active-text)]/65">No weight entries yet.</p>
             )}
           </div>
         </section>

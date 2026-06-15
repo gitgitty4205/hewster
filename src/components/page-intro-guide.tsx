@@ -164,7 +164,7 @@ export function PageIntroGuide() {
       <button
         type="button"
         onClick={startGuide}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] left-4 z-[65] inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-2 text-xs font-bold text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] backdrop-blur"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] left-4 z-[65] inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-2 text-xs font-bold text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)] backdrop-blur"
       >
         <CircleHelp className="size-4" />
         Guide
@@ -242,7 +242,7 @@ export function PageIntroGuide() {
           <button
             type="button"
             onClick={() => isLastStep ? finishGuide() : goToStep(step + 1)}
-            className="h-9 rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-xs font-bold text-[var(--hewie-accent-text,#ffffff)]"
+            className="h-9 rounded-full bg-[var(--hewie-accent)] px-4 text-xs font-bold text-[var(--hewie-accent-text)]"
           >
             {isLastStep ? "Done" : "Next"}
           </button>

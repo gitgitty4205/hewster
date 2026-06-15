@@ -3,7 +3,7 @@
 
 
 import { useEffect, useState } from "react";
-import { Camera, Check, ChevronRight, Images } from "lucide-react";
+import { Camera, Check, ChevronDown, ChevronRight, ChevronUp, Images } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -11,7 +11,7 @@ import type { ActivityType } from "@/lib/hewster-data";
 
 import type { CareItemTemplate } from "@/lib/care-settings";
 
-import { formatActivityLabel } from "@/lib/activity";
+import { careItemShortcutLabel, formatActivityLabel, savedCareItemLogNotes } from "@/lib/activity";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
 
 import {
@@ -741,37 +741,6 @@ function displayDetailValue(detail: string) {
 
 }
 
-function savedCareItemLabel(item: CareItemTemplate) {
-
-  return `${item.name.trim() || formatActivityLabel(item.kind)}${item.dose ? ` • ${item.dose}` : ""}`;
-
-}
-
-function savedCareItemNotes(item: CareItemTemplate) {
-
-  const medicationType = item.kind === "medication"
-    ? item.medicationType === "topical"
-      ? "Topical"
-      : item.medicationType === "injection"
-        ? "Injection"
-        : item.medicationType === "other"
-          ? "Other"
-          : "Oral"
-    : null;
-  const frequency = item.scheduleSteps.find((step) => step.everyHours)?.everyHours;
-
-  return [
-    `Give ${item.dose || "as directed"}${medicationType ? ` (${medicationType})` : ""}`,
-    frequency ? `Every ${frequency} Hours • As Needed` : "As Needed",
-    item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food",
-    medicationType,
-    item.notes ? `Notes: ${item.notes.trim()}` : "",
-  ].filter(Boolean).join("\n");
-
-}
-
-
-
 export function ActivityDetailForm({
 
   activityType,
@@ -830,6 +799,7 @@ export function ActivityDetailForm({
   const theme = appThemes[themeId];
   const inferredSickLogMode = activityType === "sick" ? sickLogModeFromDetail(detail) : "";
   const [selectedSickLogMode, setSelectedSickLogMode] = useState<SickLogMode>("");
+  const [expandedSavedCareItemKey, setExpandedSavedCareItemKey] = useState<string | null>(null);
   const sickLogMode = activityType === "sick" ? selectedSickLogMode || inferredSickLogMode : "";
 
 
@@ -904,6 +874,117 @@ export function ActivityDetailForm({
 
   });
 
+  const savedCareShortcutHasSupplement = visibleSavedCareItems.some((item) => item.kind === "supplement");
+
+  const savedCareShortcutContent = visibleSavedCareItems.length ? (
+
+    <div className={`rounded-2xl p-3 ring-1 ${savedCareShortcutHasSupplement ? "bg-rose-50/60 ring-[#e0b4bf]" : "bg-sky-50/60 ring-sky-100"}`}>
+
+      <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.16em] ${savedCareShortcutHasSupplement ? "text-[#a44f68]" : "text-sky-500"}`}>{savedCareShortcutHasSupplement ? "Saved Supplement" : "Saved Medication"}</p>
+
+      <div className="flex flex-wrap gap-2">
+
+        {visibleSavedCareItems.map((item) => {
+
+          const label = careItemShortcutLabel(item);
+
+          const isSupplementShortcut = item.kind === "supplement";
+          const savedCareItemKey = `${item.kind}-${item.id}`;
+          const savedCareInfoExpanded = expandedSavedCareItemKey === savedCareItemKey;
+          const savedCareDetailValue = activityType === "sick" ? `Medication: ${label}` : activityType === "wellness" && item.kind === "supplement" ? "Supplements" : label;
+          const savedCareItemSelected = detail === savedCareDetailValue;
+          const savedCareItemClasses = savedCareItemSelected
+            ? isSupplementShortcut
+              ? "bg-[#a44f68] text-white ring-2 ring-[#a44f68] shadow-sm"
+              : "bg-sky-600 text-white ring-2 ring-sky-600 shadow-sm"
+            : isSupplementShortcut
+              ? "bg-white text-[#a44f68] ring-1 ring-[#e0b4bf]"
+              : "bg-white text-sky-700 ring-1 ring-sky-200";
+          const savedCareLabelClasses = savedCareItemSelected
+            ? isSupplementShortcut
+              ? "hover:bg-[#913f58]"
+              : "hover:bg-sky-700"
+            : isSupplementShortcut
+              ? "hover:bg-rose-50"
+              : "hover:bg-sky-50";
+          const savedCareChevronClasses = savedCareItemSelected
+            ? "border-white/30 hover:bg-white/10"
+            : isSupplementShortcut
+              ? "border-[#e0b4bf] hover:bg-rose-50"
+              : "border-sky-100 hover:bg-sky-50";
+
+          return (
+
+            <div
+
+              key={savedCareItemKey}
+
+              className="flex flex-col items-start gap-2"
+
+            >
+
+              <span className={`inline-flex overflow-hidden rounded-full text-sm font-medium transition ${savedCareItemClasses}`}>
+
+                <button
+
+                  type="button"
+
+                  className={`px-3 py-2 transition ${savedCareLabelClasses}`}
+
+                  onClick={() => {
+
+                    onDetailChange(savedCareDetailValue);
+
+                    if (activityType !== "sick") onNotesChange(savedCareItemLogNotes(item));
+
+                  }}
+
+                >
+
+                  {label}
+
+                </button>
+
+                <button
+
+                  type="button"
+
+                  aria-label={savedCareInfoExpanded ? `Hide ${label} info` : `Show ${label} info`}
+
+                  className={`flex w-8 items-center justify-center border-l transition ${savedCareChevronClasses}`}
+
+                  onClick={() => setExpandedSavedCareItemKey(savedCareInfoExpanded ? null : savedCareItemKey)}
+
+                >
+
+                  {savedCareInfoExpanded ? <ChevronUp className="size-4" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}
+
+                </button>
+
+              </span>
+
+              {savedCareInfoExpanded ? (
+
+                <div className={`whitespace-pre-line rounded-2xl bg-white px-3 py-2 text-sm leading-5 ring-1 ${isSupplementShortcut ? "text-[#7f344a] ring-[#e0b4bf]" : "text-sky-800 ring-sky-100"}`}>
+
+                  {savedCareItemLogNotes(item)}
+
+                </div>
+
+              ) : null}
+
+            </div>
+
+          );
+
+        })}
+
+      </div>
+
+    </div>
+
+  ) : null;
+
   const saveDisabled =
 
     saving ||
@@ -976,53 +1057,7 @@ export function ActivityDetailForm({
 
 
 
-      {visibleSavedCareItems.length ? (
-
-        <div className={`mb-4 rounded-2xl p-3 ring-1 ${visibleSavedCareItems.some((item) => item.kind === "supplement") ? "bg-rose-50/60 ring-[#e0b4bf]" : "bg-sky-50/60 ring-sky-100"}`}>
-
-          <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.16em] ${visibleSavedCareItems.some((item) => item.kind === "supplement") ? "text-[#a44f68]" : "text-sky-500"}`}>{visibleSavedCareItems.some((item) => item.kind === "supplement") ? "Saved Supplement" : "Saved Medication"}</p>
-
-          <div className="flex flex-wrap gap-2">
-
-            {visibleSavedCareItems.map((item) => {
-
-              const label = savedCareItemLabel(item);
-
-              const isSupplementShortcut = item.kind === "supplement";
-
-              return (
-
-                <button
-
-                  key={`${item.kind}-${item.id}`}
-
-                  type="button"
-
-                  className={`rounded-full bg-white px-3 py-2 text-sm font-medium ring-1 transition ${isSupplementShortcut ? "text-[#a44f68] ring-[#e0b4bf] hover:bg-rose-50" : "text-sky-700 ring-sky-200 hover:bg-sky-50"}`}
-
-                  onClick={() => {
-
-                    onDetailChange(activityType === "sick" ? "Medication" : activityType === "wellness" && item.kind === "supplement" ? "Supplements" : label);
-
-                    onNotesChange(savedCareItemNotes(item));
-
-                  }}
-
-                >
-
-                  {label}
-
-                </button>
-
-              );
-
-            })}
-
-          </div>
-
-        </div>
-
-      ) : null}
+      {activityType === "sick" ? null : savedCareShortcutContent ? <div className="mb-4">{savedCareShortcutContent}</div> : null}
 
       {activityType === "sick" ? (
 
@@ -1106,6 +1141,8 @@ export function ActivityDetailForm({
                 ))}
 
               </div>
+
+              {savedCareShortcutContent ? <div className="mt-3">{savedCareShortcutContent}</div> : null}
 
               {isProcedureDetail(detail) ? (
 
@@ -1704,11 +1741,11 @@ export function ActivityDetailForm({
             <div className="mb-4">
               <h3 id="attachment-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
                 <span>{poopPhotoDetail ? "Add more poop images with" : "Add more files with"}</span>
-                <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+                <span className="inline-flex rounded-full border border-[var(--hewie-accent)] bg-[var(--hewie-active-bg)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text)]">
                   Plus
                 </span>
               </h3>
-              <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+              <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text)]">
                 {attachmentPickerBlockedMessage}
               </p>
             </div>
@@ -1728,7 +1765,7 @@ export function ActivityDetailForm({
               <button
                 type="button"
                 onClick={openPlusFeatures}
-                className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text,#334155)]"
+                className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text)]"
               >
                 <span className="flex items-start gap-2">
                   <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
@@ -1749,7 +1786,7 @@ export function ActivityDetailForm({
               <button
                 type="button"
                 onClick={openPlusFeatures}
-                className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
+                className="h-11 rounded-full bg-[var(--hewie-active-text)] px-4 text-sm font-bold text-white"
               >
                 Upgrade to Plus
               </button>

@@ -371,7 +371,7 @@ export function BottomNav({ alertsCount }: Props) {
         <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden bg-zinc-950/25 p-3 backdrop-blur-sm sm:p-6">
           <div
             data-pages-menu-panel
-            className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[82vh] sm:min-h-[620px]"
+            className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[720px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-[var(--hewie-active-bg)] shadow-2xl ring-1 ring-[var(--hewie-ring)] sm:h-[82vh] sm:min-h-[620px]"
           >
             <div
               className={`absolute inset-0 transition duration-300 ease-out ${
@@ -392,20 +392,20 @@ export function BottomNav({ alertsCount }: Props) {
               style={{
                 background: showingFullColorBackground
                   ? "linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.03) 45%, rgba(0,0,0,0.1) 100%)"
-                  : "linear-gradient(180deg, color-mix(in srgb, var(--hewie-active-bg,#f1f5f9) 52%, transparent) 0%, color-mix(in srgb, var(--hewie-bg,#979ca7) 24%, transparent) 44%, color-mix(in srgb, var(--hewie-active-bg,#f1f5f9) 40%, transparent) 100%)",
+                  : "linear-gradient(180deg, color-mix(in srgb, var(--hewie-active-bg) 52%, transparent) 0%, color-mix(in srgb, var(--hewie-bg) 24%, transparent) 44%, color-mix(in srgb, var(--hewie-active-bg) 40%, transparent) 100%)",
               }}
               aria-hidden="true"
             />
-            <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg,#f1f5f9)]/92 px-6 py-5 text-[var(--hewie-active-text,#334155)] shadow-sm backdrop-blur-[1px]">
+            <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg)]/92 px-6 py-5 text-[var(--hewie-active-text)] shadow-sm backdrop-blur-[1px]">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--hewie-active-text,#334155)]/70"><PetNotebookTitle /></p>
-                <h2 className="text-2xl font-semibold text-[var(--hewie-active-text,#334155)]">Pages</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--hewie-active-text)]/70"><PetNotebookTitle /></p>
+                <h2 className="text-2xl font-semibold text-[var(--hewie-active-text)]">Pages</h2>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => updatePagesBackgroundMode(pagesBackgroundMode === "full" ? "soft" : "full")}
-                  className="flex size-10 items-center justify-center rounded-full bg-white/85 text-[var(--hewie-active-text,#334155)] shadow-sm transition hover:bg-white"
+                  className="flex size-10 items-center justify-center rounded-full bg-white/85 text-[var(--hewie-active-text)] shadow-sm transition hover:bg-white"
                   aria-pressed={pagesBackgroundMode === "full"}
                   aria-label={pagesBackgroundMode === "full" ? "Use soft Pages background" : "Use full color Pages background"}
                   title={pagesBackgroundMode === "full" ? "Use soft Pages background" : "Use full color Pages background"}
@@ -413,8 +413,8 @@ export function BottomNav({ alertsCount }: Props) {
                   <span
                     className={`size-4 rounded-full transition ${
                       pagesBackgroundMode === "full"
-                        ? "bg-[var(--hewie-accent,#64748b)] shadow-inner ring-1 ring-[var(--hewie-active-text,#334155)]/15"
-                        : "bg-transparent ring-2 ring-[var(--hewie-active-text,#334155)]/55"
+                        ? "bg-[var(--hewie-accent)] shadow-inner ring-1 ring-[var(--hewie-active-text)]/15"
+                        : "bg-transparent ring-2 ring-[var(--hewie-active-text)]/55"
                     }`}
                     aria-hidden="true"
                   />
@@ -422,7 +422,7 @@ export function BottomNav({ alertsCount }: Props) {
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="flex size-10 items-center justify-center rounded-full bg-white/85 text-[var(--hewie-active-text,#334155)] shadow-sm"
+                  className="flex size-10 items-center justify-center rounded-full bg-white/85 text-[var(--hewie-active-text)] shadow-sm"
                   aria-label="Close notebook menu"
                 >
                   <X className="size-5" />
@@ -451,13 +451,13 @@ export function BottomNav({ alertsCount }: Props) {
                       <span
                         className={`relative flex size-[4.65rem] items-center justify-center rounded-[1.2rem] shadow-sm ring-1 ring-[rgba(15,23,42,0.08)] transition group-hover:-translate-y-0.5 ${
                           active
-                            ? "bg-[var(--hewie-accent,#64748b)]/90 text-[var(--hewie-accent-text,#ffffff)] shadow-[0_10px_24px_rgba(15,23,42,0.16)] ring-[rgba(15,23,42,0.11)] backdrop-blur-[1.5px]"
-                            : "bg-[var(--hewie-bg,#979ca7)]/76 text-[var(--hewie-accent-text,#ffffff)] shadow-[0_10px_24px_rgba(15,23,42,0.11)] ring-[rgba(15,23,42,0.08)] backdrop-blur-[1.5px] group-hover:bg-[var(--hewie-accent,#64748b)]/88"
+                            ? "bg-[var(--hewie-accent)]/90 text-[var(--hewie-accent-text)] shadow-[0_10px_24px_rgba(15,23,42,0.16)] ring-[rgba(15,23,42,0.11)] backdrop-blur-[1.5px]"
+                            : "bg-[var(--hewie-bg)]/76 text-[var(--hewie-accent-text)] shadow-[0_10px_24px_rgba(15,23,42,0.11)] ring-[rgba(15,23,42,0.08)] backdrop-blur-[1.5px] group-hover:bg-[var(--hewie-accent)]/88"
                         }`}
                       >
                         {item.iconKind === "paw" ? <PawIcon /> : item.iconKind === "weight" ? <WeightIcon /> : item.iconKind === "pencil" ? <PencilIcon /> : item.iconKind === "bookmark" ? <BookmarkIcon /> : Icon ? <Icon className="size-[1.72rem]" strokeWidth={1.65} /> : null}
                         {showBadge ? (
-                          <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-[var(--hewie-active-bg,#f1f5f9)]">
+                          <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text)] ring-2 ring-[var(--hewie-active-bg)]">
                             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
                           </span>
                         ) : null}
@@ -539,7 +539,7 @@ export function BottomNav({ alertsCount }: Props) {
           if (floatingMenuDragRef.current?.pointerId !== event.pointerId) return;
           setDraggingFloatingMenu(false);
         }}
-        className={`fixed z-[60] flex size-[4.25rem] touch-none select-none items-center justify-center rounded-[1.45rem] bg-[var(--hewie-accent,#64748b)] shadow-[0_16px_34px_rgba(15,23,42,0.28)] transition hover:scale-105 ${
+        className={`fixed z-[60] flex size-[4.25rem] touch-none select-none items-center justify-center rounded-[1.45rem] bg-[var(--hewie-accent)] shadow-[0_16px_34px_rgba(15,23,42,0.28)] transition hover:scale-105 ${
           floatingMenuPosition ? "" : "bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-[max(1rem,calc((100vw-28rem)/2+1rem))]"
         } ${draggingFloatingMenu ? "cursor-grabbing scale-105" : "cursor-grab"}`}
         style={floatingMenuPosition ? { left: `${floatingMenuPosition.x}px`, top: `${floatingMenuPosition.y}px` } : undefined}
@@ -547,7 +547,7 @@ export function BottomNav({ alertsCount }: Props) {
       >
         <BrandNotebookIcon />
         {activeAlertsCount > 0 ? (
-          <span className="pointer-events-none absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text,#ffffff)] ring-2 ring-white">
+          <span className="pointer-events-none absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--hewie-accent)] px-1.5 text-[11px] font-bold text-[var(--hewie-accent-text)] ring-2 ring-white">
             {activeAlertsCount > 9 ? "9+" : activeAlertsCount}
           </span>
         ) : null}

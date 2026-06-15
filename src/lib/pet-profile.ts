@@ -39,6 +39,7 @@ export const LATEST_USER_THEME_STORAGE_KEY = "hewster.userTheme:latest";
 export const PET_THEME_UPDATED_EVENT = "pet-theme-updated";
 export const PET_PROFILE_UPDATED_EVENT = "pet-profile-updated";
 export const DEFAULT_PET_PHOTO_URL = "/paw-print.svg";
+export const CANONICAL_THEME_ID: ThemeId = "slate";
 
 type PetProfileRow = {
   profile: unknown;
@@ -88,7 +89,7 @@ export const defaultPetProfile: PetProfile = {
   archivedFromPetSwitcher: false,
   photoUrl: "",
   weightUnit: "lb",
-  themeId: "slate",
+  themeId: CANONICAL_THEME_ID,
 };
 
 export const appThemes: Record<ThemeId, {
@@ -316,7 +317,7 @@ export function loadUserTheme(userId?: string | null) {
   const latestTheme = normalizeThemeId(window.localStorage.getItem(LATEST_USER_THEME_STORAGE_KEY));
   if (latestTheme) return latestTheme;
 
-  return loadPetProfile().themeId;
+  return CANONICAL_THEME_ID;
 }
 
 export function saveUserTheme(themeId: ThemeId, userId?: string | null) {
@@ -330,7 +331,7 @@ export function saveUserTheme(themeId: ThemeId, userId?: string | null) {
 export function applyPetTheme(themeId: ThemeId) {
   if (typeof document === "undefined") return;
 
-  const theme = appThemes[themeId] ?? appThemes.slate;
+  const theme = appThemes[themeId] ?? appThemes[CANONICAL_THEME_ID];
   const root = document.documentElement;
   root.style.setProperty("--hewie-bg", theme.background);
   root.style.setProperty("--hewie-active-bg", theme.activeBg);

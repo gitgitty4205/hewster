@@ -33,6 +33,37 @@ export const REMINDER_ALERT_RULES_STORAGE_KEY = "hewster.reminderAlertRules";
 export const ALERT_BADGE_COUNT_STORAGE_KEY = "hewster.alertBadgeCount";
 const DUE_REVIEW_GRACE_MINUTES = 60;
 
+function normalizeAlertDisplayText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/^meal:\s*.+\s+at\s+/g, "")
+    .replace(/\b(planned|scheduled)\s+(?:with\s+.+?\s+)?(?:for|at)\s+/g, "")
+    .replace(/^meal:\s*/g, "")
+    .replace(/[.:]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function alertDetailLines(value?: string) {
+  return value?.split("\n").map((line) => line.trim()).filter(Boolean) ?? [];
+}
+
+function isDuplicateAlertDetailLine(line: string, visibleLines: Set<string>) {
+  const normalizedLine = normalizeAlertDisplayText(line);
+  return Boolean(normalizedLine && visibleLines.has(normalizedLine));
+}
+
+export function alertExpandedDetail(alert: Pick<ResolvedAlert, "title" | "detail" | "expandedDetail">) {
+  const visibleLines = new Set(
+    [alert.title, ...alertDetailLines(alert.detail)]
+      .map(normalizeAlertDisplayText)
+      .filter(Boolean)
+  );
+  const uniqueLines = alertDetailLines(alert.expandedDetail).filter((line) => !isDuplicateAlertDetailLine(line, visibleLines));
+
+  return uniqueLines.length ? uniqueLines.join("\n") : undefined;
+}
+
 export function reminderEventLabel(eventType: ReminderAlertEvent) {
   switch (eventType) {
     case "meal":
@@ -414,9 +445,9 @@ function customCareFrequencyText(item: CareItemTemplate) {
   const steps = careScheduleSteps(item);
   if (steps.length > 1) return `${steps.length} Schedules`;
   if (!steps[0]) return item.ongoing ? null : "Schedule Needed";
-  if (item.ongoing) return `Every ${steps[0].everyHours} Hours • Ongoing`;
-  if (item.asNeeded) return `Every ${steps[0].everyHours} Hours • As Needed`;
-  return `Every ${steps[0].everyHours} Hours For ${steps[0].forDays} Days`;
+  if (item.ongoing) return `Every ${steps[0].everyHours} hours • Ongoing`;
+  if (item.asNeeded) return `Every ${steps[0].everyHours} hours, As Needed`;
+  return `Every ${steps[0].everyHours} hours for ${steps[0].forDays} days`;
 }
 
 function careItemExpandedDetail(item: CareItemTemplate, scheduleLine?: string) {
@@ -549,7 +580,7 @@ export function resolveAlerts(
       kind: "review",
       title: `${occurrence.item.name} missing`,
       detail: `Scheduled for ${formatActivityTime(occurrence.scheduledAt.toISOString())}.`,
-      expandedDetail: careItemExpandedDetail(occurrence.item, `Scheduled for ${formatActivityTime(occurrence.scheduledAt.toISOString())}`),
+      expandedDetail: careItemExpandedDetail(occurrence.item),
       severity: "warning",
       reviewAction: {
         type: "custom-care",
@@ -615,11 +646,12 @@ export function resolveAlerts(
       return alertMinutes !== null && currentMinutes >= alertMinutes;
     })
     .forEach((alert) => {
+      const scheduleDetail = alert.time ? formatReminderTime(alert.time) : manualAlertScheduleLabel(alert);
       alerts.push({
         id: alert.id,
         kind: "manual",
         title: alert.title,
-        detail: [alert.time ? formatReminderTime(alert.time) : null, alert.message].filter(Boolean).join(" • "),
+        detail: scheduleDetail,
         expandedDetail: alert.message.trim() || undefined,
         severity: "info",
       });

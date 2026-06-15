@@ -198,8 +198,9 @@ export default function ProfilePage() {
       const storedProfile = supabase && user
         ? await loadSharedPetProfile(supabase, user)
         : loadPetProfile();
-      setProfile(storedProfile);
-      setThemeId(loadUserTheme(user?.id));
+      const resolvedThemeId = loadUserTheme(user?.id);
+      setProfile({ ...storedProfile, themeId: resolvedThemeId });
+      setThemeId(resolvedThemeId);
     });
   }, [user]);
 
@@ -326,7 +327,7 @@ export default function ProfilePage() {
 
 
   const updateProfile = (next: Partial<PetProfile>) => {
-    const merged = { ...profile, ...next };
+    const merged = { ...profile, themeId, ...next };
     const updated = {
       ...merged,
       petName: [merged.petFirstName, merged.petLastName].filter(Boolean).join(" ") || merged.petName,
@@ -379,8 +380,21 @@ export default function ProfilePage() {
   };
 
   const updateTheme = (nextThemeId: ThemeId) => {
+    const updatedProfile = { ...profile, themeId: nextThemeId };
     setThemeId(nextThemeId);
+    setProfile(updatedProfile);
     saveUserTheme(nextThemeId, user?.id);
+    const saved = savePetProfile(updatedProfile);
+    if (!saved) {
+      setProfilePhotoMessage("Could not save this change because browser storage is full.");
+      return;
+    }
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && user) {
+      void saveSharedPetProfile(supabase, user, updatedProfile).catch(() => {
+        setProfilePhotoMessage("Saved on this device, but could not sync the shared profile.");
+      });
+    }
     applyPetTheme(nextThemeId);
     setSaveState("saved");
     window.setTimeout(() => setSaveState("idle"), 1400);
@@ -409,19 +423,19 @@ export default function ProfilePage() {
     }`;
 
   return (
-    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Pet Profile</h1>
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
         </header>
 
-        <section data-guide="profile-info" className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+        <section data-guide="profile-info" className="mb-4 rounded-3xl bg-[var(--hewie-active-bg)] p-5 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)]">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
@@ -430,7 +444,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => setShowGoodbyeIntro(true)}
                   disabled={profileDetailsLocked}
-                  className="flex items-center justify-center text-[var(--hewie-active-text,#334155)]/60 transition hover:text-[var(--hewie-active-text,#334155)]/75"
+                  className="flex items-center justify-center text-[var(--hewie-active-text)]/60 transition hover:text-[var(--hewie-active-text)]/75"
                   aria-label="Sensitive pet options"
                 >
                   <Heart className="size-4 fill-current" />
@@ -446,7 +460,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={handleDoneEditingProfile}
-                    className="inline-flex items-center rounded-full bg-white/75 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/75 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white"
+                    className="inline-flex items-center rounded-full bg-white/75 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text)]/75 shadow-sm ring-1 ring-[var(--hewie-ring)] transition hover:bg-white"
                   >
                     Save
                   </button>
@@ -456,14 +470,14 @@ export default function ProfilePage() {
                     variant="outline"
                     size="icon"
                     onClick={() => setIsEditingProfile(true)}
-                    className="size-9 shrink-0 rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/70 ring-[var(--hewie-ring,#cbd5e1)] hover:bg-white"
+                    className="size-9 shrink-0 rounded-full bg-white/75 text-[var(--hewie-active-text)]/70 ring-[var(--hewie-ring)] hover:bg-white"
                     aria-label="Edit pet profile"
                   >
                     <Pencil className="size-4" />
                   </Button>
                 )
               ) : (
-                <span className="rounded-full bg-white/65 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/55 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+                <span className="rounded-full bg-white/65 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text)]/55 ring-1 ring-[var(--hewie-ring)]">
                   View Only
                 </span>
               )}
@@ -475,10 +489,10 @@ export default function ProfilePage() {
             </p>
           ) : null}
           {profile.hasPassedAway ? (
-            <div className="mb-3 rounded-2xl bg-white/70 p-3 text-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
-              <p className="font-semibold text-[var(--hewie-active-text,#334155)]/85">Remembered{rememberedDateLabel ? ` ${rememberedDateLabel}` : ""}</p>
+            <div className="mb-3 rounded-2xl bg-white/70 p-3 text-sm ring-1 ring-[var(--hewie-ring)]/70">
+              <p className="font-semibold text-[var(--hewie-active-text)]/85">Remembered{rememberedDateLabel ? ` ${rememberedDateLabel}` : ""}</p>
               {profile.memorialNotes ? (
-                <p className="mt-1 text-[var(--hewie-active-text,#334155)]/65">{profile.memorialNotes}</p>
+                <p className="mt-1 text-[var(--hewie-active-text)]/65">{profile.memorialNotes}</p>
               ) : null}
             </div>
           ) : null}
@@ -486,7 +500,7 @@ export default function ProfilePage() {
           <fieldset disabled={profileDetailsLocked} className="space-y-3 disabled:opacity-80">
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
-                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Pet Name <RequiredMark show={isEditingProfile} /></span>
+                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text)]/85">Pet Name <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.petFirstName}
                   onChange={(event) => updateProfile({ petFirstName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
@@ -496,7 +510,7 @@ export default function ProfilePage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Family Name <RequiredMark show={isEditingProfile} /></span>
+                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text)]/85">Family Name <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.petLastName}
                   onChange={(event) => updateProfile({ petLastName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
@@ -509,7 +523,7 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
-                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Species <RequiredMark show={isEditingProfile} /></span>
+                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text)]/85">Species <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.species}
                   onChange={(event) => updateProfile({ species: clampText(event.target.value, TEXT_LIMITS.shortName) })}
@@ -519,7 +533,7 @@ export default function ProfilePage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Breed <RequiredMark show={isEditingProfile} /></span>
+                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text)]/85">Breed <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.breed}
                   onChange={(event) => updateProfile({ breed: clampText(event.target.value, TEXT_LIMITS.shortName) })}
@@ -532,7 +546,7 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2">
               <label className="block min-w-0 text-sm">
-                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Birthday <RequiredMark show={isEditingProfile} /></span>
+                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text)]/85">Birthday <RequiredMark show={isEditingProfile} /></span>
                 <input
                   type="date"
                   value={profile.birthday}
@@ -542,7 +556,7 @@ export default function ProfilePage() {
                 />
               </label>
               <label className="block min-w-0 text-sm">
-                <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Age</span>
+                <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Age</span>
                 <input
                   type="text"
                   value={calculatedAge}
@@ -558,7 +572,7 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
-                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Sex <RequiredMark show={isEditingProfile} /></span>
+                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text)]/85">Sex <RequiredMark show={isEditingProfile} /></span>
                 <select
                   value={profile.sex}
                   onChange={(event) => updateProfile({ sex: event.target.value as PetProfile["sex"] })}
@@ -571,7 +585,7 @@ export default function ProfilePage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Spay / Neuter <RequiredMark show={isEditingProfile} /></span>
+                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text)]/85">Spay / Neuter <RequiredMark show={isEditingProfile} /></span>
                 <select
                   value={profile.spayNeuterStatus}
                   onChange={(event) => updateProfile({ spayNeuterStatus: event.target.value as PetProfile["spayNeuterStatus"] })}
@@ -588,7 +602,7 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Microchip #</span>
+                <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Microchip #</span>
                 <input
                   value={profile.microchipNumber}
                   onChange={(event) => updateProfile({ microchipNumber: clampText(event.target.value, TEXT_LIMITS.shortName) })}
@@ -598,7 +612,7 @@ export default function ProfilePage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text,#334155)]/85">Color <RequiredMark show={isEditingProfile} /></span>
+                <span className="mb-1 flex items-center gap-1 font-medium text-[var(--hewie-active-text)]/85">Color <RequiredMark show={isEditingProfile} /></span>
                 <input
                   value={profile.color}
                   onChange={(event) => updateProfile({ color: clampText(event.target.value, TEXT_LIMITS.shortName) })}
@@ -613,23 +627,23 @@ export default function ProfilePage() {
 
         {showGoodbyeIntro ? (
           <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/35 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center">
-            <div className="mx-auto w-full max-w-md rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+            <div className="mx-auto w-full max-w-md rounded-[2rem] bg-[var(--hewie-active-bg)] p-5 text-[var(--hewie-active-text)] shadow-2xl ring-1 ring-[var(--hewie-ring)]">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/70 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/70 shadow-sm ring-1 ring-[var(--hewie-ring)]/70">
                     <Heart className="size-5" />
                   </span>
                   <div>
                     <h2 className="text-lg font-semibold">A Gentle Place</h2>
-                    <p className="mt-1 text-sm leading-6 text-[var(--hewie-active-text,#334155)]/70">
-                      This area is for pets when it is time to say goodbye, and their notebook will become a place of remembrance.
+                    <p className="mt-1 text-sm leading-6 text-[var(--hewie-active-text)]/70">
+                      This space is for remembering a beloved pet. Their notebook will be preserved as a place of remembrance.
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowGoodbyeIntro(false)}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/65 text-lg font-semibold text-[var(--hewie-active-text,#334155)]/65 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 transition hover:bg-white"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/65 text-lg font-semibold text-[var(--hewie-active-text)]/65 shadow-sm ring-1 ring-[var(--hewie-ring)]/70 transition hover:bg-white"
                   aria-label="Close"
                 >
                   ×
@@ -644,9 +658,9 @@ export default function ProfilePage() {
                   setShowMemorialSettings(true);
                 }}
                 disabled={profileDetailsLocked}
-                className="w-full rounded-full bg-[var(--hewie-accent,#64748b)]/75 text-[var(--hewie-accent-text,#ffffff)] shadow-sm hover:bg-[var(--hewie-accent,#64748b)]/85"
+                className="w-full rounded-full bg-[var(--hewie-accent)]/75 text-[var(--hewie-accent-text)] shadow-sm hover:bg-[var(--hewie-accent)]/85"
               >
-                It&apos;s Time For My Pet
+                Remember My Pet
               </Button>
             </div>
           </div>
@@ -654,22 +668,22 @@ export default function ProfilePage() {
 
         {showMemorialSettings ? (
           <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/35 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center">
-            <div className="mx-auto w-full max-w-md space-y-3 rounded-[2rem] bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+            <div className="mx-auto w-full max-w-md space-y-3 rounded-[2rem] bg-[var(--hewie-active-bg)] p-5 text-[var(--hewie-active-text)] shadow-2xl ring-1 ring-[var(--hewie-ring)]">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold">Remember {petFirstName}</h2>
-                  <p className="text-sm leading-5 text-[var(--hewie-active-text,#334155)]/65">
-                    This pauses daily care reminders and keeps a simple memorial note on the profile.
+                  <p className="text-sm leading-5 text-[var(--hewie-active-text)]/65">
+                    This pauses reminders while preserving {petFirstName}&apos;s notebook and memories.
                   </p>
                 </div>
                 {(profile.hasPassedAway || profile.archivedFromPetSwitcher) ? (
-                  <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-[var(--hewie-active-text,#334155)]/70">
+                  <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-[var(--hewie-active-text)]/70">
                     Saved
                   </span>
                 ) : null}
               </div>
 
-              <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-semibold shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+              <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-semibold shadow-sm ring-1 ring-[var(--hewie-ring)]/70">
                 <input
                   type="checkbox"
                   checked={profile.hasPassedAway}
@@ -678,28 +692,28 @@ export default function ProfilePage() {
                     passedAwayDate: event.target.checked && !profile.passedAwayDate ? todayDateInputValue() : profile.passedAwayDate,
                   })}
                   disabled={profileDetailsLocked}
-                  className="mt-1 size-4 accent-[var(--hewie-accent,#64748b)]"
+                  className="mt-1 size-4 accent-[var(--hewie-accent)]"
                 />
                 <span>
-                  I want this pet to be remembered
-                  <span className="mt-0.5 block text-xs font-medium text-[var(--hewie-active-text,#334155)]/60">
-                    Stops today&apos;s upcoming meals, care reminders, and alert cards.
+                  Remember this pet
+                  <span className="mt-0.5 block text-xs font-medium text-[var(--hewie-active-text)]/60">
+                    Stops upcoming meals, reminders, and care alerts.
                   </span>
                 </span>
               </label>
 
-              <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-semibold shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+              <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-semibold shadow-sm ring-1 ring-[var(--hewie-ring)]/70">
                 <input
                   type="checkbox"
                   checked={profile.archivedFromPetSwitcher}
                   onChange={(event) => updateProfile({ archivedFromPetSwitcher: event.target.checked })}
                   disabled={profileDetailsLocked}
-                  className="mt-1 size-4 accent-[var(--hewie-accent,#64748b)]"
+                  className="mt-1 size-4 accent-[var(--hewie-accent)]"
                 />
                 <span>
-                  Hide from active pet switcher
-                  <span className="mt-0.5 block text-xs font-medium text-[var(--hewie-active-text,#334155)]/60">
-                    Keeps the notebook saved, but removes this pet from the active pet picker.
+                  Hide from My Pets
+                  <span className="mt-0.5 block text-xs font-medium text-[var(--hewie-active-text)]/60">
+                    Keeps the notebook saved, but removes this pet from the My Pets list.
                   </span>
                 </span>
               </label>
@@ -707,7 +721,7 @@ export default function ProfilePage() {
               {profile.hasPassedAway ? (
                 <>
                   <label className="block text-sm">
-                    <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Remembered Date</span>
+                    <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Remembered Date</span>
                     <input
                       type="date"
                       value={profile.passedAwayDate}
@@ -718,7 +732,7 @@ export default function ProfilePage() {
                   </label>
 
                   <label className="block text-sm">
-                    <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Memory Notes</span>
+                    <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Memory Notes</span>
                     <textarea
                       value={profile.memorialNotes}
                       onChange={(event) => updateProfile({ memorialNotes: clampText(event.target.value, TEXT_LIMITS.note) })}
@@ -726,17 +740,21 @@ export default function ProfilePage() {
                       rows={3}
                       placeholder="A favorite memory, nickname, or note"
                       disabled={profileDetailsLocked}
-                      className="w-full rounded-2xl border border-[var(--hewie-ring,#cbd5e1)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                      className="w-full rounded-2xl border border-[var(--hewie-ring)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
                     />
                   </label>
                 </>
               ) : null}
 
+              <p className="text-sm font-semibold text-[var(--hewie-active-text)]/70">
+                Additional remembrance features coming soon.
+              </p>
+
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowMemorialSettings(false)}
-                className="rounded-full border-0 bg-white/80 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] hover:bg-white"
+                className="rounded-full border-0 bg-white/80 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)] hover:bg-white"
               >
                 Close
               </Button>
@@ -744,7 +762,7 @@ export default function ProfilePage() {
           </div>
         ) : null}
 
-        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg)] p-5 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)]">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">About {petFirstName}</h2>
@@ -758,7 +776,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => setIsEditingAbout(false)}
-                    className="inline-flex items-center rounded-full bg-white/75 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/75 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white"
+                    className="inline-flex items-center rounded-full bg-white/75 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text)]/75 shadow-sm ring-1 ring-[var(--hewie-ring)] transition hover:bg-white"
                   >
                     Save
                   </button>
@@ -768,14 +786,14 @@ export default function ProfilePage() {
                     variant="outline"
                     size="icon"
                     onClick={() => setIsEditingAbout(true)}
-                    className="size-9 shrink-0 rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/70 ring-[var(--hewie-ring,#cbd5e1)] hover:bg-white"
+                    className="size-9 shrink-0 rounded-full bg-white/75 text-[var(--hewie-active-text)]/70 ring-[var(--hewie-ring)] hover:bg-white"
                     aria-label={`Edit about ${petFirstName}`}
                   >
                     <Pencil className="size-4" />
                   </Button>
                 )
               ) : (
-                <span className="rounded-full bg-white/65 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/55 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+                <span className="rounded-full bg-white/65 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text)]/55 ring-1 ring-[var(--hewie-ring)]">
                   View Only
                 </span>
               )}
@@ -785,9 +803,9 @@ export default function ProfilePage() {
           <fieldset disabled={aboutDetailsLocked} className="space-y-3 disabled:opacity-80">
             {canManageProfilePhoto ? (
               <div className="block text-sm">
-                <span className="mb-2 block font-medium text-[var(--hewie-active-text,#334155)]/85">Profile Photo</span>
+                <span className="mb-2 block font-medium text-[var(--hewie-active-text)]/85">Profile Photo</span>
                 <label
-                  className={`relative flex size-16 overflow-hidden rounded-[1.05rem] bg-white/55 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 ${
+                  className={`relative flex size-16 overflow-hidden rounded-[1.05rem] bg-white/55 shadow-sm ring-1 ring-[var(--hewie-ring)]/70 ${
                     !aboutDetailsLocked ? "cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]" : ""
                   }`}
                   aria-label={`Change ${petFirstName}'s profile photo`}
@@ -817,57 +835,57 @@ export default function ProfilePage() {
             ) : null}
 
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Personality</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Personality</span>
               <textarea
                 value={profile.personality}
                 onChange={(event) => updateProfile({ personality: clampText(event.target.value, TEXT_LIMITS.note) })}
                 maxLength={TEXT_LIMITS.note}
                 rows={2}
                 placeholder="e.g. shy at first, playful once comfortable"
-                className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
+                className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100"
               />
             </label>
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Likes</span>
+                <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Likes</span>
                 <textarea
                   value={profile.likes}
                   onChange={(event) => updateProfile({ likes: clampText(event.target.value, TEXT_LIMITS.note) })}
                   maxLength={TEXT_LIMITS.note}
                   rows={2}
                   placeholder="Treats, toys, routines"
-                  className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
+                  className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100"
                 />
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Dislikes</span>
+                <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Dislikes</span>
                 <textarea
                   value={profile.dislikes}
                   onChange={(event) => updateProfile({ dislikes: clampText(event.target.value, TEXT_LIMITS.note) })}
                   maxLength={TEXT_LIMITS.note}
                   rows={2}
                   placeholder="Sounds, handling, foods"
-                  className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
+                  className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100"
                 />
               </label>
             </div>
 
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Care Preferences</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Care Preferences</span>
               <textarea
                 value={profile.carePreferences}
                 onChange={(event) => updateProfile({ carePreferences: clampText(event.target.value, TEXT_LIMITS.note) })}
                 maxLength={TEXT_LIMITS.note}
                 rows={3}
                 placeholder="Feeding quirks, walking style, bedtime routine"
-                className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100"
+                className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100"
               />
             </label>
           </fieldset>
         </section>
 
-        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg)] p-5 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)]">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Emergency Contact</h2>
             <div className="flex shrink-0 items-center">
@@ -876,7 +894,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => setIsEditingEmergencyContact(false)}
-                    className="inline-flex items-center rounded-full bg-white/75 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/75 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white"
+                    className="inline-flex items-center rounded-full bg-white/75 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text)]/75 shadow-sm ring-1 ring-[var(--hewie-ring)] transition hover:bg-white"
                   >
                     Save
                   </button>
@@ -886,14 +904,14 @@ export default function ProfilePage() {
                     variant="outline"
                     size="icon"
                     onClick={() => setIsEditingEmergencyContact(true)}
-                    className="size-9 shrink-0 rounded-full bg-white/75 text-[var(--hewie-active-text,#334155)]/70 ring-[var(--hewie-ring,#cbd5e1)] hover:bg-white"
+                    className="size-9 shrink-0 rounded-full bg-white/75 text-[var(--hewie-active-text)]/70 ring-[var(--hewie-ring)] hover:bg-white"
                     aria-label="Edit emergency contact"
                   >
                     <Pencil className="size-4" />
                   </Button>
                 )
               ) : (
-                <span className="rounded-full bg-white/65 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text,#334155)]/55 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+                <span className="rounded-full bg-white/65 px-3 py-1.5 text-xs font-bold text-[var(--hewie-active-text)]/55 ring-1 ring-[var(--hewie-ring)]">
                   View Only
                 </span>
               )}
@@ -901,7 +919,7 @@ export default function ProfilePage() {
           </div>
           <fieldset disabled={emergencyContactLocked} className="grid grid-cols-2 gap-3 disabled:opacity-80">
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Name</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Name</span>
               <input
                 value={profile.emergencyContactName}
                 onChange={(event) => updateProfile({ emergencyContactName: clampText(event.target.value, TEXT_LIMITS.shortName) })}
@@ -911,7 +929,7 @@ export default function ProfilePage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--hewie-active-text,#334155)]/85">Phone</span>
+              <span className="mb-1 block font-medium text-[var(--hewie-active-text)]/85">Phone</span>
               <input
                 type="tel"
                 value={profile.emergencyContactPhone}
@@ -924,7 +942,7 @@ export default function ProfilePage() {
           </fieldset>
         </section>
 
-        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg)] p-5 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)]">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">App Theme Color</h2>
           </div>
@@ -936,7 +954,7 @@ export default function ProfilePage() {
                 <button
                   key={option.id}
                   type="button"
-                  className={`rounded-2xl p-3 text-left ring-1 transition ${selected ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]" : "bg-white text-[var(--hewie-active-text,#334155)]/85 ring-zinc-200 hover:bg-zinc-50"}`}
+                  className={`rounded-2xl p-3 text-left ring-1 transition ${selected ? "bg-[var(--hewie-active-bg)] text-[var(--hewie-active-text)] ring-[var(--hewie-ring)]" : "bg-white text-[var(--hewie-active-text)]/85 ring-zinc-200 hover:bg-zinc-50"}`}
                   onClick={() => updateTheme(option.id as ThemeId)}
                 >
                   <span className="mb-2 flex gap-1.5">
@@ -952,7 +970,7 @@ export default function ProfilePage() {
 
         </section>
 
-        <section data-guide="profile-sharing" className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+        <section data-guide="profile-sharing" className="mb-4 rounded-3xl bg-[var(--hewie-active-bg)] p-5 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)]">
           <div className="mb-4 flex items-start gap-3">
             <span
               className="flex size-10 shrink-0 items-center justify-center rounded-full"
@@ -963,7 +981,7 @@ export default function ProfilePage() {
             <div>
               <h2 className="text-lg font-semibold">{notebookName} Access</h2>
               {canManageNotebookAccess || !canOwnNotebookAccess || isNotebookSharingUnlocked ? (
-                <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">
+                <p className="text-sm text-[var(--hewie-active-text)]/65">
                   {canManageNotebookAccess
                     ? "Invite people and choose how they can help with this notebook."
                     : "View who has access to this notebook."}
@@ -983,7 +1001,7 @@ export default function ProfilePage() {
                     onChange={(event) => setAccessEmail(clampText(event.target.value, EMAIL_MAX_LENGTH))}
                     maxLength={EMAIL_MAX_LENGTH}
                     placeholder="name@example.com"
-                    className="mt-2 w-full rounded-2xl border-0 bg-white px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-[var(--hewie-ring,#cbd5e1)] placeholder:text-zinc-400"
+                    className="mt-2 w-full rounded-2xl border-0 bg-white px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-[var(--hewie-ring)] placeholder:text-zinc-400"
                   />
                 </label>
                 <fieldset className="mt-2">
@@ -1006,7 +1024,7 @@ export default function ProfilePage() {
                                 setAccessRole(role as Exclude<NotebookAccessRole, "owner">);
                               }
                             }}
-                            className="flex w-full cursor-pointer items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-zinc-800 ring-1 ring-[var(--hewie-ring,#cbd5e1)] transition"
+                            className="flex w-full cursor-pointer items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-zinc-800 ring-1 ring-[var(--hewie-ring)] transition"
                           >
                             <div className="flex min-w-0 items-start gap-0.5">
                               <span className="min-w-0 text-left">
@@ -1020,7 +1038,7 @@ export default function ProfilePage() {
                                 }}
                                 aria-expanded={helpOpen}
                                 aria-label={`Show ${notebookRoleLabel(role)} details`}
-                                className="mt-[-4px] flex size-5 shrink-0 items-center justify-center text-[var(--hewie-active-text,#334155)]/55"
+                                className="mt-[-4px] flex size-5 shrink-0 items-center justify-center text-[var(--hewie-active-text)]/55"
                               >
                                 <CircleHelp className="size-3.5" />
                               </button>
@@ -1029,13 +1047,13 @@ export default function ProfilePage() {
                               aria-hidden="true"
                               className={`size-3 shrink-0 rounded-full ring-2 ${
                                 selected
-                                  ? "bg-[var(--hewie-accent,#64748b)] ring-[var(--hewie-accent,#64748b)]/60"
-                                  : "bg-transparent ring-[var(--hewie-ring,#cbd5e1)]"
+                                  ? "bg-[var(--hewie-accent)] ring-[var(--hewie-accent)]/60"
+                                  : "bg-transparent ring-[var(--hewie-ring)]"
                               }`}
                             />
                           </div>
                           {helpOpen ? (
-                            <p className="mt-2 rounded-2xl bg-white/65 p-3 text-xs leading-5 text-[var(--hewie-active-text,#334155)]/65 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+                            <p className="mt-2 rounded-2xl bg-white/65 p-3 text-xs leading-5 text-[var(--hewie-active-text)]/65 ring-1 ring-[var(--hewie-ring)]/70">
                               {notebookAccessRoleDescriptions[role]}
                             </p>
                           ) : null}
@@ -1048,12 +1066,12 @@ export default function ProfilePage() {
               <Button
                 type="button"
                 onClick={() => void handleInvitePerson()}
-                className="mt-3 h-11 w-full rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60"
+                className="mt-3 h-11 w-full rounded-full bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] disabled:opacity-60"
                 disabled={!user || accessStatus === "saving" || notebookMemberLimitReached}
               >
                 {accessStatus === "saving" ? "Sending..." : "Invite"}
               </Button>
-              <p className="mt-2 text-center text-xs font-medium text-[var(--hewie-active-text,#334155)]/60">
+              <p className="mt-2 text-center text-xs font-medium text-[var(--hewie-active-text)]/60">
                 {visibleMembers.length}/{NOTEBOOK_MEMBER_LIMIT} members
               </p>
             </>
@@ -1062,14 +1080,14 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => setShowNotebookSharingIntro(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--hewie-active-text,#334155)] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:scale-[1.01] hover:opacity-90"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--hewie-active-text)] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:scale-[1.01] hover:opacity-90"
             >
               <Plus className="size-4" />
               Invite Members
             </button>
           ) : null}
           {canManageNotebookAccess && accessMessage ? (
-            <p className={`mt-3 rounded-2xl p-3 text-xs leading-5 ring-1 ${accessStatus === "error" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-white/65 text-[var(--hewie-active-text,#334155)]/65 ring-[var(--hewie-ring,#cbd5e1)]/70"}`}>
+            <p className={`mt-3 rounded-2xl p-3 text-xs leading-5 ring-1 ${accessStatus === "error" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-white/65 text-[var(--hewie-active-text)]/65 ring-[var(--hewie-ring)]/70"}`}>
               {accessMessage}
             </p>
           ) : null}
@@ -1081,17 +1099,17 @@ export default function ProfilePage() {
               const hasPendingChange = member.role !== "owner" && pendingAccess !== member.role;
 
               return (
-                <div key={member.id} className="rounded-2xl bg-white/70 p-3 text-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70">
+                <div key={member.id} className="rounded-2xl bg-white/70 p-3 text-sm ring-1 ring-[var(--hewie-ring)]/70">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="notebook-member-email truncate font-semibold text-[var(--hewie-active-text,#334155)]/85" x-apple-data-detectors="false">
+                      <p className="notebook-member-email truncate font-semibold text-[var(--hewie-active-text)]/85" x-apple-data-detectors="false">
                         {member.memberEmail}
                       </p>
-                      <p className="mt-0.5 text-xs text-[var(--hewie-active-text,#334155)]/72">
+                      <p className="mt-0.5 text-xs text-[var(--hewie-active-text)]/72">
                         {notebookRoleLabel(member.role)} - {accessStatusLabel(member.status)}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[var(--hewie-active-text,#334155)]/65 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+                    <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[var(--hewie-active-text)]/65 ring-1 ring-[var(--hewie-ring)]">
                       {notebookRoleLabel(member.role)}
                     </span>
                   </div>
@@ -1105,7 +1123,7 @@ export default function ProfilePage() {
                           setPendingMemberAccess((current) => ({ ...current, [member.id]: nextAccess }));
                         }}
                         disabled={accessStatus === "saving"}
-                        className="min-w-0 rounded-full border-0 bg-white px-3 py-2 text-xs font-semibold text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)] disabled:opacity-60"
+                        className="min-w-0 rounded-full border-0 bg-white px-3 py-2 text-xs font-semibold text-[var(--hewie-active-text)]/75 ring-1 ring-[var(--hewie-ring)] disabled:opacity-60"
                         aria-label={`Choose access action for ${member.memberEmail}`}
                       >
                         {notebookInviteRoles.map((role) => (
@@ -1117,7 +1135,7 @@ export default function ProfilePage() {
                         type="button"
                         onClick={() => void handleSaveMemberAccess(member)}
                         disabled={!hasPendingChange || accessStatus === "saving"}
-                        className="rounded-full bg-[var(--hewie-accent,#64748b)] px-4 py-2 text-xs font-semibold text-[var(--hewie-accent-text,#ffffff)] shadow-sm disabled:opacity-40"
+                        className="rounded-full bg-[var(--hewie-accent)] px-4 py-2 text-xs font-semibold text-[var(--hewie-accent-text)] shadow-sm disabled:opacity-40"
                       >
                         Save
                       </button>
@@ -1141,11 +1159,11 @@ export default function ProfilePage() {
               <div className="mb-4">
                 <h3 id="notebook-sharing-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
                   <span>Invite Notebook Members</span>
-                  <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+                  <span className="inline-flex rounded-full border border-[var(--hewie-accent)] bg-[var(--hewie-active-bg)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text)]">
                     Plus
                   </span>
                 </h3>
-                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text)]">
                   Invite co-owners, caretakers, and pet sitters to help care for your pet.
                 </p>
               </div>
@@ -1164,7 +1182,7 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={openNotebookSharingUpgrade}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text,#334155)]"
+                  className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text)]"
                 >
                   <span className="flex items-start gap-2">
                     <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
@@ -1185,7 +1203,7 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={openNotebookSharingUpgrade}
-                  className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
+                  className="h-11 rounded-full bg-[var(--hewie-active-text)] px-4 text-sm font-bold text-white"
                 >
                   Upgrade to Plus
                 </button>

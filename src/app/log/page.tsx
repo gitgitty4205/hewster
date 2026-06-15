@@ -62,7 +62,7 @@ import {
 
 } from "@/lib/hewster-data";
 
-import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail } from "@/lib/activity";
+import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail, renderHealthTimelineActivityDetail, savedHealthMedicationShortcutNotes } from "@/lib/activity";
 
 import { initialTemplates, isMealTemplateActiveForDay, type MealStatus, type MealTemplate } from "@/lib/meal-templates";
 
@@ -120,7 +120,7 @@ function isValidDayKey(value: string | null) {
 
 function LogPencilIcon() {
   return (
-    <span className="flex size-5 items-center justify-center text-[var(--hewie-accent-text,#ffffff)]/88">
+    <span className="flex size-5 items-center justify-center text-[var(--hewie-accent-text)]/88">
       <svg
         className="size-full"
         viewBox="0 0 24 24"
@@ -141,7 +141,7 @@ function LogPencilIcon() {
 
 function LogTitle() {
   return (
-    <span className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--hewie-accent-text,#ffffff)]/10 px-3.5 py-1.5 text-[var(--hewie-accent-text,#ffffff)]/92 shadow-[0_1px_5px_rgba(15,23,42,0.12),0_1px_2px_rgba(255,255,255,0.18)_inset] ring-1 ring-[var(--hewie-accent-text,#ffffff)]/18 drop-shadow-[0_1px_1px_rgba(15,23,42,0.14)]">
+    <span className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--hewie-accent-text)]/10 px-3.5 py-1.5 text-[var(--hewie-accent-text)]/92 shadow-[0_1px_5px_rgba(15,23,42,0.12),0_1px_2px_rgba(255,255,255,0.18)_inset] ring-1 ring-[var(--hewie-accent-text)]/18 drop-shadow-[0_1px_1px_rgba(15,23,42,0.14)]">
       <LogPencilIcon />
       <span className="font-semibold">Log</span>
     </span>
@@ -214,6 +214,17 @@ function careStatusFromActivity(activity: ActivityLog) {
 function careNameFromDetail(detail: string | null) {
 
   return (detail ?? "").replace(/\s*(?:[•·-]\s*)?(Given|Skipped|Missed)\b/i, "").trim();
+
+}
+
+
+
+function editableActivityNoteText(notes: string | null) {
+
+  return notes?.split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("Attachments: ") && !line.startsWith("Record Tags: "))
+    .join("\n") ?? "";
 
 }
 
@@ -363,6 +374,12 @@ function mealPlanCareTimingLabel(item: CareItemTemplate) {
   return "With Food";
 }
 
+function medicationTimingBadgeColorClassName(timingLabel: string | null) {
+  return timingLabel === "Empty Stomach"
+    ? "bg-sky-200/90 text-zinc-950"
+    : "bg-pink-200/90 text-sky-600";
+}
+
 function mealPlanCareDetailText(item: CareItemTemplate) {
   const dose = item.dose ? ` — ${item.dose}` : "";
   const route = medicationTypeLabel(item);
@@ -381,7 +398,7 @@ function CareItemLine({ item, skipped = false }: { item: CareItemTemplate & { is
   const timingLabel = mealPlanCareTimingLabel(item);
   const timingBadgeClassName = item.kind === "supplement"
     ? "bg-white/55 text-[#1f3d5c]/60"
-    : "bg-sky-100/80 text-sky-700/60";
+    : medicationTimingBadgeColorClassName(timingLabel);
 
   return (
     <div className={`flex items-start gap-2 text-sm leading-5 ${lineClassName}`}>
@@ -991,7 +1008,7 @@ export default function LogPage() {
 
         label: formatActivityLabel(activity.activityType),
 
-        detail: renderActivityDetail(activity),
+        detail: activity.activityType === "sick" ? renderHealthTimelineActivityDetail(activity, careTemplates) : renderActivityDetail(activity),
 
         activity,
 
@@ -1007,7 +1024,7 @@ export default function LogPage() {
 
     return activityItems.sort((a, b) => a.sortMinutes - b.sortMinutes || a.sortKey.localeCompare(b.sortKey));
 
-  }, [selectedDayActivityLogs]);
+  }, [careTemplates, selectedDayActivityLogs]);
 
 
 
@@ -1061,7 +1078,7 @@ export default function LogPage() {
 
     } else {
 
-      setNotesValue(activity.notes ?? "");
+      setNotesValue(editableActivityNoteText(activity.notes));
 
       setExtraNotesValue("");
 
@@ -1229,6 +1246,10 @@ export default function LogPage() {
     );
 
     const attachmentNote = attachmentNames.length ? `Attachments: ${attachmentNames.join(", ")}` : "";
+    const savedMedicationNotes =
+      detailActivityType === "sick" && trimmedDetail.startsWith("Medication: ")
+        ? savedHealthMedicationShortcutNotes(trimmedDetail, careTemplates)
+        : "";
 
     const resolvedNotes =
 
@@ -1240,7 +1261,7 @@ export default function LogPage() {
 
           ? careNotesForSave(existingActivity?.notes ?? null, detailValue.trim(), notesValue, recordTagNote, attachmentNote)
 
-          : [notesValue.trim(), recordTagNote, attachmentNote].filter(Boolean).join("\n") || null;
+          : [savedMedicationNotes, notesValue.trim(), recordTagNote, attachmentNote].filter(Boolean).join("\n") || null;
 
     const activity: ActivityLog = {
 
@@ -1356,7 +1377,7 @@ export default function LogPage() {
         logDayKey < currentTodayKey() ? (
           <span className="flex flex-wrap items-center gap-2">
             <span>{formatLogDayLabel(logDayKey)}</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff4c6] px-2.5 py-1 text-xs font-semibold text-[var(--hewie-active-text,#334155)] ring-1 ring-[#ecd98d]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff4c6] px-2.5 py-1 text-xs font-semibold text-[var(--hewie-active-text)] ring-1 ring-[#ecd98d]">
               <History className="size-3.5 shrink-0" aria-hidden="true" />
               Past Entries
             </span>
@@ -1413,7 +1434,7 @@ export default function LogPage() {
 
     return (
 
-      <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+      <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
 
         <CenteredLoadingIcon className="min-h-screen" />
 
@@ -1427,7 +1448,7 @@ export default function LogPage() {
 
   return (
 
-    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
 
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
 
@@ -1437,7 +1458,7 @@ export default function LogPage() {
 
             <div className="min-w-0 flex-1">
 
-              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Manage Events</h1>
 
             </div>
@@ -1515,7 +1536,7 @@ export default function LogPage() {
             <button
               type="button"
               onClick={collapseLogEvent}
-              className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out hover:translate-y-0.5 hover:text-[var(--hewie-accent-text,#ffffff)]/90 active:translate-y-1 active:scale-95"
+              className="absolute inset-x-0 -bottom-4 z-10 mx-auto flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out hover:translate-y-0.5 hover:text-[var(--hewie-accent-text)]/90 active:translate-y-1 active:scale-95"
               aria-label="Collapse Log"
             >
               <ChevronDown className="log-event-handle-sheen size-7 opacity-80" strokeWidth={3} aria-hidden="true" />
@@ -1526,11 +1547,11 @@ export default function LogPage() {
             type="button"
             onClick={openLogEvent}
             data-guide="log-events"
-            className="group relative mb-7 flex w-full cursor-pointer items-center justify-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent,#64748b)] px-5 pb-6 pt-4 text-center text-[var(--hewie-accent-text,#ffffff)] shadow-sm ring-1 ring-[var(--hewie-accent,#64748b)]/35 transition duration-200 ease-out hover:opacity-95 active:translate-y-0.5 active:scale-[0.985]"
+            className="group relative mb-7 flex w-full cursor-pointer items-center justify-center overflow-visible rounded-t-3xl rounded-b-[1.35rem] bg-[var(--hewie-accent)] px-5 pb-6 pt-4 text-center text-[var(--hewie-accent-text)] shadow-sm ring-1 ring-[var(--hewie-accent)]/35 transition duration-200 ease-out hover:opacity-95 active:translate-y-0.5 active:scale-[0.985]"
           >
             <h2 className="text-lg"><LogTitle /></h2>
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
-              <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text,#ffffff)]/90 group-active:translate-y-1">
+              <div className="flex h-7 w-20 items-center justify-center rounded-b-2xl rounded-t-none bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)]/70 shadow-[0_8px_12px_-8px_rgba(15,23,42,0.35)] transition duration-200 ease-out group-hover:translate-y-0.5 group-hover:text-[var(--hewie-accent-text)]/90 group-active:translate-y-1">
                 <ChevronDown className="log-event-handle-sheen size-7 opacity-80" strokeWidth={3} aria-hidden="true" />
               </div>
             </div>

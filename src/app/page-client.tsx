@@ -55,8 +55,8 @@ import {
   isInitialMealTemplatePlan,
   isMealTemplateActiveForDay,
 } from "@/lib/meal-templates";
-import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail } from "@/lib/activity";
-import { formatManualAlertTimelineDetail, loadReminderAlertRules, resolveAlerts, type ReminderAlertRule } from "@/lib/alerts";
+import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail, renderHealthTimelineActivityDetail, savedHealthMedicationShortcutNotes } from "@/lib/activity";
+import { alertExpandedDetail, formatManualAlertTimelineDetail, loadReminderAlertRules, resolveAlerts, type ReminderAlertRule } from "@/lib/alerts";
 import { getSupabaseBrowserClient, getActiveProfileSlug, isSupabaseConfigured } from "@/lib/supabase";
 import { loadPetProfile } from "@/lib/pet-profile";
 import { TEXT_LIMITS, clampText } from "@/lib/text-limits";
@@ -210,12 +210,10 @@ function splitActivityNotes(notes: string | null) {
   };
 }
 
-function renderTodayTimelineActivityDetail(activity: ActivityLog) {
+function renderTodayTimelineActivityDetail(activity: ActivityLog, careTemplates: CareItemTemplate[] = []) {
   if (isPottyTimelineActivity(activity.activityType)) return formatPottyTimelineDetail(activity.detail);
   if (activity.activityType === "sick") {
-    const { notesText } = splitActivityNotes(activity.notes);
-    const detail = renderActivityDetail({ ...activity, notes: null });
-    return notesText && detail ? `${detail} • Notes: ${notesText}` : detail || notesText;
+    return renderHealthTimelineActivityDetail(activity, careTemplates);
   }
   if (!activity.attachments?.length) return renderActivityDetail(activity);
 
@@ -242,9 +240,9 @@ function customCareFrequencyText(item: CareItemTemplate) {
   }
 
   if (steps[0]) {
-    if (item.ongoing) return `Every ${steps[0].everyHours} Hours • Ongoing`;
-    if (item.asNeeded) return `Every ${steps[0].everyHours} Hours • As Needed`;
-    return `Every ${steps[0].everyHours} Hours For ${steps[0].forDays} Days`;
+    if (item.ongoing) return `Every ${steps[0].everyHours} hours • Ongoing`;
+    if (item.asNeeded) return `Every ${steps[0].everyHours} hours, As Needed`;
+    return `Every ${steps[0].everyHours} hours for ${steps[0].forDays} days`;
   }
   if (item.ongoing) return "";
   return "Schedule Needed";
@@ -262,6 +260,12 @@ function customCareGiveText(item: CareItemTemplate) {
 function customCareTimingLabel(item: CareItemTemplate) {
   if (item.kind === "medication" && item.medicationType !== "oral") return null;
   return item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food";
+}
+
+function medicationTimingBadgeColorClassName(timingLabel: string | null) {
+  return timingLabel === "Empty Stomach"
+    ? "bg-sky-200/90 text-zinc-950"
+    : "bg-pink-200/90 text-sky-600";
 }
 
 function mealPlanCareDetailText(item: CareItemTemplate) {
@@ -408,7 +412,6 @@ function customCareExpandedDetailText(occurrence: CustomCareOccurrence) {
   const notes = occurrence.item.notes.trim();
 
   return [
-    `Scheduled for ${occurrence.timeLabel}`,
     customCareGiveText(occurrence.item),
     timingLabel,
     occurrence.frequencyText,
@@ -661,7 +664,7 @@ function customCareDoseOffsets(item: CareItemTemplate) {
         offsetHours: index * step.everyHours,
         stepIndex,
         doseIndex: index,
-        frequencyText: `Every ${step.everyHours} Hours For ${step.forDays} Days`,
+        frequencyText: `Every ${step.everyHours} hours for ${step.forDays} days`,
       });
     }
   });
@@ -724,7 +727,7 @@ function customCareOccurrencesForDay(items: CareItemTemplate[], targetDayKey: st
             item,
             scheduledAt,
             timeLabel: formatActivityTime(scheduledAt.toISOString()),
-            frequencyText: `Every ${step.everyHours} Hours • Ongoing`,
+            frequencyText: `Every ${step.everyHours} hours • Ongoing`,
             isLastDose: false,
           });
         }
@@ -1743,7 +1746,7 @@ export default function HomeApp() {
       return {
         time: formatActivityTime(happenedAt.toISOString()),
         label: isPottyTimelineActivity(activity.activityType) ? "Potty" : formatActivityLabel(activity.activityType),
-        detail: renderTodayTimelineActivityDetail(activity),
+        detail: renderTodayTimelineActivityDetail(activity, careTemplates),
         activity,
         activityType: activity.activityType,
         sortMinutes: happenedAt.getHours() * 60 + happenedAt.getMinutes(),
@@ -2126,10 +2129,14 @@ export default function HomeApp() {
         attachmentDocumentTypes
       );
       const attachmentNote = attachmentNames.length ? `Attachments: ${attachmentNames.join(", ")}` : "";
+      const savedMedicationNotes =
+        detailActivityType === "sick" && trimmedDetail.startsWith("Medication: ")
+          ? savedHealthMedicationShortcutNotes(trimmedDetail, careTemplates)
+          : "";
       const resolvedNotes =
         detailActivityType === "treat" || detailActivityType === "food"
           ? [notesValue.trim(), extraNotesValue.trim() ? `Notes: ${extraNotesValue.trim()}` : ""].filter(Boolean).join(" ") || null
-          : [notesValue.trim(), recordTagNote, attachmentNote].filter(Boolean).join("\n") || null;
+          : [savedMedicationNotes, notesValue.trim(), recordTagNote, attachmentNote].filter(Boolean).join("\n") || null;
       const activity: ActivityLog = {
         id: editingActivityId ?? `${resolvedActivityType}-${Date.now()}`,
         profileSlug: getActiveProfileSlug(),
@@ -2186,19 +2193,19 @@ export default function HomeApp() {
 
   if (!hydrated) {
     return (
-      <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+      <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
         <CenteredLoadingIcon className="min-h-screen" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="relative mb-6 min-h-[72px]">
           <div className="flex min-h-[4.5rem] items-center pr-24">
             <div>
-              <PetNotebookTitle href="/notebook" className="block text-sm font-bold leading-[18px] text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="block text-sm font-bold leading-[18px] text-[var(--hewie-active-text)]" />
               <div className="mt-1 flex flex-col">
                 <h1 className="text-[1.26rem] font-bold leading-[1.2] text-[#252a26]">Today, {headerDateTime}</h1>
                 <p className="text-xs font-normal leading-4 text-[#252a26]">
@@ -2219,8 +2226,8 @@ export default function HomeApp() {
             {todayAlertCards.slice(0, 3).map((alert) => {
               const detailKey = `today-alert-${alert.id}`;
               const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
-              const expandedDetail = alert.expandedDetail?.trim();
-              const hasExpandedDetail = Boolean(expandedDetail && expandedDetail !== alert.detail.trim());
+              const expandedDetail = alertExpandedDetail(alert);
+              const hasExpandedDetail = Boolean(expandedDetail);
 
               return (
                 <div
@@ -2254,7 +2261,7 @@ export default function HomeApp() {
                             event.stopPropagation();
                             void resolveManualAlert(alert.id);
                           }}
-                          className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-[11px] font-semibold text-[var(--hewie-accent-text,#ffffff)] shadow-sm shadow-slate-400/20 ring-1 ring-white/30 transition hover:opacity-90 active:translate-y-px"
+                          className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-[var(--hewie-accent)] px-3 text-[11px] font-semibold text-[var(--hewie-accent-text)] shadow-sm shadow-slate-400/20 ring-1 ring-white/30 transition hover:opacity-90 active:translate-y-px"
                         >
                           Done
                         </button>
@@ -2287,11 +2294,11 @@ export default function HomeApp() {
               return (
                 <div
                   key={`overdue-${card.sortKey}`}
-                  className="rounded-2xl bg-gradient-to-r from-white/85 to-[var(--hewie-active-bg,#f1f5f9)]/80 px-3 py-2 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/75"
+                  className="rounded-2xl bg-gradient-to-r from-white/85 to-[var(--hewie-active-bg)]/80 px-3 py-2 text-[var(--hewie-active-text)] shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/75"
                 >
                   <div className="flex min-h-8 items-center gap-2">
                     {card.type === "meal" ? (
-                      <Bell className="size-4 shrink-0 text-[var(--hewie-active-text,#334155)]" />
+                      <Bell className="size-4 shrink-0 text-[var(--hewie-active-text)]" />
                     ) : careKind === "supplement" ? (
                       <Tablets className="size-4 shrink-0 text-[#1f3d5c]" />
                     ) : (
@@ -2299,7 +2306,7 @@ export default function HomeApp() {
                     )}
                     <div className="min-w-0 flex-1 text-left">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="truncate text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{title}</p>
+                        <p className="truncate text-sm font-semibold leading-4 text-[var(--hewie-active-text)]">{title}</p>
                         {card.type === "custom-care" && card.occurrence.isLastDose ? <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
                       </div>
                     </div>
@@ -2307,7 +2314,7 @@ export default function HomeApp() {
                       {hasExpandedDetail ? (
                         <ExpandDetailsButton
                           expanded={detailsExpanded}
-                          className="text-[var(--hewie-active-text,#334155)]/70 hover:text-[var(--hewie-active-text,#334155)]"
+                          className="text-[var(--hewie-active-text)]/70 hover:text-[var(--hewie-active-text)]"
                           onClick={(event) => {
                             event.stopPropagation();
                             setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
@@ -2317,7 +2324,7 @@ export default function HomeApp() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="h-7 rounded-full border-0 bg-white/65 px-2.5 text-[11px] font-semibold text-[var(--hewie-active-text,#334155)]/70 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 hover:bg-white/85"
+                        className="h-7 rounded-full border-0 bg-white/65 px-2.5 text-[11px] font-semibold text-[var(--hewie-active-text)]/70 ring-1 ring-[var(--hewie-ring)]/70 hover:bg-white/85"
                         onClick={(event) => {
                           event.stopPropagation();
                           if (card.type === "meal") {
@@ -2331,7 +2338,7 @@ export default function HomeApp() {
                       </Button>
                       <Button
                         type="button"
-                        className="h-7 rounded-full bg-[var(--hewie-accent,#64748b)] px-2.5 text-[11px] font-semibold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90"
+                        className="h-7 rounded-full bg-[var(--hewie-accent)] px-2.5 text-[11px] font-semibold text-[var(--hewie-accent-text)] hover:opacity-90"
                         onClick={(event) => {
                           event.stopPropagation();
                           if (card.type === "meal") {
@@ -2346,7 +2353,7 @@ export default function HomeApp() {
                     </div>
                   </div>
                   {hasExpandedDetail ? (
-                    <InlineDetails expanded={detailsExpanded} className="bg-white/55 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/65">
+                    <InlineDetails expanded={detailsExpanded} className="bg-white/55 text-[var(--hewie-active-text)]/75 ring-1 ring-[var(--hewie-ring)]/65">
                       {expandedDetail}
                     </InlineDetails>
                   ) : null}
@@ -2363,24 +2370,24 @@ export default function HomeApp() {
               const hasMealActions = reminderMealId !== null && Number.isFinite(reminderMealId);
               const detailKey = `reminder-${reminder.id}`;
               const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
-              const expandedDetail = reminder.expandedDetail?.trim();
-              const hasExpandedDetail = Boolean(expandedDetail && expandedDetail !== reminder.detail.trim());
+              const expandedDetail = alertExpandedDetail(reminder);
+              const hasExpandedDetail = Boolean(expandedDetail);
 
               return (
                 <div
                   key={reminder.id}
-                  className="rounded-2xl bg-gradient-to-r from-white/85 to-[var(--hewie-active-bg,#f1f5f9)]/80 px-3.5 py-3 text-[var(--hewie-active-text,#334155)] shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/75"
+                  className="rounded-2xl bg-gradient-to-r from-white/85 to-[var(--hewie-active-bg)]/80 px-3.5 py-3 text-[var(--hewie-active-text)] shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/75"
                 >
                   <div className="flex min-h-10 items-start gap-3">
-                    <Bell className="mt-0.5 size-4 shrink-0 text-[var(--hewie-active-text,#334155)]" />
+                    <Bell className="mt-0.5 size-4 shrink-0 text-[var(--hewie-active-text)]" />
                     <div className="min-w-0 flex-1 text-left">
-                      <p className="text-sm font-semibold leading-4 text-[var(--hewie-active-text,#334155)]">{reminder.title}</p>
-                      <p className="mt-0.5 truncate text-xs leading-4 text-[var(--hewie-active-text,#334155)]/60">{reminder.detail}</p>
+                      <p className="text-sm font-semibold leading-4 text-[var(--hewie-active-text)]">{reminder.title}</p>
+                      <p className="mt-0.5 truncate text-xs leading-4 text-[var(--hewie-active-text)]/60">{reminder.detail}</p>
                     </div>
                     {hasExpandedDetail ? (
                       <ExpandDetailsButton
                         expanded={detailsExpanded}
-                        className="text-[var(--hewie-active-text,#334155)]/70 hover:text-[var(--hewie-active-text,#334155)]"
+                        className="text-[var(--hewie-active-text)]/70 hover:text-[var(--hewie-active-text)]"
                         onClick={(event) => {
                           event.stopPropagation();
                           setExpandedAlertDetails((current) => ({ ...current, [detailKey]: !current[detailKey] }));
@@ -2389,7 +2396,7 @@ export default function HomeApp() {
                     ) : null}
                   </div>
                   {hasExpandedDetail ? (
-                    <InlineDetails expanded={detailsExpanded} className="ml-7 bg-white/55 text-[var(--hewie-active-text,#334155)]/75 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/65">
+                    <InlineDetails expanded={detailsExpanded} className="ml-7 bg-white/55 text-[var(--hewie-active-text)]/75 ring-1 ring-[var(--hewie-ring)]/65">
                       {expandedDetail}
                     </InlineDetails>
                   ) : null}
@@ -2398,7 +2405,7 @@ export default function HomeApp() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="h-8 rounded-full border-0 bg-white/65 px-3 text-xs font-semibold text-[var(--hewie-active-text,#334155)]/70 ring-1 ring-[var(--hewie-ring,#cbd5e1)]/70 hover:bg-white/85"
+                        className="h-8 rounded-full border-0 bg-white/65 px-3 text-xs font-semibold text-[var(--hewie-active-text)]/70 ring-1 ring-[var(--hewie-ring)]/70 hover:bg-white/85"
                         onClick={(event) => {
                           event.stopPropagation();
                           markMealSkipped(reminderMealId as number);
@@ -2408,7 +2415,7 @@ export default function HomeApp() {
                       </Button>
                       <Button
                         type="button"
-                        className="h-8 rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-xs font-semibold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90"
+                        className="h-8 rounded-full bg-[var(--hewie-accent)] px-3 text-xs font-semibold text-[var(--hewie-accent-text)] hover:opacity-90"
                         onClick={(event) => {
                           event.stopPropagation();
                           markMealFed(reminderMealId as number);
@@ -2425,7 +2432,7 @@ export default function HomeApp() {
         ) : null}
 
           <section data-guide="today-upcoming" className="mb-4 space-y-2">
-            <section className="rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-2 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+            <section className="rounded-3xl bg-[var(--hewie-active-bg)] p-2 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)]">
               {upcomingScheduleCards.length ? (
               <div className="grid grid-cols-2 gap-2">
                 {upcomingScheduleCards.map((card) => {
@@ -2434,11 +2441,11 @@ export default function HomeApp() {
                     const mealDayKey = dayKeyFromDate(card.sortAt);
                     const cardMealCareItems = mealCareItemsWithDoseBadges(careTemplates, card.meal, templates, mealDayKey);
                     const mealNoteText = card.meal.notes?.trim().slice(0, TEXT_LIMITS.note) ?? "";
-                    const mealNoteButtonClassName = "bg-[var(--hewie-active-text,#334155)]/12 text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]/80 hover:bg-[var(--hewie-active-text,#334155)]/18";
+                    const mealNoteButtonClassName = "bg-[var(--hewie-active-text)]/12 text-[var(--hewie-active-text)] ring-[var(--hewie-ring)]/80 hover:bg-[var(--hewie-active-text)]/18";
                     const mealNoteModalTone = {
-                      panel: "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]",
-                      closeButton: "bg-white/55 text-current/58 ring-[var(--hewie-ring,#cbd5e1)] transition hover:bg-white/80 hover:text-current/75",
-                      noteBox: "border border-[var(--hewie-ring,#cbd5e1)] bg-white text-current/75",
+                      panel: "bg-[var(--hewie-active-bg)] text-[var(--hewie-active-text)] ring-[var(--hewie-ring)]",
+                      closeButton: "bg-white/55 text-current/58 ring-[var(--hewie-ring)] transition hover:bg-white/80 hover:text-current/75",
+                      noteBox: "border border-[var(--hewie-ring)] bg-white text-current/75",
                     };
                     const mealTextInsetClassName = mealNoteText ? "pr-7" : "";
                     const mealFoodText = card.meal.food.trim();
@@ -2476,7 +2483,7 @@ export default function HomeApp() {
                       : "";
 
                     return (
-                      <div key={card.sortKey} className={`${mealPriorityClassName} relative flex aspect-square min-w-0 overflow-hidden flex-col justify-between rounded-2xl bg-white/32 p-2.5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/55`}>
+                      <div key={card.sortKey} className={`${mealPriorityClassName} relative flex aspect-square min-w-0 overflow-hidden flex-col justify-between rounded-2xl bg-white/32 p-2.5 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-white/55`}>
                         <div className="min-h-0 min-w-0 overflow-hidden">
                           <p className={`${mealTextInsetClassName} text-[10px] font-bold uppercase leading-3 tracking-wide text-current/55`}>Next Meal</p>
                           <div className={`mt-0.5 flex min-w-0 flex-wrap items-center gap-1 ${mealTextInsetClassName}`}>
@@ -2551,7 +2558,7 @@ export default function HomeApp() {
                             />
                           ) : null}
                         </div>
-                        <Button className="mt-1.5 h-7 w-full rounded-full bg-[var(--hewie-accent,#64748b)] px-2 text-xs font-semibold text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90" onClick={() => markMealFed(card.meal.id)}>
+                        <Button className="mt-1.5 h-7 w-full rounded-full bg-[var(--hewie-accent)] px-2 text-xs font-semibold text-[var(--hewie-accent-text)] hover:opacity-90" onClick={() => markMealFed(card.meal.id)}>
                           Done
                         </Button>
                       </div>
@@ -2571,13 +2578,13 @@ export default function HomeApp() {
                   const iconClassName = isSupplement
                     ? "bg-white/55 text-[#1f3d5c] ring-[#b8c9dd]/70"
                     : "bg-sky-100 text-sky-600 ring-transparent";
-                  const timingBadgeClassName = isSupplement ? "bg-white/55 text-[#1f3d5c]/60" : "bg-white/55 text-current/58";
+                  const timingBadgeClassName = isSupplement ? "bg-white/55 text-[#1f3d5c]/60" : medicationTimingBadgeColorClassName(timingLabel);
                   const skipButtonClassName = isSupplement
                     ? "bg-white/45 text-[#1f3d5c]/55 ring-[#b8c9dd]/45 hover:bg-white/70 hover:text-[#1f3d5c]/75"
                     : "bg-white/55 text-current/58 ring-white/70 hover:bg-white/80 hover:text-current/75";
                   const doneButtonClassName = isSupplement
                     ? "bg-white/65 text-[#1f3d5c] ring-[#b8c9dd]/70 hover:bg-white/85"
-                    : "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] ring-white/40 hover:opacity-90";
+                    : "bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] ring-white/40 hover:opacity-90";
                   const noteButtonClassName = isSupplement
                     ? "bg-[#d8e4f1] text-[#1f3d5c] ring-[#8ca8c3]/70 hover:bg-[#cfdeee]"
                     : "bg-sky-100 text-sky-700 ring-sky-300/80 hover:bg-sky-200/70";
@@ -2729,7 +2736,7 @@ export default function HomeApp() {
                 ) : null}
               </div>
               ) : (
-                <div className="flex min-h-28 flex-col justify-center rounded-2xl bg-white/32 px-4 py-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/55">
+                <div className="flex min-h-28 flex-col justify-center rounded-2xl bg-white/32 px-4 py-5 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-white/55">
                   <h2 className="text-lg font-semibold leading-6 text-current/88">Upcoming</h2>
                   <p className="mt-2 text-sm font-semibold leading-5 text-current/78">No upcoming items yet.</p>
                   <p className="mt-1 text-sm leading-5 text-current/58">Meals, supplements, medications, and reminders will appear here.</p>

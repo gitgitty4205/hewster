@@ -11,6 +11,7 @@
     "check:floating-menu": "node scripts/check-floating-menu.mjs",
     "check:meal-log-snapshot": "node scripts/check-meal-log-snapshot.mjs",
     "check:poop-photo-upload": "node scripts/check-poop-photo-upload.mjs",
+    "check:timeline-format": "node scripts/check-timeline-format.mjs",
     "start": "next start",
     "lint": "eslint"
   },

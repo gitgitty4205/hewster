@@ -17,7 +17,7 @@ export default function LegacyHewieLayout({ children }: { children: React.ReactN
   }, [pathname, router]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--hewie-bg,#999b96)] px-4 text-zinc-900">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--hewie-bg)] px-4 text-zinc-900">
       <CenteredLoadingIcon className="min-h-32" />
     </main>
   );

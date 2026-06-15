@@ -251,17 +251,17 @@ export default function MealsPage() {
 
   if (!hydrated) {
     return (
-      <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+      <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
         <CenteredLoadingIcon className="min-h-screen" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
-          <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]"><PetNotebookTitle /></p>
+          <p className="text-sm font-medium text-[var(--hewie-active-text)]"><PetNotebookTitle /></p>
           <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Meal Plan Settings</h1>
         </header>
 
@@ -414,7 +414,7 @@ export default function MealsPage() {
 
                   {isEditing ? (
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <Button type="button" className="rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90" onClick={saveEditingMeal}>
+                      <Button type="button" className="rounded-full bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] hover:opacity-90" onClick={saveEditingMeal}>
                         Save
                       </Button>
                       <Button type="button" variant="outline" className="rounded-full" onClick={cancelEditingMeal}>

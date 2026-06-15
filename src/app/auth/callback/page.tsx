@@ -4,7 +4,7 @@ import { AuthCallbackContent } from "./auth-callback-content";
 
 export default function AuthCallbackPage() {
   return (
-    <Suspense fallback={<main className="min-h-screen bg-[var(--hewie-bg,#999b96)]" />}>
+    <Suspense fallback={<main className="min-h-screen bg-[var(--hewie-bg)]" />}>
       <AuthCallbackContent />
     </Suspense>
   );

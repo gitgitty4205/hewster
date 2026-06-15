@@ -13,8 +13,12 @@ async function checkAccountSettingsBubbleBorders() {
   const source = await readFile(accountSettingsSourcePath, "utf8");
   const requiredBorderSnippets = [
     'className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"',
+    'data-testid="advance-reminder-grid"',
+    'className="account-settings-reminder-grid mt-2"',
+    'data-testid="quiet-hours-grid"',
+    'className="account-settings-quiet-hours-grid"',
     'className="mt-2 flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50',
-    'className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50',
+    'className="flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50',
     ': "border-zinc-200 bg-zinc-50"',
   ];
   const oldRingOnlySnippets = [
@@ -34,6 +38,40 @@ async function checkAccountSettingsBubbleBorders() {
     if (source.includes(snippet)) {
       throw new Error(`Account Settings bubble border guard failed. Ring-only outline returned: ${snippet}`);
     }
+  }
+}
+
+async function assertTwoColumnControlGrid(page, testId, label) {
+  const grid = page.getByTestId(testId);
+  await grid.waitFor({ state: "visible", timeout: 5_000 });
+  const layout = await grid.evaluate((element) => {
+    const parentRect = element.getBoundingClientRect();
+    const children = Array.from(element.children);
+    return {
+      parentWidth: Math.round(parentRect.width),
+      boxes: children.map((child) => {
+        const rect = child.getBoundingClientRect();
+        return {
+          left: Math.round(rect.left),
+          top: Math.round(rect.top),
+          width: Math.round(rect.width),
+        };
+      }),
+    };
+  });
+  const { parentWidth, boxes } = layout;
+
+  if (boxes.length !== 2) {
+    throw new Error(`${label} expected 2 controls, got ${boxes.length}.`);
+  }
+
+  const [first, second] = boxes;
+  if (Math.abs(first.top - second.top) > 4 || second.left <= first.left + first.width) {
+    throw new Error(`${label} controls are stacked instead of side-by-side: ${JSON.stringify(boxes)}`);
+  }
+
+  if (first.width > parentWidth * 0.7 || second.width > parentWidth * 0.7) {
+    throw new Error(`${label} controls are too wide for a two-column layout: ${JSON.stringify({ parentWidth, boxes })}`);
   }
 }
 
@@ -128,6 +166,12 @@ async function main() {
       throw new Error("Account Settings showed Sign In despite a stored account session.");
     }
 
+    await page.getByRole("button", { name: /expand notification settings/i }).click();
+    await page.getByText("Remind me before").waitFor({ state: "visible", timeout: 5_000 });
+    await page.waitForTimeout(350);
+    await assertTwoColumnControlGrid(page, "advance-reminder-grid", "Advance reminder");
+    await assertTwoColumnControlGrid(page, "quiet-hours-grid", "Quiet hours");
+    await page.getByText("Advance reminders").scrollIntoViewIfNeeded();
     await page.screenshot({ path: screenshotPath, fullPage: false });
     console.log(`Account Settings check passed: ${targetUrl}`);
     console.log(`Screenshot: ${screenshotPath}`);

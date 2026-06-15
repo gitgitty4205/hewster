@@ -13,7 +13,7 @@ import {
   type NotebookAccessRole,
   type NotebookMember,
 } from "@/lib/notebook-access";
-import { DEFAULT_PET_PHOTO_URL, defaultPetProfile, loadPetProfile, loadSharedPetProfile, savePetProfile, type PetProfile } from "@/lib/pet-profile";
+import { DEFAULT_PET_PHOTO_URL, defaultPetProfile, loadPetProfile, loadSharedPetProfile, loadUserTheme, savePetProfile, type PetProfile } from "@/lib/pet-profile";
 import { getActiveProfileSlug, getSupabaseBrowserClient, normalizeProfileSlug, setActiveProfileSlug } from "@/lib/supabase";
 import {
   loadStoredSubscriptionPlan,
@@ -119,7 +119,7 @@ function notebookLabel(member: NotebookMember, profile: PetProfile, currentUserI
 
 const avatarClassNames = {
   circle: "mt-0.5 size-20 rounded-full object-cover object-center ring-1 ring-zinc-500/60 shadow-sm",
-  tile: "size-[4.5rem] rounded-[1.15rem] object-cover object-center shadow-[0_10px_22px_rgba(15,23,42,0.22),0_1px_3px_rgba(255,255,255,0.35)_inset] ring-1 ring-[var(--hewie-active-text,#334155)]/18",
+  tile: "size-[4.5rem] rounded-[1.15rem] object-cover object-center shadow-[0_10px_22px_rgba(15,23,42,0.22),0_1px_3px_rgba(255,255,255,0.35)_inset] ring-1 ring-[var(--hewie-active-text)]/18",
 };
 
 const defaultAvatarClassNames = {
@@ -128,8 +128,8 @@ const defaultAvatarClassNames = {
 };
 
 const avatarButtonClassNames = {
-  circle: "shrink-0 rounded-full text-left transition hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/55",
-  tile: "shrink-0 rounded-[1.15rem] text-left transition hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/55",
+  circle: "shrink-0 rounded-full text-left transition hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-[var(--hewie-ring)]/55",
+  tile: "shrink-0 rounded-[1.15rem] text-left transition hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-[var(--hewie-ring)]/55",
 };
 
 function isDefaultPetPhoto(photoUrl?: string) {
@@ -296,6 +296,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
   const ownedPetLimit = petLimitForSubscriptionPlan(subscriptionPlan);
   const imageSize = shape === "tile" ? 72 : 80;
   const currentPetUsesDefaultPhoto = isDefaultPetPhoto(currentPet.photoUrl);
+  const modalBackgroundSize = currentPetUsesDefaultPhoto ? "44% auto" : "cover";
 
   const openFreePetUpgradeDialog = () => {
     setAddPetMessage("");
@@ -322,7 +323,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
     const profileSlug = uniquePetProfileSlug(name, pets);
     const newProfile = {
       ...defaultPetProfile,
-      themeId: profile.themeId,
+      themeId: loadUserTheme(user?.id),
       petName: name,
       petFirstName: petFirstName || name,
       petLastName: petLastNameParts.join(" "),
@@ -417,14 +418,14 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
 
       {open ? (
         <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-950/25 px-3 py-4 backdrop-blur-sm sm:py-6">
-          <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[680px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] shadow-2xl ring-1 ring-[var(--hewie-ring,#cbd5e1)] sm:h-[78vh] sm:min-h-[560px]">
+          <div className="relative mx-auto flex h-[calc(100dvh-2rem)] max-h-[680px] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-3xl bg-[var(--hewie-active-bg)] text-[var(--hewie-active-text)] shadow-2xl ring-1 ring-[var(--hewie-ring)] sm:h-[78vh] sm:min-h-[560px]">
             <div
               className="absolute inset-0 opacity-[0.82] grayscale contrast-90 saturate-80"
               style={{
                 backgroundImage: `url('${currentPet.photoUrl || DEFAULT_PET_PHOTO_URL}')`,
                 backgroundPosition: currentPetUsesDefaultPhoto ? "center 58%" : "center",
                 backgroundRepeat: "no-repeat",
-                backgroundSize: currentPetUsesDefaultPhoto ? "68% auto" : "cover",
+                backgroundSize: modalBackgroundSize,
               }}
               aria-hidden="true"
             />
@@ -432,19 +433,19 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
               className="absolute inset-0 backdrop-blur-[0.6px]"
               style={{
                 background:
-                  "linear-gradient(180deg, color-mix(in srgb, var(--hewie-active-bg,#f1f5f9) 52%, transparent) 0%, color-mix(in srgb, var(--hewie-bg,#979ca7) 24%, transparent) 44%, color-mix(in srgb, var(--hewie-active-bg,#f1f5f9) 40%, transparent) 100%)",
+                  "linear-gradient(180deg, color-mix(in srgb, var(--hewie-active-bg) 52%, transparent) 0%, color-mix(in srgb, var(--hewie-bg) 24%, transparent) 44%, color-mix(in srgb, var(--hewie-active-bg) 40%, transparent) 100%)",
               }}
               aria-hidden="true"
             />
-            <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg,#f1f5f9)]/92 px-5 py-4 text-[var(--hewie-active-text,#334155)] shadow-sm backdrop-blur-[1px]">
+            <div className="relative flex items-center justify-between bg-[var(--hewie-active-bg)] px-5 py-4 text-[var(--hewie-active-text)] shadow-sm">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--hewie-active-text,#334155)]/64">PetNoteBook</p>
-                <h2 className="text-xl font-semibold text-[var(--hewie-active-text,#334155)]">Pets</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--hewie-active-text)]/72">PetNoteBook</p>
+                <h2 className="text-xl font-semibold text-[var(--hewie-active-text)]">Pets</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex size-10 items-center justify-center rounded-full bg-white/85 text-[var(--hewie-active-text,#334155)] shadow-sm"
+                className="flex size-10 items-center justify-center rounded-full bg-white/88 text-[var(--hewie-active-text)] shadow-sm transition hover:bg-white"
                 aria-label="Close pet switcher"
               >
                 <X className="size-5" />
@@ -453,17 +454,26 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
 
             <div className="relative flex flex-1 flex-col justify-start gap-3 overflow-y-auto px-5 py-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] sm:py-6">
               {accessibleNotebooks.length ? (
-                accessibleNotebooks.map((pet) => (
+                accessibleNotebooks.map((pet) => {
+                  const petUsesDefaultPhoto = isDefaultPetPhoto(pet.photoUrl);
+
+                  return (
                   <button
                     key={pet.id}
                     type="button"
                     onClick={() => switchNotebook(pet.notebookOwnerId, pet.profileSlug)}
-                    className="flex items-center gap-3 rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)]/82 p-3 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[rgba(15,23,42,0.08)] backdrop-blur-[1.5px] transition"
+                    className="flex items-center gap-3 rounded-2xl bg-[var(--hewie-active-bg)]/82 p-3 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[rgba(15,23,42,0.08)] backdrop-blur-[1.5px] transition"
                   >
                     <span className="flex min-w-0 flex-1 items-center gap-3 text-left">
                       <span className="relative flex size-16 shrink-0 overflow-hidden rounded-[1.05rem] bg-white/20 shadow-sm ring-1 ring-[rgba(15,23,42,0.08)]">
                         {pet.photoUrl ? (
-                          <Image src={pet.photoUrl} alt={pet.name} fill className="object-cover object-center" sizes="64px" />
+                          <Image
+                            src={pet.photoUrl}
+                            alt={pet.name}
+                            fill
+                            className={petUsesDefaultPhoto ? "object-contain object-center p-2.5" : "object-cover object-center"}
+                            sizes="64px"
+                          />
                         ) : (
                           <span className="flex size-full items-center justify-center text-3xl">🐾</span>
                         )}
@@ -474,9 +484,10 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                       </span>
                     </span>
                   </button>
-                ))
+                  );
+                })
               ) : (
-                <div className="rounded-2xl bg-[var(--hewie-bg,#979ca7)] p-4 text-sm font-semibold leading-5 text-[var(--hewie-accent-text,#ffffff)] shadow-sm">
+                <div className="rounded-2xl bg-[var(--hewie-bg)] p-4 text-sm font-semibold leading-5 text-[var(--hewie-accent-text)] shadow-sm">
                   No pets are showing in this card right now. Archived pets stay saved in their profile.
                 </div>
               )}
@@ -486,7 +497,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                   {pets.slice(1).map((pet) => (
                     <div
                       key={pet.id}
-                      className="rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)]/70 p-4 text-sm font-semibold text-[var(--hewie-active-text,#334155)] ring-1 ring-[var(--hewie-ring,#cbd5e1)]"
+                      className="rounded-2xl bg-[var(--hewie-active-bg)]/70 p-4 text-sm font-semibold text-[var(--hewie-active-text)] ring-1 ring-[var(--hewie-ring)]"
                     >
                       {pet.name}
                     </div>
@@ -495,7 +506,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
               ) : null}
 
               {canAddOwnedPet && adding ? (
-                <div className="space-y-3 rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)]/92 p-4 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] backdrop-blur-[1px]">
+                <div className="space-y-3 rounded-2xl bg-[var(--hewie-active-bg)]/92 p-4 shadow-sm ring-1 ring-[var(--hewie-ring)] backdrop-blur-[1px]">
                   <label className="block text-sm font-semibold">
                     Pet Name
                     <input
@@ -517,13 +528,13 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                     />
                   </label>
                   <div className="flex gap-2">
-                    <button type="button" onClick={addPet} className="rounded-full bg-[var(--hewie-active-text,#334155)] px-4 py-2 text-sm font-bold text-white">
+                    <button type="button" onClick={addPet} className="rounded-full bg-[var(--hewie-active-text)] px-4 py-2 text-sm font-bold text-white">
                       Add Pet
                     </button>
                     <button type="button" onClick={() => {
                       setAdding(false);
                       setAddPetMessage("");
-                    }} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-[var(--hewie-active-text,#334155)] shadow-sm">
+                    }} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-[var(--hewie-active-text)] shadow-sm">
                       Cancel
                     </button>
                   </div>
@@ -532,7 +543,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                 <button
                   type="button"
                   onClick={handleStartAddPet}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--hewie-active-text,#334155)] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:scale-[1.01] hover:opacity-90"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--hewie-active-text)] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:scale-[1.01] hover:opacity-90"
                 >
                   <Plus className="size-4" />
                   Add Pet
@@ -540,7 +551,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
               ) : null}
 
               {addPetMessage ? (
-                <p className="rounded-2xl bg-[var(--hewie-active-bg,#f1f5f9)]/92 p-3 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)] backdrop-blur-[1px]">
+                <p className="rounded-2xl bg-[var(--hewie-active-bg)]/92 p-3 text-sm font-semibold leading-5 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-[var(--hewie-ring)] backdrop-blur-[1px]">
                   {addPetMessage}
                 </p>
               ) : null}
@@ -555,11 +566,11 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                 <div className="mb-4">
                   <h3 id="add-pet-upgrade-title" className="flex items-center gap-1.5 whitespace-nowrap text-base font-semibold">
                     <span>Add unlimited pets with</span>
-                    <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text,#334155)]">
+                    <span className="inline-flex rounded-full border border-[var(--hewie-accent)] bg-[var(--hewie-active-bg)] px-2.5 py-1 text-[13px] font-bold leading-none text-[var(--hewie-active-text)]">
                       Plus
                     </span>
                   </h3>
-                  <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                  <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text)]">
                     Free includes 1 pet. Upgrade to Plus for unlimited pets, notebook sharing, and lifetime health history.
                   </p>
                 </div>
@@ -579,7 +590,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                   <button
                     type="button"
                     onClick={handleUpgradeForMorePets}
-                    className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text,#334155)]"
+                    className="flex w-full items-center justify-between gap-2 rounded-xl px-0 text-left text-xs font-bold leading-5 text-[var(--hewie-active-text)]"
                   >
                     <span className="flex items-start gap-2">
                       <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
@@ -600,7 +611,7 @@ export function PetAvatarMenu({ className, width, height, shape = "circle" }: Pr
                   <button
                     type="button"
                     onClick={handleUpgradeForMorePets}
-                    className="h-11 rounded-full bg-[var(--hewie-active-text,#334155)] px-4 text-sm font-bold text-white"
+                    className="h-11 rounded-full bg-[var(--hewie-active-text)] px-4 text-sm font-bold text-white"
                   >
                     Upgrade to Plus
                   </button>

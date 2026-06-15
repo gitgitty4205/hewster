@@ -41,7 +41,7 @@ import {
 
 } from "@/lib/hewster-data";
 
-import { compareActivitiesChronological, formatActivityLabel, formatActivityTime, renderActivityDetail, splitTreatDetailText } from "@/lib/activity";
+import { compareActivitiesChronological, formatActivityLabel, formatActivityTime, normalizeCareFrequencyLine, renderActivityDetail, renderHealthTimelineActivityDetail, splitTreatDetailText } from "@/lib/activity";
 import { careItemsForMeal, loadCareTemplates, loadCurrentCareTemplatesFromSupabase, mealPlanDoseNumberForMeal, mealPlanTotalDoseCount, type CareItemKind, type CareItemTemplate } from "@/lib/care-settings";
 
 import type { MealTemplate } from "@/lib/meal-templates";
@@ -266,6 +266,12 @@ function careTemplateGiveText(item: CareItemTemplate | null) {
 function mealPlanCareTimingLabel(item: CareItemTemplate) {
   if (item.kind !== "medication" || item.medicationType !== "oral") return null;
   return "With Food";
+}
+
+function medicationTimingBadgeColorClassName(timingLine: string | null) {
+  return timingLine === "Empty Stomach"
+    ? "bg-sky-200/90 text-zinc-950"
+    : "bg-pink-200/90 text-sky-600";
 }
 
 function mealPlanCareDetailText(item: CareItemTemplate) {
@@ -546,7 +552,7 @@ function CareItemHistoryLine({ item }: { item: CareItemTemplate & { skipped: boo
 
   return (
     <div className={`flex items-start gap-2 text-sm leading-5 ${item.skipped ? "rounded-2xl bg-rose-50/70 px-2 py-1.5 text-rose-700 ring-1 ring-rose-200/70" : "text-[#6b3f22]/70"}`}>
-      <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ${iconClassName}`}>
+      <span className={`flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ${iconClassName}`}>
         {item.kind === "supplement" ? <Tablets className="size-3.5" /> : <MedicationPillIcon className="size-3.5" />}
       </span>
       <div className="min-w-0 flex-1">
@@ -554,7 +560,7 @@ function CareItemHistoryLine({ item }: { item: CareItemTemplate & { skipped: boo
           <span className={`font-semibold ${textClassName}`}>{careKindLabel(item.kind)}:</span>{" "}
           <span className={`font-semibold ${textClassName}`}>{item.name}</span>
           <span className={`font-normal ${textClassName}`}>{mealPlanCareDetailText(item)}</span>
-          {timingLabel ? <span className="ml-2 inline-flex rounded-full bg-sky-100/80 px-2 py-0.5 text-xs font-normal text-sky-700/60">{timingLabel}</span> : null}
+          {timingLabel ? <span className={`ml-2 inline-flex rounded-full px-2 py-0.5 text-xs font-normal ${medicationTimingBadgeColorClassName(timingLabel)}`}>{timingLabel}</span> : null}
           {item.isLastDose ? <span className="ml-2 inline-flex rounded-full bg-amber-100/80 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
           {item.skipped ? <span className="ml-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">Skipped</span> : null}
         </p>
@@ -579,12 +585,56 @@ function TimelineStatusBadge({ status }: { status: "Skipped" | "Missed" | null }
   return status ? <span className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{status}</span> : null;
 }
 
+function isCareTimingLine(line: string) {
+  return line === "With Food" || line === "Empty Stomach";
+}
+
+function careTimingBadgeClassName(timingLine: string, activityType?: ActivityLog["activityType"] | "meal" | "manual") {
+  return `rounded-full px-2.5 py-1 text-xs font-normal ${activityType === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : medicationTimingBadgeColorClassName(timingLine)}`;
+}
+
+function displayTimelineLine(line: string) {
+  return normalizeCareFrequencyLine(line);
+}
+
+function TimelineLineContent({ line }: { line: string }) {
+  const displayLine = displayTimelineLine(line);
+  if (displayLine.startsWith("Medication: ")) {
+    return <span className="font-semibold text-zinc-800">{displayLine}</span>;
+  }
+  if (displayLine.startsWith("Notes: ")) {
+    return (
+      <>
+        <span className="font-medium text-zinc-600">Notes:</span>
+        {displayLine.slice("Notes:".length)}
+      </>
+    );
+  }
+  return <>{displayLine}</>;
+}
+
 function TimelineDetailText({ detail, status, className = "mt-1 text-sm text-zinc-500" }: { detail: string; status: "Skipped" | "Missed" | null; className?: string }) {
   const cleanDetail = displayMedicalDetail(cleanTimelineDetail(detail, status)) ?? "";
+  const detailLines = cleanDetail.split("\n").filter(Boolean);
+  const timingLines = detailLines.filter(isCareTimingLine);
+  const textLines = detailLines.filter((line) => !isCareTimingLine(line));
 
   return (
-    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-      {cleanDetail ? <span>{cleanDetail}</span> : null}
+    <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${className}`}>
+      {textLines.length ? (
+        <span className="min-w-0">
+          {textLines.map((line, index) => (
+            <span key={`${line}-${index}`} className="block leading-6">
+              <TimelineLineContent line={line} />
+              {line.startsWith("Give ") ? timingLines.map((timingLine) => (
+                <span key={timingLine} className={`ml-2 inline-flex align-middle ${careTimingBadgeClassName(timingLine)}`}>
+                  {timingLine}
+                </span>
+              )) : null}
+            </span>
+          ))}
+        </span>
+      ) : null}
       <TimelineStatusBadge status={status} />
     </div>
   );
@@ -730,13 +780,13 @@ function PottyDetailBadges({ detail, notes, inset = true }: { detail: string | n
 
   return (
 
-    <div className={`${inset ? "mt-2" : ""} space-y-1.5`}>
+    <div className={`${inset ? "mt-2" : ""} flex flex-col items-start gap-1.5 text-left`}>
 
-      <div className="flex flex-wrap items-center gap-2">
+      {showPee ? (
 
-        {showPee ? (
+        <div className="flex w-full justify-start">
 
-          <span className={pottyBadgeClasses("Pee")}>
+          <span className={`${pottyBadgeClasses("Pee")} whitespace-nowrap`}>
 
             <PeeSplash />
 
@@ -744,31 +794,47 @@ function PottyDetailBadges({ detail, notes, inset = true }: { detail: string | n
 
           </span>
 
-        ) : null}
+        </div>
 
-        {showPoop ? (
+      ) : null}
 
-          <span className="inline-flex min-w-0 flex-nowrap items-center gap-1.5">
+      {showPoop ? (
 
-            <span className={`${pottyBadgeClasses(bristol ?? "Poop")} shrink-0 whitespace-nowrap`}>
+        <div className="flex w-full max-w-full flex-nowrap items-center justify-start gap-1.5">
 
-              <span className="mr-1">{"\u{1F4A9}"}</span>
+          <span className={`${pottyBadgeClasses(bristol ?? "Poop")} shrink-0 whitespace-nowrap`}>
 
-              {bristolType ?? "Poop"}
+            <span className="mr-1">{"\u{1F4A9}"}</span>
 
-            </span>
-
-            {bristolDescription ? <span className="min-w-0 whitespace-nowrap text-xs font-medium leading-5 text-zinc-600">{bristolDescription}</span> : null}
+            {bristolType ?? "Poop"}
 
           </span>
 
-        ) : null}
+          {bristolDescription ? <span className="min-w-0 whitespace-nowrap text-xs font-medium leading-5 text-zinc-600">{bristolDescription}</span> : null}
 
-        {showNoPoop ? <span className={pottyBadgeClasses("No Poop")}>No Poop</span> : null}
+        </div>
 
-        {showGenericPotty ? <span className={pottyBadgeClasses("Pee")}>Potty Break</span> : null}
+      ) : null}
 
-      </div>
+      {showNoPoop ? (
+
+        <div className="flex w-full justify-start">
+
+          <span className={`${pottyBadgeClasses("No Poop")} whitespace-nowrap`}>No Poop</span>
+
+        </div>
+
+      ) : null}
+
+      {showGenericPotty ? (
+
+        <div className="flex w-full justify-start">
+
+          <span className={`${pottyBadgeClasses("Pee")} whitespace-nowrap`}>Potty Break</span>
+
+        </div>
+
+      ) : null}
 
       {notes ? <ExpandableNoteText className="text-sm text-zinc-600">{notes}</ExpandableNoteText> : null}
 
@@ -806,7 +872,7 @@ function displayMedicalDetail(detail: string | null) {
 
 function splitActivityNotes(notes: string | null) {
 
-  const lines = notes?.split("\n").map((line) => line.trim()).filter(Boolean) ?? [];
+  const lines = notes?.split("\n").map((line) => normalizeCareFrequencyLine(line.trim())).filter(Boolean) ?? [];
 
   const attachmentLine = lines.find((line) => line.startsWith("Attachments: ")) ?? null;
 
@@ -882,7 +948,7 @@ function PottyActivityMeta({ activity }: { activity: ActivityLog }) {
 
 }
 
-function renderTimelineActivityDetail(activity: ActivityLog) {
+function renderTimelineActivityDetail(activity: ActivityLog, careTemplates: CareItemTemplate[] = []) {
 
   if (["pee", "poop", "potty"].includes(activity.activityType)) {
 
@@ -891,12 +957,7 @@ function renderTimelineActivityDetail(activity: ActivityLog) {
   }
 
   if (activity.activityType === "sick") {
-
-    const { notesText } = splitActivityNotes(activity.notes);
-
-    const detail = displayMedicalDetail(renderActivityDetail({ ...activity, notes: null }));
-
-    return notesText && detail ? `${detail} • Notes: ${notesText}` : detail || notesText;
+    return displayMedicalDetail(renderHealthTimelineActivityDetail(activity, careTemplates)) ?? "";
 
   }
 
@@ -1012,7 +1073,7 @@ function CareActivityDetail({ activity, careTemplates = [] }: { activity: Activi
 
   return (
 
-    <div className="mt-2 space-y-1.5 text-sm">
+    <div className="mt-1 space-y-1.5 text-sm">
 
       <div className="flex flex-wrap items-center gap-2">
 
@@ -1032,7 +1093,7 @@ function CareActivityDetail({ activity, careTemplates = [] }: { activity: Activi
 
             {timingLine ? (
 
-              <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${activity.activityType === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : "bg-sky-100/80 text-sky-700/60"}`}>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${activity.activityType === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : medicationTimingBadgeColorClassName(timingLine)}`}>
 
                 {timingLine}
 
@@ -1072,11 +1133,25 @@ function ActivityDetailAndNotes({ activity, careTemplates = [] }: { activity: Ac
 
   }
 
+  if (activity.activityType === "sick" && (activity.detail === "Medication" || activity.detail?.startsWith("Medication: "))) {
+
+    return (
+
+      <TimelineDetailText
+        detail={renderHealthTimelineActivityDetail(activity, careTemplates)}
+        status={null}
+        className="mt-1 text-sm text-zinc-600"
+      />
+
+    );
+
+  }
+
 
 
   return (
 
-    <div className="mt-2 space-y-1 text-sm text-zinc-600">
+    <div className="mt-1 space-y-1 text-sm text-zinc-600">
 
       {activity.detail ? <p>{displayMedicalDetail(activity.detail)}</p> : null}
 
@@ -1326,7 +1401,7 @@ function getEventFeedDot(activityType: ActivityLog["activityType"] | "meal" | "m
 function EventFeedMarker({ activityType }: { activityType: ActivityLog["activityType"] | "meal" | "manual" }) {
   if (activityType === "supplement") {
     return (
-      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]">
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#eaf0f8] text-[#1f3d5c] ring-1 ring-[#b8c9dd]">
         <Tablets className="size-3.5" />
       </span>
     );
@@ -1334,7 +1409,7 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
 
   if (activityType === "medication") {
     return (
-      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600 ring-1 ring-sky-100">
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600 ring-1 ring-sky-100">
         <MedicationPillIcon className="size-3.5" />
       </span>
     );
@@ -1342,7 +1417,7 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
 
   if (activityType === "meal") {
     return (
-      <span className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#8a5a35]/80 ring-1 ring-[#8a5a35]/20">
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#8a5a35]/80 ring-1 ring-[#8a5a35]/20">
         <Check className="size-3.5 text-white" strokeWidth={3} />
       </span>
     );
@@ -1350,13 +1425,13 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
 
   if (activityType === "manual") {
     return (
-      <span className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#fff0f1] ring-1 ring-[#e6c8ce]/80">
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#fff0f1] ring-1 ring-[#e6c8ce]/80">
         <TriangleAlert className="size-3.5 text-[#8f1739]" strokeWidth={2.25} />
       </span>
     );
   }
 
-  return <span className={`mt-1 flex size-5 shrink-0 items-center justify-center rounded-full ${getEventFeedDot(activityType)}`} />;
+  return <span className={`flex size-5 shrink-0 items-center justify-center rounded-full ${getEventFeedDot(activityType)}`} />;
 }
 
 type HistoryFilter = "all" | "allFood" | "treat" | "potty" | "activity" | "medical" | "wellness" | "care" | "other" | "medicalAttachments" | "poopRecords";
@@ -1931,7 +2006,7 @@ export default function HistoryPage() {
 
         label: formatActivityLabel(activity.activityType),
 
-        detail: renderTimelineActivityDetail(activity),
+        detail: renderTimelineActivityDetail(activity, careTemplates),
 
         activity,
 

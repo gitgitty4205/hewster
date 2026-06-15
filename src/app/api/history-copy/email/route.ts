@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 
-import { appThemes, type ThemeId } from "@/lib/pet-profile";
+import { appThemes, CANONICAL_THEME_ID, type ThemeId } from "@/lib/pet-profile";
 import { getSupabaseEnv } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -105,7 +105,7 @@ function normalizeReportImages(value: unknown): ReportImageReference[] {
 }
 
 function normalizeThemeId(value: unknown): ThemeId {
-  return typeof value === "string" && value in appThemes ? value as ThemeId : "slate";
+  return typeof value === "string" && value in appThemes ? value as ThemeId : CANONICAL_THEME_ID;
 }
 
 function formatReportValue(value: string) {
@@ -268,7 +268,7 @@ function pdfColor(value: string, operator: "rg" | "RG") {
 }
 
 function pdfReportTheme(themeId: ThemeId) {
-  const theme = appThemes[themeId] ?? appThemes.slate;
+  const theme = appThemes[themeId] ?? appThemes[CANONICAL_THEME_ID];
   return {
     accent: pdfColor(theme.accent, "rg"),
     accentStroke: pdfColor(theme.accent, "RG"),
@@ -279,7 +279,7 @@ function pdfReportTheme(themeId: ThemeId) {
   };
 }
 
-function pdfReportHeader(petName: string, theme = pdfReportTheme("slate")) {
+function pdfReportHeader(petName: string, theme = pdfReportTheme(CANONICAL_THEME_ID)) {
   return [
     `${theme.cardFill} ${pdfRoundedRect(50, 720, 28, 28, 8, "f")}`,
     `${theme.cardStroke} ${pdfRoundedRect(50, 720, 28, 28, 8, "S")}`,

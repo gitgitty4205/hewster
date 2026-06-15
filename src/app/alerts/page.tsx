@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import {
   ALERT_BADGE_COUNT_STORAGE_KEY,
+  alertExpandedDetail,
   formatReminderTime,
   loadReminderAlertRules,
   reminderEventLabel,
@@ -721,19 +722,19 @@ export default function AlertsPage() {
 
   if (!hydrated) {
     return (
-      <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+      <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
         <CenteredLoadingIcon className="min-h-screen" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Alerts &amp; Reminders</h1>
             </div>
             <PetAvatarMenu shape="tile" />
@@ -753,13 +754,13 @@ export default function AlertsPage() {
             {!showAlertForm ? (
               <Button onClick={() => setShowAlertForm(true)} className="rounded-full bg-[#8f1739] text-white hover:bg-[#7c1431]">Add Care Alert</Button>
             ) : (
-              <div className="space-y-3 rounded-2xl bg-white/60 p-3 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+              <div className="space-y-3 rounded-2xl bg-white/60 p-3 ring-1 ring-[var(--hewie-ring)]">
                 <input
                   value={titleValue}
                   onChange={(event) => setTitleValue(clampText(event.target.value, TEXT_LIMITS.shortName))}
                   maxLength={TEXT_LIMITS.shortName}
                   placeholder="Care alert title"
-                  className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                  className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
                 />
                 <div className="grid grid-cols-[1fr_auto] gap-3">
                   <select
@@ -770,7 +771,7 @@ export default function AlertsPage() {
                       if (nextScope === "today") setAlertDateValue(todayKey);
                       if (nextScope === "tomorrow") setAlertDateValue(tomorrowKey);
                     }}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                    className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
                   >
                     <option value="today">Today</option>
                     <option value="tomorrow">Tomorrow</option>
@@ -792,7 +793,7 @@ export default function AlertsPage() {
                     value={alertDateValue}
                     min={todayKey}
                     onChange={(event) => setAlertDateValue(event.target.value)}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                    className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
                   />
                 ) : null}
                 {repeatHelperText(scopeValue) ? (
@@ -822,7 +823,7 @@ export default function AlertsPage() {
                   maxLength={100}
                   rows={3}
                   placeholder="Care alert details / message for myself and other caretakers"
-                  className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                  className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
                 />
                 {newAlertError ? <p className="text-sm font-medium text-[#8f1739]">{newAlertError}</p> : null}
                 <div className="flex flex-wrap gap-2">
@@ -843,8 +844,8 @@ export default function AlertsPage() {
                   const reviewActionButtonClass = "h-8 min-w-14 rounded-full px-2.5 text-xs font-semibold";
                   const detailKey = `unresolved-${alert.id}`;
                   const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
-                  const expandedDetail = alert.expandedDetail?.trim();
-                  const hasExpandedDetail = Boolean(expandedDetail && expandedDetail !== alert.detail.trim());
+                  const expandedDetail = alertExpandedDetail(alert);
+                  const hasExpandedDetail = Boolean(expandedDetail);
 
                   return (
                     <article
@@ -965,7 +966,7 @@ export default function AlertsPage() {
             ) : null}
 
             {savedManualAlerts.length ? (
-              <div className="space-y-3 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-3">
+              <div className="space-y-3 border-t border-[var(--hewie-ring)]/70 pt-3">
                 <h3 className="text-sm font-semibold text-[#8f1739]/80">Saved Care Alerts</h3>
                 {savedManualAlerts.map((alert) => {
                   const detailKey = `saved-alert-${alert.id}`;
@@ -998,7 +999,7 @@ export default function AlertsPage() {
                         onChange={(event) => setEditingTitleValue(clampText(event.target.value, TEXT_LIMITS.shortName))}
                         maxLength={TEXT_LIMITS.shortName}
                         placeholder="Care alert title"
-                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
                       />
                       <div className="grid grid-cols-[1fr_auto] gap-3">
                         <select
@@ -1009,7 +1010,7 @@ export default function AlertsPage() {
                             if (nextScope === "today") setEditingAlertDateValue(todayKey);
                             if (nextScope === "tomorrow") setEditingAlertDateValue(tomorrowKey);
                           }}
-                          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
                         >
                           <option value="today">Today</option>
                           <option value="tomorrow">Tomorrow</option>
@@ -1031,7 +1032,7 @@ export default function AlertsPage() {
                           value={editingAlertDateValue}
                           min={todayKey}
                           onChange={(event) => setEditingAlertDateValue(event.target.value)}
-                          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
                         />
                       ) : null}
                       {repeatHelperText(editingScopeValue) ? (
@@ -1061,7 +1062,7 @@ export default function AlertsPage() {
                         maxLength={100}
                         rows={3}
                         placeholder="Care alert details / message for myself and other caretakers"
-                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
                       />
                       {editingAlertError ? <p className="text-sm font-medium text-[#8f1739]">{editingAlertError}</p> : null}
                       <div className="grid grid-cols-3 gap-2">
@@ -1080,7 +1081,6 @@ export default function AlertsPage() {
                           <p className="mt-1 text-sm text-[#b71f48]/70">
                             {alertScopeLabel(alert)}{alert.time ? ` ${formatReminderTime(alert.time)}` : ""}
                           </p>
-                          {savedAlertMessage ? <p className="mt-1 truncate text-sm text-[#b71f48]/65">{savedAlertMessage}</p> : null}
                         </div>
                         {savedAlertMessage ? (
                           <ExpandDetailsButton
@@ -1108,24 +1108,24 @@ export default function AlertsPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white/75 p-5 text-[var(--hewie-active-text,#334155)] shadow-sm ring-1 ring-white/70">
+        <section className="rounded-3xl bg-white/75 p-5 text-[var(--hewie-active-text)] shadow-sm ring-1 ring-white/70">
           <div className="mb-4 flex items-center gap-2">
-            <Bell className="size-5 text-[var(--hewie-active-text,#334155)]" />
-            <h2 className="text-lg font-semibold text-[var(--hewie-active-text,#334155)]">Reminders</h2>
+            <Bell className="size-5 text-[var(--hewie-active-text)]" />
+            <h2 className="text-lg font-semibold text-[var(--hewie-active-text)]">Reminders</h2>
           </div>
-          <p className="mb-4 text-sm leading-5 text-[var(--hewie-active-text,#334155)]/65">
+          <p className="mb-4 text-sm leading-5 text-[var(--hewie-active-text)]/65">
             Reminders for tasks that haven&apos;t been logged.
           </p>
           <div className="space-y-3">
             {!showReminderForm ? (
-              <Button onClick={() => setShowReminderForm(true)} className="rounded-full bg-[var(--hewie-active-text,#334155)] text-white hover:opacity-90">Add Reminder</Button>
+              <Button onClick={() => setShowReminderForm(true)} className="rounded-full bg-[var(--hewie-active-text)] text-white hover:opacity-90">Add Reminder</Button>
             ) : (
-              <div className="space-y-3 rounded-2xl bg-white/60 p-3 ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+              <div className="space-y-3 rounded-2xl bg-white/60 p-3 ring-1 ring-[var(--hewie-ring)]">
             <div className="grid grid-cols-[1fr_auto] gap-3">
               <select
                 value={reminderEventValue}
                 onChange={(event) => setReminderEventValue(event.target.value as ReminderAlertEvent)}
-                className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
               >
                 <option value="meal">Meal / Food</option>
                 <option value="potty">Potty</option>
@@ -1140,15 +1140,15 @@ export default function AlertsPage() {
               />
             </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={addReminderRule} className="rounded-full bg-[var(--hewie-active-text,#334155)] text-white hover:opacity-90">Save Reminder</Button>
+                  <Button onClick={addReminderRule} className="rounded-full bg-[var(--hewie-active-text)] text-white hover:opacity-90">Save Reminder</Button>
                   <Button variant="outline" onClick={() => setShowReminderForm(false)} className="rounded-full">Cancel</Button>
                 </div>
               </div>
             )}
 
             {visibleReminderRules.length ? (
-              <div className="space-y-2 border-t border-[var(--hewie-ring,#cbd5e1)]/70 pt-3">
-                <h3 className="text-sm font-semibold text-[var(--hewie-active-text,#334155)]/85">Saved Reminders</h3>
+              <div className="space-y-2 border-t border-[var(--hewie-ring)]/70 pt-3">
+                <h3 className="text-sm font-semibold text-[var(--hewie-active-text)]/85">Saved Reminders</h3>
                 {visibleReminderRules.map((rule) => (
                   <article
                     key={rule.id}
@@ -1164,10 +1164,10 @@ export default function AlertsPage() {
                             startEditingReminderRule(rule);
                           }
                     }
-                    className={`rounded-2xl bg-white/70 p-4 ring-1 ring-[var(--hewie-ring,#cbd5e1)] ${
+                    className={`rounded-2xl bg-white/70 p-4 ring-1 ring-[var(--hewie-ring)] ${
                       editingReminderRuleId === rule.id
                         ? ""
-                        : "cursor-pointer transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hewie-active-text,#334155)]/25"
+                        : "cursor-pointer transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hewie-active-text)]/25"
                     }`}
                   >
                     {editingReminderRuleId === rule.id ? (
@@ -1176,7 +1176,7 @@ export default function AlertsPage() {
                           <select
                             value={editingReminderEventValue}
                             onChange={(event) => setEditingReminderEventValue(event.target.value as ReminderAlertEvent)}
-                            className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent,#64748b)] focus:ring-4 focus:ring-[var(--hewie-ring,#cbd5e1)]/45"
+                            className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-accent)] focus:ring-4 focus:ring-[var(--hewie-ring)]/45"
                           >
                             <option value="meal">Meal / Food</option>
                             <option value="potty">Potty</option>
@@ -1191,18 +1191,18 @@ export default function AlertsPage() {
                           />
                         </div>
                         <div className="grid grid-cols-3 gap-2">
-                          <Button className="rounded-full bg-[var(--hewie-active-text,#334155)] px-2 text-white hover:opacity-90" onClick={saveEditedReminderRule}>Save</Button>
+                          <Button className="rounded-full bg-[var(--hewie-active-text)] px-2 text-white hover:opacity-90" onClick={saveEditedReminderRule}>Save</Button>
                           <Button variant="outline" className="rounded-full px-2" onClick={cancelEditingReminderRule}>Cancel</Button>
-                          <Button variant="outline" className="rounded-full border-[var(--hewie-ring,#cbd5e1)] px-2 text-[var(--hewie-active-text,#334155)] hover:bg-[var(--hewie-active-bg,#f1f5f9)]" onClick={() => deleteReminderRule(rule.id)}>Delete</Button>
+                          <Button variant="outline" className="rounded-full border-[var(--hewie-ring)] px-2 text-[var(--hewie-active-text)] hover:bg-[var(--hewie-active-bg)]" onClick={() => deleteReminderRule(rule.id)}>Delete</Button>
                         </div>
                       </div>
                     ) : (
                       <div>
                         <div>
-                          <p className="font-medium text-[var(--hewie-active-text,#334155)]">
+                          <p className="font-medium text-[var(--hewie-active-text)]">
                             Remind if {reminderActionLabel(rule.eventType)} not logged by {formatReminderTime(rule.time)}
                           </p>
-                          <p className="mt-1 text-sm text-[var(--hewie-active-text,#334155)]/65">Every day</p>
+                          <p className="mt-1 text-sm text-[var(--hewie-active-text)]/65">Every day</p>
                         </div>
                       </div>
                     )}

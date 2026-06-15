@@ -502,7 +502,7 @@ function LoginPageContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<main className="min-h-screen bg-[var(--hewie-bg,#999b96)]" />}>
+    <Suspense fallback={<main className="min-h-screen bg-[var(--hewie-bg)]" />}>
       <LoginPageContent />
     </Suspense>
   );

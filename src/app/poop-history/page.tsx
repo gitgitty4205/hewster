@@ -107,10 +107,10 @@ export default function PoopHistoryPage() {
   const dayEntries = Object.entries(groupedLogs).sort((a, b) => b[0].localeCompare(a[0]));
 
   return (
-    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
-          <p className="text-sm font-medium text-[var(--hewie-active-text,#6d28d9)]"><PetNotebookTitle /></p>
+          <p className="text-sm font-medium text-[var(--hewie-active-text)]"><PetNotebookTitle /></p>
           <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Poop History</h1>
         </header>
 

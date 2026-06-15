@@ -761,12 +761,12 @@ export default function AccountSettingsPage() {
   const membershipSummary = selectedPlan === "plus" ? "PetNotebook Plus" : "Free";
 
   return (
-    <main className="min-h-[100dvh] bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-[100dvh] bg-[var(--hewie-bg)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-6">
         <header className="mb-5">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Account Settings</h1>
             </div>
             <PetAvatarMenu shape="tile" />
@@ -889,7 +889,7 @@ export default function AccountSettingsPage() {
               <Button
                 type="button"
                 onClick={() => void handleSaveAccountInfo()}
-                className="rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60"
+                className="rounded-full bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] disabled:opacity-60"
                 disabled={!displayUser || accountStatus === "saving"}
               >
                 {accountStatus === "saving" ? "Saving..." : "Save"}
@@ -932,7 +932,7 @@ export default function AccountSettingsPage() {
                 aria-checked={notificationsEnabled}
                 onClick={handleToggleNotifications}
                 className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition ${
-                  notificationsEnabled ? "justify-end bg-[var(--hewie-accent,#64748b)]" : "justify-start bg-zinc-300"
+                  notificationsEnabled ? "justify-end bg-[var(--hewie-accent)]" : "justify-start bg-zinc-300"
                 }`}
               >
                 <span className="size-5 rounded-full bg-white shadow-sm" />
@@ -958,7 +958,7 @@ export default function AccountSettingsPage() {
                           aria-checked={isSelected}
                           onClick={() => toggleNotificationPreference(item.title)}
                           className={`flex h-6 w-10 shrink-0 items-center rounded-full p-1 transition ${
-                            isSelected ? "justify-end bg-[var(--hewie-accent,#64748b)]" : "justify-start bg-zinc-300"
+                            isSelected ? "justify-end bg-[var(--hewie-accent)]" : "justify-start bg-zinc-300"
                           }`}
                         >
                           <span className="size-4 rounded-full bg-white shadow-sm" />
@@ -970,8 +970,12 @@ export default function AccountSettingsPage() {
                           {item.title === "Advance reminders" ? (
                             <label className="block text-xs font-semibold text-zinc-600">
                               Remind me before
-                              <div className="mt-2 grid grid-cols-1 gap-2 min-[390px]:grid-cols-[minmax(0,1fr)_7rem]">
-                                <div className="flex h-11 items-center rounded-2xl border border-zinc-200 bg-white px-3 focus-within:border-[var(--hewie-accent,#64748b)]">
+                              <div
+                                data-testid="advance-reminder-grid"
+                                className="account-settings-reminder-grid mt-2"
+                                style={{ display: "flex", gap: "0.5rem", flexWrap: "nowrap", alignItems: "center" }}
+                              >
+                                <div className="flex h-11 min-w-0 flex-[1_1_auto] items-center rounded-2xl border border-zinc-200 bg-white px-3 focus-within:border-[var(--hewie-accent)]">
                                   <input
                                     type="number"
                                     min="1"
@@ -986,7 +990,7 @@ export default function AccountSettingsPage() {
                                 <select
                                   value={upcomingReminderUnit}
                                   onChange={(event) => handleUpcomingReminderUnitChange(event.target.value as ReminderTimeUnit)}
-                                  className="h-11 w-full min-w-0 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent,#64748b)]"
+                                  className="h-11 min-w-24 flex-[0_0_7rem] rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-800 outline-none focus:border-[var(--hewie-accent)]"
                                 >
                                   <option value="minutes">{reminderUnitLabel("minutes", upcomingReminderAmount)}</option>
                                   <option value="hours">{reminderUnitLabel("hours", upcomingReminderAmount)}</option>
@@ -1014,7 +1018,7 @@ export default function AccountSettingsPage() {
                                       onClick={() => toggleNotificationChannel(channel.id)}
                                       className={`h-10 min-w-0 overflow-hidden text-ellipsis rounded-2xl px-2 text-xs font-semibold ring-1 transition ${
                                         selected
-                                          ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-zinc-900 ring-[var(--hewie-ring,#cbd5e1)]"
+                                          ? "bg-[var(--hewie-active-bg)] text-zinc-900 ring-[var(--hewie-ring)]"
                                           : "bg-white text-zinc-500 ring-zinc-200"
                                       }`}
                                     >
@@ -1027,23 +1031,27 @@ export default function AccountSettingsPage() {
                           ) : null}
 
                           {item.title === "Quiet hours" ? (
-                            <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                              <label className="block min-w-0 text-xs font-semibold text-zinc-600">
-                                Start
+                            <div
+                              data-testid="quiet-hours-grid"
+                              className="account-settings-quiet-hours-grid"
+                              style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
+                            >
+                              <label className="flex h-11 min-w-0 items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-600 focus-within:border-[var(--hewie-accent)]">
+                                <span className="shrink-0">Start</span>
                                 <input
                                   type="time"
                                   value={quietHoursStart}
                                   onChange={(event) => setQuietHoursStart(event.target.value)}
-                                  className="hewie-input-bubble hewie-time-input mt-2 font-semibold text-zinc-800"
+                                  className="hewie-time-input h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-right text-sm font-semibold text-zinc-800 outline-none"
                                 />
                               </label>
-                              <label className="block min-w-0 text-xs font-semibold text-zinc-600">
-                                End
+                              <label className="flex h-11 min-w-0 items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-600 focus-within:border-[var(--hewie-accent)]">
+                                <span className="shrink-0">End</span>
                                 <input
                                   type="time"
                                   value={quietHoursEnd}
                                   onChange={(event) => setQuietHoursEnd(event.target.value)}
-                                  className="hewie-input-bubble hewie-time-input mt-2 font-semibold text-zinc-800"
+                                  className="hewie-time-input h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-right text-sm font-semibold text-zinc-800 outline-none"
                                 />
                               </label>
                             </div>
@@ -1057,7 +1065,7 @@ export default function AccountSettingsPage() {
                 <Button
                   type="button"
                   onClick={handleSaveNotificationSettings}
-                  className="mt-3 h-11 w-full rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]"
+                  className="mt-3 h-11 w-full rounded-full bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)]"
                 >
                   Save
                 </Button>
@@ -1151,7 +1159,7 @@ export default function AccountSettingsPage() {
                 aria-checked={twoFactorEnabled}
                 onClick={() => void handleSaveTwoFactorSettings(!twoFactorEnabled)}
                 className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition ${
-                  twoFactorEnabled ? "justify-end bg-[var(--hewie-accent,#64748b)]" : "justify-start bg-zinc-300"
+                  twoFactorEnabled ? "justify-end bg-[var(--hewie-accent)]" : "justify-start bg-zinc-300"
                 }`}
                 disabled={!displayUser || twoFactorStatus === "saving"}
               >
@@ -1162,7 +1170,7 @@ export default function AccountSettingsPage() {
                   type="button"
                   onClick={() => void handleSaveTwoFactorSettings(true, "email")}
                   className={`rounded-xl border px-3 py-1.5 text-left transition ${
-                    twoFactorMethod === "email" ? "border-[var(--hewie-ring,#cbd5e1)] bg-[var(--hewie-active-bg,#f1f5f9)]" : "border-zinc-200 bg-white"
+                    twoFactorMethod === "email" ? "border-[var(--hewie-ring)] bg-[var(--hewie-active-bg)]" : "border-zinc-200 bg-white"
                   }`}
                   disabled={!displayUser || twoFactorStatus === "saving" || !twoFactorEnabled}
                 >
@@ -1172,7 +1180,7 @@ export default function AccountSettingsPage() {
                   type="button"
                   onClick={() => void handleSaveTwoFactorSettings(true, "sms")}
                   className={`rounded-xl border px-3 py-1.5 text-left transition ${
-                    twoFactorMethod === "sms" ? "border-[var(--hewie-ring,#cbd5e1)] bg-[var(--hewie-active-bg,#f1f5f9)]" : "border-zinc-200 bg-white"
+                    twoFactorMethod === "sms" ? "border-[var(--hewie-ring)] bg-[var(--hewie-active-bg)]" : "border-zinc-200 bg-white"
                   } ${canUseSmsTwoFactor ? "" : "opacity-60"}`}
                   disabled={!displayUser || twoFactorStatus === "saving" || !twoFactorEnabled || !canUseSmsTwoFactor}
                 >
@@ -1211,7 +1219,7 @@ export default function AccountSettingsPage() {
               <Button
                 type="button"
                 onClick={() => void handleSavePassword()}
-                className="rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] disabled:opacity-60"
+                className="rounded-full bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] disabled:opacity-60"
                 disabled={!displayUser || passwordStatus === "saving"}
               >
                 {passwordStatus === "saving" ? "Saving..." : "Save"}
@@ -1261,7 +1269,7 @@ export default function AccountSettingsPage() {
                     key={plan.id}
                     className={`rounded-2xl border transition ${
                       selectedPlus
-                        ? "border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)]"
+                        ? "border-[var(--hewie-accent)] bg-[var(--hewie-active-bg)]"
                         : "border-zinc-200 bg-zinc-50"
                     }`}
                   >
@@ -1282,7 +1290,7 @@ export default function AccountSettingsPage() {
                     >
                       <span className="min-w-0">
                         {plan.id === "plus" ? (
-                          <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-sm font-bold text-[var(--hewie-active-text,#334155)]">
+                          <span className="inline-flex rounded-full border border-[var(--hewie-accent)] bg-[var(--hewie-active-bg)] px-2.5 py-1 text-sm font-bold text-[var(--hewie-active-text)]">
                             {plan.name}
                           </span>
                         ) : (
@@ -1323,7 +1331,7 @@ export default function AccountSettingsPage() {
         {!passwordResetRequired ? (
         <div className="mt-5">
           {authLoading && !displayUser ? (
-            <Button type="button" className="w-full rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-[var(--hewie-accent-text,#ffffff)] opacity-80" disabled>
+            <Button type="button" className="w-full rounded-full bg-[var(--hewie-accent)] px-4 text-[var(--hewie-accent-text)] opacity-80" disabled>
               Loading Account...
             </Button>
           ) : displayUser ? (
@@ -1336,7 +1344,7 @@ export default function AccountSettingsPage() {
               Sign Out
             </Button>
           ) : (
-            <Button asChild className="w-full rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-[var(--hewie-accent-text,#ffffff)]">
+            <Button asChild className="w-full rounded-full bg-[var(--hewie-accent)] px-4 text-[var(--hewie-accent-text)]">
               <Link href="/login">Sign In</Link>
             </Button>
           )}
@@ -1353,7 +1361,7 @@ export default function AccountSettingsPage() {
               <button
                 type="button"
                 aria-label="Close upgrade"
-                className="absolute right-3 top-3 inline-flex size-6 items-center justify-center rounded-full bg-zinc-50 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:bg-white hover:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent,#64748b)] focus:ring-offset-2"
+                className="absolute right-3 top-3 inline-flex size-6 items-center justify-center rounded-full bg-zinc-50 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:bg-white hover:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[var(--hewie-accent)] focus:ring-offset-2"
                 onClick={() => setUpgradeDialogOpen(false)}
               >
                 <X className="size-3" aria-hidden="true" />
@@ -1362,18 +1370,18 @@ export default function AccountSettingsPage() {
                 <div className="min-w-0">
                   <h3 id="plus-upgrade-title" className="flex flex-wrap items-center gap-2 text-lg font-semibold text-zinc-900">
                     <span>Upgrade to</span>
-                    <span className="inline-flex rounded-full border border-[var(--hewie-accent,#64748b)] bg-[var(--hewie-active-bg,#f1f5f9)] px-2.5 py-1 text-sm font-bold text-[var(--hewie-active-text,#334155)]">
+                    <span className="inline-flex rounded-full border border-[var(--hewie-accent)] bg-[var(--hewie-active-bg)] px-2.5 py-1 text-sm font-bold text-[var(--hewie-active-text)]">
                       PetNotebook Plus
                     </span>
                   </h3>
-                  <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text,#334155)]">
+                  <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text)]">
                     A shared notebook for everyone who cares for your pet.
                   </p>
                 </div>
               </div>
 
               <div className="relative mb-4 space-y-2 rounded-2xl bg-zinc-50 p-3 pr-20 ring-1 ring-zinc-200">
-                <span className="absolute right-3 top-3 size-14 overflow-hidden rounded-2xl border border-white bg-[var(--hewie-active-bg,#f1f5f9)] shadow-[0_10px_24px_rgba(15,23,42,0.18)] ring-1 ring-[var(--hewie-accent,#64748b)]/25">
+                <span className="absolute right-3 top-3 size-14 overflow-hidden rounded-2xl border border-white bg-[var(--hewie-active-bg)] shadow-[0_10px_24px_rgba(15,23,42,0.18)] ring-1 ring-[var(--hewie-accent)]/25">
                   <Image
                     src={plusPetPhotoUrl}
                     alt="Pet profile"
@@ -1413,7 +1421,7 @@ export default function AccountSettingsPage() {
                       onClick={() => setSelectedBillingInterval(option.id)}
                       className={`flex w-full items-center justify-between rounded-2xl border-2 p-3 text-left transition ${
                         billingSelected
-                          ? "border-[var(--hewie-accent,#64748b)] bg-zinc-50"
+                          ? "border-[var(--hewie-accent)] bg-zinc-50"
                           : "border-zinc-200 bg-zinc-50"
                       }`}
                     >
@@ -1427,7 +1435,7 @@ export default function AccountSettingsPage() {
                         {option.badge ? (
                           <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                             option.id === "annual"
-                              ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)]"
+                              ? "bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)]"
                               : "border border-zinc-300 bg-white text-zinc-500"
                           }`}>
                             {option.badge}
@@ -1442,7 +1450,7 @@ export default function AccountSettingsPage() {
 
               <Button
                 type="button"
-                className="mt-4 h-12 w-full rounded-full bg-[var(--hewie-accent,#64748b)] px-4 text-[var(--hewie-accent-text,#ffffff)]"
+                className="mt-4 h-12 w-full rounded-full bg-[var(--hewie-accent)] px-4 text-[var(--hewie-accent-text)]"
                 onClick={completePlusUpgrade}
               >
                 Upgrade to Plus

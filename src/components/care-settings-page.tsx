@@ -14,6 +14,7 @@ import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import {
   type CareItemKind,
   type CareItemTemplate,
+  finalCustomCareDoseAt,
   initialCareTemplatesForKind,
   loadCareTemplates,
   loadCareTemplatesFromSupabase,
@@ -119,6 +120,23 @@ function normalizeMedicationSchedule(item: CareItemTemplate) {
   return item;
 }
 
+function uniqueCareItemId(items: CareItemTemplate[]) {
+  const existingIds = new Set(items.map((item) => item.id));
+  let id = Date.now();
+
+  while (existingIds.has(id)) id += 1;
+
+  return id;
+}
+
+function isLockedCompletedMedicationCourse(item: CareItemTemplate) {
+  return item.kind === "medication" &&
+    !item.active &&
+    !item.ongoing &&
+    !item.asNeeded &&
+    finalCustomCareDoseAt(item) !== null;
+}
+
 export function CareSettingsPage({
   kind,
   title,
@@ -135,6 +153,7 @@ export function CareSettingsPage({
   const [draftItems, setDraftItems] = useState<Record<number, CareItemTemplate>>({});
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving">("idle");
   const [hydrated, setHydrated] = useState(false);
+  const [duplicatePromptItem, setDuplicatePromptItem] = useState<CareItemTemplate | null>(null);
 
   useEffect(() => {
     if (window.location.hostname !== "www.petnotebook.com" && window.location.hostname !== "petnotebook.com") return;
@@ -234,6 +253,11 @@ export function CareSettingsPage({
   };
 
   const startEditing = (item: CareItemTemplate) => {
+    if (isLockedCompletedMedicationCourse(item)) {
+      setDuplicatePromptItem(item);
+      return;
+    }
+
     setDraftItems({
       [item.id]: {
         ...item,
@@ -242,6 +266,32 @@ export function CareSettingsPage({
       },
     });
     setEditingId(item.id);
+  };
+
+  const duplicateCompletedMedicationCourse = () => {
+    if (!duplicatePromptItem) return;
+
+    const duplicateId = uniqueCareItemId(items);
+    const duplicatedItem: CareItemTemplate = {
+      ...duplicatePromptItem,
+      id: duplicateId,
+      active: true,
+      startDateTime: currentDateTimeInputValue(),
+      customScheduleCreatedAt: new Date().toISOString(),
+      mealIds: [...duplicatePromptItem.mealIds],
+      scheduleSteps: duplicatePromptItem.scheduleSteps.map((step, index) => ({ ...step, id: Date.now() + index + 1 })),
+    };
+
+    commitItems([duplicatedItem, ...items]);
+    setDraftItems({
+      [duplicateId]: {
+        ...duplicatedItem,
+        mealIds: [...duplicatedItem.mealIds],
+        scheduleSteps: duplicatedItem.scheduleSteps.map((step) => ({ ...step })),
+      },
+    });
+    setEditingId(duplicateId);
+    setDuplicatePromptItem(null);
   };
 
   const cancelEditing = (id: number) => {
@@ -310,7 +360,7 @@ export function CareSettingsPage({
 
   const addItem = () => {
     const item = defaultTemplate(kind, items.length);
-    commitItems([...items, item]);
+    commitItems([item, ...items]);
     setEditingId(item.id);
   };
 
@@ -330,12 +380,12 @@ export function CareSettingsPage({
   };
 
   return (
-    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">{title}</h1>
             </div>
             <PetAvatarMenu shape="tile" />
@@ -417,7 +467,7 @@ export function CareSettingsPage({
                         disabled={!isEditing}
                         onChange={(event) => updateItem(item.id, { name: clampText(event.target.value, TEXT_LIMITS.shortName) })}
                         maxLength={TEXT_LIMITS.shortName}
-                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
                     </label>
 
@@ -456,7 +506,7 @@ export function CareSettingsPage({
                               asNeeded: nextItem.asNeeded,
                             });
                           }}
-                          className="w-full rounded-2xl border border-zinc-200 bg-white px-2 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                          className="w-full rounded-2xl border border-zinc-200 bg-white px-2 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                         >
                           {kind === "supplement" ? <option value="meal">Meal Plan</option> : null}
                           <option value="custom">Custom</option>
@@ -471,7 +521,7 @@ export function CareSettingsPage({
                             value={item.startDateTime}
                             disabled={!isEditing}
                             onChange={(event) => updateItem(item.id, { startDateTime: event.target.value })}
-                            className="w-full min-w-0 rounded-2xl border border-zinc-200 bg-white px-1.5 py-2.5 text-[13px] outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                            className="w-full min-w-0 rounded-2xl border border-zinc-200 bg-white px-1.5 py-2.5 text-[13px] outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                           />
                         </label>
                       ) : null}
@@ -486,7 +536,7 @@ export function CareSettingsPage({
                             <button
                               type="button"
                               aria-label="Meal Plan supplements are ongoing with the selected meals until you turn Active off. Up to 4 supplements can show with each meal."
-                              className="group relative ml-0.5 inline-flex size-5 items-center justify-center rounded-full bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] transition hover:bg-[var(--hewie-ring,#cbd5e1)] hover:text-[var(--hewie-active-text,#334155)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-ring,#cbd5e1)]"
+                              className="group relative ml-0.5 inline-flex size-5 items-center justify-center rounded-full bg-[var(--hewie-active-bg)] text-[var(--hewie-active-text)] transition hover:bg-[var(--hewie-ring)] hover:text-[var(--hewie-active-text)] focus:outline-none focus:ring-2 focus:ring-[var(--hewie-ring)]"
                             >
                               <CircleHelp className="h-3.5 w-3.5" strokeWidth={2.4} />
                               <span className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-64 -translate-x-1/2 rounded-2xl bg-zinc-900 px-3 py-2 text-left text-xs font-medium leading-5 text-white shadow-lg group-hover:block group-focus:block">
@@ -512,7 +562,7 @@ export function CareSettingsPage({
                                 onClick={() => toggleMeal(item, meal.id)}
                                 className={`rounded-full px-3 py-2 text-xs font-semibold ring-1 transition disabled:cursor-not-allowed ${
                                   mealSelected
-                                    ? "bg-[var(--hewie-active-bg,#f1f5f9)] text-[var(--hewie-active-text,#334155)] ring-[var(--hewie-ring,#cbd5e1)]"
+                                    ? "bg-[var(--hewie-active-bg)] text-[var(--hewie-active-text)] ring-[var(--hewie-ring)]"
                                     : mealAtSupplementLimit
                                       ? "bg-zinc-100 text-zinc-400 ring-zinc-200"
                                       : "bg-white text-zinc-600 ring-zinc-200"
@@ -534,7 +584,7 @@ export function CareSettingsPage({
                         onChange={(event) => updateItem(item.id, { dose: clampText(event.target.value, TEXT_LIMITS.dose) })}
                         maxLength={TEXT_LIMITS.dose}
                         placeholder="Example: 1 capsule, 5 mg"
-                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
                     </label>
 
@@ -556,7 +606,7 @@ export function CareSettingsPage({
                                   maxLength={2}
                                   onChange={(event) => updateScheduleStep(item, step.id, { everyHours: event.target.value })}
                                   placeholder="—"
-                                  className="w-10 rounded-lg border border-zinc-200 bg-white px-1.5 py-1.5 text-center text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                                  className="w-10 rounded-lg border border-zinc-200 bg-white px-1.5 py-1.5 text-center text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                                 />
                                 <span>hours for</span>
                                 <input
@@ -567,7 +617,7 @@ export function CareSettingsPage({
                                   maxLength={2}
                                   onChange={(event) => updateScheduleStep(item, step.id, { forDays: event.target.value })}
                                   placeholder="—"
-                                  className="w-10 rounded-lg border border-zinc-200 bg-white px-1.5 py-1.5 text-center text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-400"
+                                  className="w-10 rounded-lg border border-zinc-200 bg-white px-1.5 py-1.5 text-center text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-400"
                                 />
                                 <span>days{hasAnotherSchedule ? "," : ""}</span>
                                 {item.scheduleSteps.length > 1 ? (
@@ -634,7 +684,7 @@ export function CareSettingsPage({
                             onChange={(event) => updateItem(item.id, {
                               medicationType: event.target.value as CareItemTemplate["medicationType"],
                             })}
-                            className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                            className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                           >
                             <option value="oral">Oral</option>
                             <option value="topical">Topical</option>
@@ -650,7 +700,7 @@ export function CareSettingsPage({
                               value={item.customTiming}
                               disabled={!isEditing}
                               onChange={(event) => updateItem(item.id, { customTiming: event.target.value as CareItemTemplate["customTiming"] })}
-                              className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                              className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                             >
                               <option value="with-food">With Food</option>
                               <option value="empty-stomach">Empty Stomach</option>
@@ -665,7 +715,7 @@ export function CareSettingsPage({
                           value={item.customTiming}
                           disabled={!isEditing}
                           onChange={(event) => updateItem(item.id, { customTiming: event.target.value as CareItemTemplate["customTiming"] })}
-                          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                         >
                           <option value="with-food">With Food</option>
                           <option value="empty-stomach">Empty Stomach</option>
@@ -681,14 +731,14 @@ export function CareSettingsPage({
                         onChange={(event) => updateItem(item.id, { notes: clampText(event.target.value, TEXT_LIMITS.note) })}
                         maxLength={TEXT_LIMITS.note}
                         rows={2}
-                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring,#cbd5e1)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
                     </label>
 
                     {isEditing ? (
                       <div className="grid grid-cols-[1fr_1fr_auto] gap-2 pt-1">
                         <Button
-                          className="rounded-full bg-[var(--hewie-accent,#64748b)] px-3 text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90"
+                          className="rounded-full bg-[var(--hewie-accent)] px-3 text-[var(--hewie-accent-text)] hover:opacity-90"
                           onClick={() => saveEditing(item.id)}
                         >
                           Save
@@ -715,6 +765,28 @@ export function CareSettingsPage({
 
         <BottomNav />
       </div>
+
+      {duplicatePromptItem ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 px-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl ring-1 ring-zinc-200">
+            <h2 className="text-base font-bold text-zinc-900">Medication Course Ended</h2>
+            <p className="mt-2 text-sm leading-5 text-zinc-600">
+              This medication course has ended and can no longer be edited. Duplicate it to start a new course.
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              <Button
+                className="rounded-full bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] hover:opacity-90"
+                onClick={duplicateCompletedMedicationCourse}
+              >
+                Duplicate for New Course
+              </Button>
+              <Button variant="outline" className="rounded-full" onClick={() => setDuplicatePromptItem(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

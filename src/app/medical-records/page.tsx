@@ -1,37 +1,21 @@
 "use client";
 
 import { FileText, Paperclip, SlidersHorizontal } from "lucide-react";
-import { ActivityDetailForm } from "@/components/activity-detail-form";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { ExpandableNoteText } from "@/components/expandable-note-text";
-import { compareActivitiesReverseChronological, formatActivityTime, formatActivityLabel } from "@/lib/activity";
+import { compareActivitiesReverseChronological, formatActivityTime, formatActivityLabel, normalizeCareFrequencyLine, renderHealthTimelineActivityDetail } from "@/lib/activity";
+import { loadCareTemplates, loadCurrentCareTemplatesFromSupabase, type CareItemTemplate } from "@/lib/care-settings";
 import {
-  ACTIVITY_LOGS_STORAGE_KEY,
-  activeProfileStorageKey,
-  activityAttachmentFileNamesForSave,
-  deleteActivityAttachmentsFromSupabase,
-  deleteActivityLogInSupabase,
   type ActivityLog,
   type ActivityAttachment,
-  type ActivityType,
   loadAppState,
-  loadNotebookEntryPermissions,
-  saveActivityAttachmentsToSupabase,
-  updateActivityLogInSupabase,
 } from "@/lib/hewster-data";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
-import { getActiveProfileSlug, getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
-import {
-  FREE_MEDICAL_ATTACHMENT_USE_LIMIT,
-  FREE_POTTY_IMAGE_USE_LIMIT,
-  activityAttachmentCounts,
-  loadStoredSubscriptionPlan,
-  type SubscriptionPlanId,
-} from "@/lib/subscription-plan";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 const filters = ["All", "Symptoms", "Vet Visit", "Medication", "Injection", "Other Health", "Attachments"];
 const dateFilters = ["All Time", "Date Range"] as const;
@@ -67,6 +51,13 @@ function displayMedicalDetail(detail: string | null) {
 }
 
 function medicalRecordHeading(activity: ActivityLog) {
+  if (isHealthMedicationActivity(activity)) {
+    return {
+      title: "Medication",
+      subtitle: null,
+    };
+  }
+
   const detail = displayMedicalDetail(activity.detail);
 
   if (!detail) {
@@ -112,6 +103,10 @@ function isMedicalWellnessRecord(activity: ActivityLog) {
 
 function isMedicationRecord(activity: ActivityLog) {
   return activity.activityType === "medication" || hasDetailKeyword(activity, medicationKeywords);
+}
+
+function isHealthMedicationActivity(activity: ActivityLog) {
+  return activity.activityType === "sick" && (activity.detail === "Medication" || activity.detail?.startsWith("Medication: "));
 }
 
 function isInjectionRecord(activity: ActivityLog) {
@@ -190,6 +185,18 @@ function scheduledMedicationCourseId(activity: ActivityLog) {
   return match ? `medication-course-${match[1]}` : null;
 }
 
+function scheduledMedicationDoseIndex(activity: ActivityLog) {
+  if (activity.activityType !== "medication") return null;
+  const baseId = activity.id.replace(/-(?:skipped|missed)$/, "");
+  const match = baseId.match(/^medication-\d+-schedule-(?:daily|(\d+)-dose-(\d+))-/);
+  if (!match) return null;
+  return match[2] ? Number.parseInt(match[2], 10) : null;
+}
+
+function medicationActivityHasLastDoseMarker(activity: ActivityLog) {
+  return noteLines(activity.notes).includes("Last Dose");
+}
+
 function medicationStatus(activity: ActivityLog): MedicationStatus {
   const detail = activity.detail ?? "";
   const lines = noteLines(activity.notes);
@@ -219,7 +226,8 @@ function medicationTiming(activity: ActivityLog) {
 }
 
 function medicationFrequency(activity: ActivityLog) {
-  return noteLines(activity.notes).find((line) => line.startsWith("Every "))?.replace(/\s*•\s*/g, ", ") ?? null;
+  const frequencyLine = noteLines(activity.notes).find((line) => line.startsWith("Every "));
+  return frequencyLine ? normalizeCareFrequencyLine(frequencyLine) : null;
 }
 
 function medicationRoute(activity: ActivityLog) {
@@ -275,6 +283,50 @@ function medicationCourseDosage(course: MedicationCourseRecord) {
   return `${dose}${route}`;
 }
 
+function splitMedicationCourseActivities(courseActivities: ActivityLog[]) {
+  const chronologicalActivities = [...courseActivities].sort((a, b) => {
+    const timeSort = new Date(a.happenedAt).getTime() - new Date(b.happenedAt).getTime();
+    return timeSort || a.id.localeCompare(b.id);
+  });
+  const courses: ActivityLog[][] = [];
+
+  chronologicalActivities.forEach((activity) => {
+    const doseIndex = scheduledMedicationDoseIndex(activity);
+    const currentCourse = courses[courses.length - 1];
+    const previousActivity = currentCourse?.[currentCourse.length - 1] ?? null;
+    const previousDoseIndex = previousActivity ? scheduledMedicationDoseIndex(previousActivity) : null;
+    const previousTime = previousActivity ? new Date(previousActivity.happenedAt).getTime() : null;
+    const activityTime = new Date(activity.happenedAt).getTime();
+    const hoursSincePrevious =
+      previousTime !== null && Number.isFinite(previousTime) && Number.isFinite(activityTime)
+        ? (activityTime - previousTime) / (60 * 60 * 1000)
+        : 0;
+    const duplicateDoseMinute =
+      previousTime !== null &&
+      Number.isFinite(previousTime) &&
+      Number.isFinite(activityTime) &&
+      Math.abs(activityTime - previousTime) < 60 * 1000;
+    const doseSequenceRestarted =
+      currentCourse &&
+      doseIndex !== null &&
+      previousDoseIndex !== null &&
+      (doseIndex < previousDoseIndex || (doseIndex === previousDoseIndex && !duplicateDoseMinute));
+    const newCompletedCourseStarted =
+      doseSequenceRestarted &&
+      previousActivity &&
+      (medicationActivityHasLastDoseMarker(previousActivity) || (doseIndex === 1 && hoursSincePrevious >= 24));
+
+    if (!currentCourse || newCompletedCourseStarted) {
+      courses.push([activity]);
+      return;
+    }
+
+    currentCourse.push(activity);
+  });
+
+  return courses;
+}
+
 function buildMedicalRecordItems(activities: ActivityLog[], sortOrder: "newest" | "oldest"): MedicalRecordItem[] {
   const courses = new Map<string, ActivityLog[]>();
   const items: MedicalRecordItem[] = [];
@@ -291,28 +343,30 @@ function buildMedicalRecordItems(activities: ActivityLog[], sortOrder: "newest" 
   });
 
   courses.forEach((courseActivities, id) => {
-    const sortedActivities = [...courseActivities].sort(compareActivitiesReverseChronological);
-    const oldestActivity = sortedActivities[sortedActivities.length - 1];
-    const latestActivity = sortedActivities[0];
-    const counts: Record<MedicationStatus, number> = { given: 0, skipped: 0, missed: 0 };
+    splitMedicationCourseActivities(courseActivities).forEach((courseActivityGroup, courseIndex) => {
+      const sortedActivities = [...courseActivityGroup].sort(compareActivitiesReverseChronological);
+      const oldestActivity = sortedActivities[sortedActivities.length - 1];
+      const latestActivity = sortedActivities[0];
+      const counts: Record<MedicationStatus, number> = { given: 0, skipped: 0, missed: 0 };
 
-    sortedActivities.forEach((activity) => {
-      counts[medicationStatus(activity)] += 1;
-    });
+      sortedActivities.forEach((activity) => {
+        counts[medicationStatus(activity)] += 1;
+      });
 
-    items.push({
-      kind: "medication-course",
-      id,
-      title: medicationName(latestActivity),
-      dose: sortedActivities.map(medicationDose).find(Boolean) ?? null,
-      frequency: sortedActivities.map(medicationFrequency).find(Boolean) ?? null,
-      timing: sortedActivities.map(medicationTiming).find(Boolean) ?? null,
-      route: sortedActivities.map(medicationRoute).find(Boolean) ?? null,
-      notes: medicationCourseNotes(sortedActivities),
-      startedAt: oldestActivity.happenedAt,
-      latestAt: latestActivity.happenedAt,
-      activities: sortedActivities,
-      counts,
+      items.push({
+        kind: "medication-course",
+        id: courseIndex === 0 ? id : `${id}-${courseIndex + 1}`,
+        title: medicationName(latestActivity),
+        dose: sortedActivities.map(medicationDose).find(Boolean) ?? null,
+        frequency: sortedActivities.map(medicationFrequency).find(Boolean) ?? null,
+        timing: sortedActivities.map(medicationTiming).find(Boolean) ?? null,
+        route: sortedActivities.map(medicationRoute).find(Boolean) ?? null,
+        notes: medicationCourseNotes(sortedActivities),
+        startedAt: oldestActivity.happenedAt,
+        latestAt: latestActivity.happenedAt,
+        activities: sortedActivities,
+        counts,
+      });
     });
   });
 
@@ -383,58 +437,6 @@ function fallbackAttachmentNames(activity: ActivityLog) {
     .filter(Boolean) ?? [];
 }
 
-function nowForTimeInput() {
-  return new Intl.DateTimeFormat("en-CA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date());
-}
-
-function toTimeInputValue(isoString: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(isoString));
-}
-
-function dayInputValue(isoString: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(isoString));
-}
-
-function mergeDayWithTime(dayKey: string, timeValue: string) {
-  const [hours, minutes] = timeValue.split(":").map(Number);
-  const date = new Date(`${dayKey}T00:00:00`);
-  date.setHours(hours, minutes, 0, 0);
-  return date.toISOString();
-}
-
-function editorActivityType(activity: ActivityLog): ActivityType {
-  return ["pee", "poop", "potty"].includes(activity.activityType) ? "potty" : activity.activityType;
-}
-
-function resolveActivityTypeForSave(activityType: ActivityType, detail: string): ActivityType {
-  if (activityType !== "potty") return activityType;
-  if (detail === "Pee") return "pee";
-  if (detail === "No Poop") return "potty";
-  if (detail === "Poop" || detail === "Pee & Poop" || detail.includes("• Type ") || detail.startsWith("Type ")) return "poop";
-  return "potty";
-}
-
-function attachmentDocumentTypesForActivity(activityType: ActivityType) {
-  return activityType === "poop" || activityType === "potty" ? ["Potty Image"] : ["Medical Attachment"];
-}
-
-function existingAttachmentNote(activity: ActivityLog) {
-  if (activity.attachments?.length) return "";
-  return noteLines(activity.notes).find((line) => line.startsWith("Attachments: ")) ?? "";
-}
-
 function MedicalAttachmentPills({ attachments }: { attachments: ActivityAttachment[] }) {
   if (!attachments.length) return null;
 
@@ -477,9 +479,57 @@ function MedicalAttachmentFallback({ names }: { names: string[] }) {
   );
 }
 
+function isMedicationTimingLine(line: string) {
+  return line === "With Food" || line === "Empty Stomach";
+}
+
+function healthMedicationRecordParts(activity: ActivityLog, careTemplates: CareItemTemplate[]) {
+  const detail = renderHealthTimelineActivityDetail(activity, careTemplates);
+  const detailLines = detail.split("\n").map((line) => normalizeCareFrequencyLine(line.trim())).filter(Boolean);
+  const medicationLine = detailLines.find((line) => line.startsWith("Medication: ")) ?? null;
+  const giveLine = detailLines.find((line) => line.startsWith("Give ")) ?? null;
+
+  return {
+    title: medicationLine?.replace(/^Medication:\s*/i, "").trim() || "Medication",
+    dosage: giveLine?.replace(/^Give\s+/i, "").trim() ?? null,
+    frequency: detailLines.find((line) => line === "As Needed" || /^Every\s+\d+\s+hours\b/i.test(line)) ?? null,
+    timing: detailLines.find(isMedicationTimingLine) ?? null,
+    notes: detailLines
+      .filter((line) => line.startsWith("Notes: "))
+      .map((line) => line.replace(/^Notes:\s*/i, "").trim())
+      .filter(Boolean)
+      .join("\n") || null,
+  };
+}
+
+function HealthMedicationRecordDetail({ activity, careTemplates, showTitle = true }: { activity: ActivityLog; careTemplates: CareItemTemplate[]; showTitle?: boolean }) {
+  const detail = healthMedicationRecordParts(activity, careTemplates);
+
+  if (!(showTitle && detail.title) && !detail.dosage && !detail.frequency && !detail.timing && !detail.notes) return null;
+
+  return (
+    <div className="mt-1 space-y-1 text-sm leading-5">
+      {showTitle && detail.title ? <p className="font-semibold text-zinc-700">{detail.title}</p> : null}
+      {detail.dosage ? (
+        <p className="text-zinc-600">
+          <span className="font-semibold text-zinc-700">Dosage:</span> {detail.dosage}
+        </p>
+      ) : null}
+      {detail.frequency ? <p className="text-zinc-600">{detail.frequency}</p> : null}
+      {detail.timing ? <p className="text-zinc-600">{detail.timing}</p> : null}
+      {detail.notes ? (
+        <ExpandableNoteText className="text-zinc-600" stopPropagation={false}>
+          <span className="font-semibold text-zinc-700">Notes:</span> {detail.notes}
+        </ExpandableNoteText>
+      ) : null}
+    </div>
+  );
+}
+
 export default function MedicalRecordsPage() {
   const [hydrated, setHydrated] = useState(false);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [careTemplates, setCareTemplates] = useState<CareItemTemplate[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
   const [draftFilter, setDraftFilter] = useState("All");
@@ -489,60 +539,19 @@ export default function MedicalRecordsPage() {
   const [draftSelectedMonth, setDraftSelectedMonth] = useState(() => monthInputValue(new Date()));
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [draftSortOrder, setDraftSortOrder] = useState<"newest" | "oldest">("newest");
-  const [activityState, setActivityState] = useState<"idle" | "saved" | "saving" | "error">("idle");
-  const activitySaveInFlightRef = useRef(false);
-  const [canEditEntries, setCanEditEntries] = useState(true);
-  const [canDeleteEntries, setCanDeleteEntries] = useState(true);
   const [expandedMedicationCourses, setExpandedMedicationCourses] = useState<string[]>([]);
-  const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
-  const [detailActivityType, setDetailActivityType] = useState<ActivityType | null>(null);
-  const [detailValue, setDetailValue] = useState("");
-  const [notesValue, setNotesValue] = useState("");
-  const [extraNotesValue, setExtraNotesValue] = useState("");
-  const [happenedAtValue, setHappenedAtValue] = useState(() => nowForTimeInput());
-  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
-  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
-  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
-  const supabaseReady = isSupabaseConfigured();
-
-  useEffect(() => {
-    const refreshPlan = () => setSubscriptionPlan(loadStoredSubscriptionPlan());
-    refreshPlan();
-    window.addEventListener("storage", refreshPlan);
-    window.addEventListener("focus", refreshPlan);
-    return () => {
-      window.removeEventListener("storage", refreshPlan);
-      window.removeEventListener("focus", refreshPlan);
-    };
-  }, []);
-
-  const freeAttachmentCounts = useMemo(
-    () => activityAttachmentCounts(activityLogs, editingActivityId),
-    [activityLogs, editingActivityId]
-  );
-
-  const detailAttachmentLimit = useMemo(() => {
-    if (subscriptionPlan === "plus") return 5;
-    return 5;
-  }, [subscriptionPlan]);
-
-  const detailAttachmentPickerBlocked =
-    subscriptionPlan !== "plus" && (
-      detailActivityType === "potty" || detailActivityType === "poop"
-        ? freeAttachmentCounts.pottyImageUses >= FREE_POTTY_IMAGE_USE_LIMIT
-        : freeAttachmentCounts.medicalAttachmentUses >= FREE_MEDICAL_ATTACHMENT_USE_LIMIT
-    );
-
-  const detailAttachmentPickerBlockedMessage =
-    detailActivityType === "potty" || detailActivityType === "poop"
-      ? "Your first poop image is free. Upgrade to Plus to add more images."
-      : "Your first attachment is free. Upgrade to Plus to add more files.";
 
   useEffect(() => {
     let mounted = true;
 
-    loadAppState().then((state) => {
+    loadAppState().then(async (state) => {
+      const [supplements, medications] = await Promise.all([
+        loadCurrentCareTemplatesFromSupabase("supplement").catch(() => loadCareTemplates("supplement")),
+        loadCurrentCareTemplatesFromSupabase("medication").catch(() => loadCareTemplates("medication")),
+      ]);
+
       if (!mounted) return;
+      setCareTemplates([...supplements, ...medications]);
       setActivityLogs(state.activityLogs);
       setHydrated(true);
     });
@@ -551,153 +560,6 @@ export default function MedicalRecordsPage() {
       mounted = false;
     };
   }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    void loadNotebookEntryPermissions().then((permissions) => {
-      if (!mounted) return;
-      setCanEditEntries(permissions.canEditEntries);
-      setCanDeleteEntries(permissions.canDeleteEntries);
-    });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const resetEditor = () => {
-    setEditingActivityId(null);
-    setDetailActivityType(null);
-    setDetailValue("");
-    setNotesValue("");
-    setExtraNotesValue("");
-    setHappenedAtValue(nowForTimeInput());
-    setAttachmentFiles([]);
-    setRemovedAttachmentIds([]);
-  };
-
-  const openEditorForActivity = (activity: ActivityLog) => {
-    if (!canEditEntries) return;
-
-    const nextActivityType = editorActivityType(activity);
-    setEditingActivityId(activity.id);
-    setDetailActivityType(nextActivityType);
-    setDetailValue(activity.detail ?? "");
-    setNotesValue(regularNotes(activity));
-    setExtraNotesValue("");
-    setHappenedAtValue(toTimeInputValue(activity.happenedAt));
-    setAttachmentFiles([]);
-    setRemovedAttachmentIds([]);
-  };
-
-  const saveActivity = async (activity: ActivityLog) => {
-    const nextLogs = [activity, ...activityLogs.filter((entry) => entry.id !== activity.id)].sort(compareActivitiesReverseChronological);
-    window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
-    setActivityLogs(nextLogs);
-    setActivityState("saving");
-
-    try {
-      if (supabaseReady) {
-        await updateActivityLogInSupabase(activity);
-      }
-
-      setActivityState("saved");
-      window.setTimeout(() => setActivityState("idle"), 1800);
-    } catch {
-      setActivityState("error");
-    }
-  };
-
-  const saveDetailedActivity = async () => {
-    if (!editingActivityId || !detailActivityType || activitySaveInFlightRef.current) return;
-    activitySaveInFlightRef.current = true;
-    setActivityState("saving");
-
-    try {
-      const existingActivity = activityLogs.find((entry) => entry.id === editingActivityId);
-      if (!existingActivity) return;
-
-    const trimmedDetail = detailValue.trim();
-    const resolvedActivityType = resolveActivityTypeForSave(detailActivityType, trimmedDetail);
-    const happenedAt = mergeDayWithTime(dayInputValue(existingActivity.happenedAt), happenedAtValue);
-    const attachmentDocumentTypes = attachmentDocumentTypesForActivity(resolvedActivityType);
-    const retainedAttachments = (existingActivity.attachments ?? []).filter((attachment) => !removedAttachmentIds.includes(attachment.id));
-    const removedAttachments = (existingActivity.attachments ?? []).filter((attachment) => removedAttachmentIds.includes(attachment.id));
-    const newAttachmentNames = activityAttachmentFileNamesForSave(
-      { id: editingActivityId, profileSlug: getActiveProfileSlug(), activityType: resolvedActivityType, happenedAt, detail: null, notes: null },
-      attachmentFiles,
-      attachmentDocumentTypes
-    );
-    const attachmentNames = [...retainedAttachments.map((attachment) => attachment.fileName), ...newAttachmentNames];
-    const attachmentNote = attachmentNames.length ? `Attachments: ${attachmentNames.join(", ")}` : existingAttachmentNote(existingActivity);
-    const resolvedNotes = [notesValue.trim(), attachmentNote].filter(Boolean).join("\n") || null;
-
-    const activity: ActivityLog = {
-      ...existingActivity,
-      profileSlug: existingActivity.profileSlug ?? getActiveProfileSlug(),
-      activityType: resolvedActivityType,
-      happenedAt,
-      detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : trimmedDetail || null,
-      notes: resolvedNotes,
-    };
-
-    await saveActivity(activity);
-
-    if (removedAttachments.length && supabaseReady) {
-      await deleteActivityAttachmentsFromSupabase(activity.id, removedAttachments);
-    }
-
-    let nextAttachments = retainedAttachments;
-
-    if (attachmentFiles.length) {
-      const savedAttachments = await saveActivityAttachmentsToSupabase(activity, attachmentFiles, attachmentDocumentTypes, { replaceExisting: false });
-
-      if (savedAttachments.length) {
-        nextAttachments = [...retainedAttachments, ...savedAttachments];
-      }
-    }
-
-    setActivityLogs((current) => {
-      const nextLogs = current.map((entry) =>
-        entry.id === activity.id ? { ...entry, attachments: nextAttachments } : entry
-      );
-      window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
-      return nextLogs;
-    });
-
-      resetEditor();
-    } finally {
-      activitySaveInFlightRef.current = false;
-    }
-  };
-
-  const deleteActivity = async () => {
-    if (!editingActivityId) return;
-
-    const confirmed = window.confirm("Delete this health record? This cannot be undone.");
-    if (!confirmed) return;
-
-    const deletingId = editingActivityId;
-    setActivityLogs((current) => {
-      const nextLogs = current.filter((activity) => activity.id !== deletingId);
-      window.localStorage.setItem(activeProfileStorageKey(ACTIVITY_LOGS_STORAGE_KEY), JSON.stringify(nextLogs));
-      return nextLogs;
-    });
-    setActivityState("saving");
-
-    try {
-      if (supabaseReady) {
-        await deleteActivityLogInSupabase(deletingId);
-      }
-
-      setActivityState("saved");
-      window.setTimeout(() => setActivityState("idle"), 1800);
-      resetEditor();
-    } catch {
-      setActivityState("error");
-    }
-  };
 
   const medicalRecords = useMemo(
     () => activityLogs
@@ -756,12 +618,12 @@ export default function MedicalRecordsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[var(--hewie-bg,#979ca7)] text-zinc-900">
+    <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
         <header className="mb-6">
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
-              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text,#6d28d9)]" />
+              <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text)]" />
               <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Health Records</h1>
             </div>
             <PetAvatarMenu shape="tile" />
@@ -774,7 +636,7 @@ export default function MedicalRecordsPage() {
               type="button"
               onClick={toggleFilters}
               aria-label={showFilters ? "Hide filters" : "Open filters"}
-              className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--hewie-accent,#78608f)] p-0 text-[var(--hewie-accent-text,#ffffff)] shadow-[0_8px_18px_rgba(15,23,42,0.14)] ring-1 ring-[var(--hewie-accent,#78608f)]/20 transition hover:opacity-90"
+              className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--hewie-accent)] p-0 text-[var(--hewie-accent-text)] shadow-[0_8px_18px_rgba(15,23,42,0.14)] ring-1 ring-[var(--hewie-accent)]/20 transition hover:opacity-90"
             >
               <SlidersHorizontal className="size-4" />
             </button>
@@ -793,8 +655,8 @@ export default function MedicalRecordsPage() {
                         onClick={() => setDraftFilter(filter)}
                         className={`min-h-9 rounded-full px-3.5 py-2 text-xs font-bold leading-none ring-1 transition ${
                           draftFilter === filter
-                            ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] ring-white/45"
-                            : "bg-white/65 text-[var(--hewie-active-text,#334155)]/75 ring-[var(--hewie-ring,#cbd5e1)]/70"
+                            ? "bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] ring-white/45"
+                            : "bg-white/65 text-[var(--hewie-active-text)]/75 ring-[var(--hewie-ring)]/70"
                         }`}
                       >
                         {filter}
@@ -816,8 +678,8 @@ export default function MedicalRecordsPage() {
                         onClick={() => setDraftSortOrder(option.value)}
                         className={`min-h-9 rounded-full px-3.5 py-2 text-xs font-bold leading-none ring-1 transition ${
                           draftSortOrder === option.value
-                            ? "bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] ring-white/45"
-                            : "bg-white/65 text-[var(--hewie-active-text,#334155)]/75 ring-[var(--hewie-ring,#cbd5e1)]/70"
+                            ? "bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] ring-white/45"
+                            : "bg-white/65 text-[var(--hewie-active-text)]/75 ring-[var(--hewie-ring)]/70"
                         }`}
                       >
                         {option.label}
@@ -852,7 +714,7 @@ export default function MedicalRecordsPage() {
                       <button
                         type="button"
                         onClick={applyFilters}
-                        className="rounded-full bg-[var(--hewie-accent,#78608f)] px-4 py-2 text-sm font-bold text-[var(--hewie-accent-text,#ffffff)] transition hover:opacity-90"
+                        className="rounded-full bg-[var(--hewie-accent)] px-4 py-2 text-sm font-bold text-[var(--hewie-accent-text)] transition hover:opacity-90"
                       >
                         Apply Filters
                       </button>
@@ -963,24 +825,11 @@ export default function MedicalRecordsPage() {
               const recordIcon = medicalRecordIcon(activity);
               const recordDateTime = medicalRecordDateTime(activity.happenedAt);
               const heading = medicalRecordHeading(activity);
+              const healthMedicationActivity = isHealthMedicationActivity(activity);
 
               return (
                 <div key={activity.id} className="space-y-2">
-                  <article
-                    role={canEditEntries && editingActivityId !== activity.id ? "button" : undefined}
-                    tabIndex={canEditEntries && editingActivityId !== activity.id ? 0 : undefined}
-                    onClick={canEditEntries && editingActivityId !== activity.id ? () => openEditorForActivity(activity) : undefined}
-                    onKeyDown={(event) => {
-                      if (!canEditEntries || editingActivityId === activity.id || (event.key !== "Enter" && event.key !== " ")) return;
-                      event.preventDefault();
-                      openEditorForActivity(activity);
-                    }}
-                    className={`rounded-2xl bg-sky-50/80 p-4 ring-1 transition ${
-                      editingActivityId === activity.id
-                        ? "ring-sky-400"
-                        : "ring-sky-200"
-                    } ${canEditEntries && editingActivityId !== activity.id ? "cursor-pointer hover:bg-sky-50" : ""}`}
-                  >
+                  <article className="rounded-2xl bg-sky-50/80 p-4 ring-1 ring-sky-200">
                     <div className="flex items-start gap-3">
                       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
                         {recordIcon}
@@ -989,14 +838,20 @@ export default function MedicalRecordsPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="font-semibold text-zinc-900">{heading.title}</p>
-                            {heading.subtitle ? <p className="mt-1 text-sm font-normal text-zinc-700">{heading.subtitle}</p> : null}
                           </div>
                           <time dateTime={activity.happenedAt} className="shrink-0 text-right leading-5">
                             <span className="block text-sm font-semibold text-zinc-600">{recordDateTime.date}</span>
                             <span className="block text-xs font-medium text-zinc-400">{recordDateTime.time}</span>
                           </time>
                         </div>
-                        {notes ? <ExpandableNoteText className="mt-1 text-sm text-zinc-600" stopPropagation={false}>Notes: {notes}</ExpandableNoteText> : null}
+                        {healthMedicationActivity ? (
+                          <HealthMedicationRecordDetail activity={activity} careTemplates={careTemplates} />
+                        ) : heading.subtitle || notes ? (
+                          <div className="mt-1 space-y-1 text-sm leading-5">
+                            {heading.subtitle ? <p className="font-normal text-zinc-700">{heading.subtitle}</p> : null}
+                            {notes ? <ExpandableNoteText className="text-zinc-600" stopPropagation={false}>Notes: {notes}</ExpandableNoteText> : null}
+                          </div>
+                        ) : null}
                         {attachments.length ? (
                           <div className="mt-2">
                             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Attachments</p>
@@ -1007,47 +862,6 @@ export default function MedicalRecordsPage() {
                         )}
                       </div>
                     </div>
-                    {editingActivityId === activity.id && detailActivityType ? (
-                      <ActivityDetailForm
-                        activityType={detailActivityType}
-                        detail={detailValue}
-                        notes={notesValue}
-                        extraNotes={extraNotesValue}
-                        happenedAt={happenedAtValue}
-                        isEditing
-                        embedded
-                        saveLabel="Save"
-                        onDetailChange={setDetailValue}
-                        onNotesChange={setNotesValue}
-                        onExtraNotesChange={setExtraNotesValue}
-                        attachmentFiles={attachmentFiles}
-                        attachmentNames={
-                          attachments.length
-                            ? attachments
-                                .filter((attachment) => !removedAttachmentIds.includes(attachment.id))
-                                .map((attachment) => attachment.fileName)
-                            : fallbackAttachments
-                        }
-                        onAttachmentNameRemove={
-                          attachments.length
-                            ? (index) => {
-                                const attachment = attachments.filter((item) => !removedAttachmentIds.includes(item.id))[index];
-                                if (!attachment) return;
-                                setRemovedAttachmentIds((current) => [...current, attachment.id]);
-                              }
-                            : undefined
-                        }
-                        onAttachmentsChange={setAttachmentFiles}
-                        maxAttachmentFiles={detailAttachmentLimit}
-                        attachmentPickerBlocked={detailAttachmentPickerBlocked}
-                        attachmentPickerBlockedMessage={detailAttachmentPickerBlockedMessage}
-                        onHappenedAtChange={setHappenedAtValue}
-                        onSave={saveDetailedActivity}
-                        onCancel={resetEditor}
-                        onDelete={canDeleteEntries ? deleteActivity : undefined}
-                        saving={activityState === "saving"}
-                      />
-                    ) : null}
                   </article>
                 </div>
               );
@@ -1059,7 +873,7 @@ export default function MedicalRecordsPage() {
           )}
         </div>
 
-        {!editingActivityId ? <BottomNav /> : null}
+        <BottomNav />
       </div>
     </main>
   );

@@ -78,7 +78,7 @@ export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote
                   type="checkbox"
                   checked={checked}
                   onChange={() => onToggleCareItem?.(id)}
-                  className="mt-1 size-4 accent-[var(--hewie-accent,#64748b)]"
+                  className="mt-1 size-4 accent-[var(--hewie-accent)]"
                 />
                 <span>
                   <span className="font-semibold text-zinc-800">{item.name}</span>
@@ -103,7 +103,7 @@ export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote
       </label>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button type="button" onClick={onSave} className="rounded-full bg-[var(--hewie-accent,#64748b)] text-[var(--hewie-accent-text,#ffffff)] hover:opacity-90">{saveLabel}</Button>
+        <Button type="button" onClick={onSave} className="rounded-full bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] hover:opacity-90">{saveLabel}</Button>
         <Button type="button" variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
         {onUndo ? (
           <Button type="button" variant="outline" onClick={onUndo} className="rounded-full text-rose-600">

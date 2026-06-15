@@ -6,7 +6,7 @@ import { PottyDetailBadges, pottyDetailForBadge } from "@/components/potty-detai
 import { ExpandableNoteText } from "@/components/expandable-note-text";
 import type { ActivityLog } from "@/lib/hewster-data";
 import type { CareItemTemplate } from "@/lib/care-settings";
-import { compareActivitiesChronological, formatActivityLabel, formatActivityTime, groupActivitiesByDay, renderTreatDetailParts, splitTreatDetailText } from "@/lib/activity";
+import { compareActivitiesChronological, formatActivityLabel, formatActivityTime, groupActivitiesByDay, normalizeCareFrequencyLine, renderHealthTimelineActivityDetail, renderTreatDetailParts, splitTreatDetailText } from "@/lib/activity";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 type TimelineItem = {
@@ -47,7 +47,7 @@ type TextModal = {
 const timelineTitleClassName = "min-w-0 text-sm font-semibold text-zinc-900";
 const timelineDetailClassName = "mt-1 text-sm text-zinc-500";
 const timelineSecondaryDetailClassName = "mt-1 text-sm text-zinc-500";
-const timelineTimeBadgeClassName = "hewie-time-badge";
+const timelineTimeBadgeClassName = "rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold leading-none text-zinc-500 ring-1 ring-zinc-200/80";
 
 function initialsFromName(name?: string | null) {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -113,7 +113,7 @@ function TreatDetail({ activity }: { activity: ActivityLog }) {
 }
 
 function splitActivityNotes(notes: string | null) {
-  const lines = notes?.split("\n").map((line) => line.trim()).filter(Boolean) ?? [];
+  const lines = notes?.split("\n").map((line) => normalizeCareFrequencyLine(line.trim())).filter(Boolean) ?? [];
   const attachmentLine = lines.find((line) => line.startsWith("Attachments: ")) ?? null;
 
   return {
@@ -158,6 +158,12 @@ function careTemplateGiveText(item: CareItemTemplate | null) {
   return `Give ${item.dose || "as directed"}${route ? ` (${route})` : ""}`;
 }
 
+function medicationTimingBadgeColorClassName(timingLine: string | null) {
+  return timingLine === "Empty Stomach"
+    ? "bg-sky-200/90 text-zinc-950"
+    : "bg-pink-200/90 text-sky-600";
+}
+
 function normalizedCareName(value: string | null) {
   return (value ?? "")
     .replace(/\s*(?:[•·-]\s*)?(?:Given|Skipped|Missed)\b/i, "")
@@ -192,7 +198,7 @@ function CareTemplateTimelineDetail({ item, detail, skipped = false, onOpenText 
   const noteText = skipped ? "" : item.notes?.trim() ?? "";
 
   return (
-    <div className="mt-2 space-y-1.5 text-sm">
+    <div className="mt-1 space-y-1.5 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <OpenableText className="font-semibold text-zinc-800" modal={{ title: item.name, label: "Details", text: `${item.name}${giveText ? `\n${giveText}` : ""}` }} onOpen={onOpenText}>{item.name}</OpenableText>
         {item.isLastDose ? <span className="inline-flex rounded-full bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/70">Last Dose</span> : null}
@@ -202,7 +208,7 @@ function CareTemplateTimelineDetail({ item, detail, skipped = false, onOpenText 
         <div className="flex flex-wrap items-center gap-2 text-zinc-600">
           {giveText ? <OpenableText modal={{ title: item.name, label: "Details", text: `${item.name}\n${giveText}` }} onOpen={onOpenText}>{giveText}</OpenableText> : null}
           {timingLine ? (
-            <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${item.kind === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : "bg-sky-100/80 text-sky-700/60"}`}>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${item.kind === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : medicationTimingBadgeColorClassName(timingLine)}`}>
               {timingLine}
             </span>
           ) : null}
@@ -235,7 +241,7 @@ function CareActivityDetail({ activity, careTemplates = [], onOpenText }: { acti
   const specialNotes = careLines.filter((line) => line.startsWith("Notes: ")).map((line) => line.replace("Notes: ", ""));
 
   return (
-    <div className="mt-2 space-y-1.5 text-sm">
+    <div className="mt-1 space-y-1.5 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         {name ? <OpenableText className="font-semibold text-zinc-800" modal={{ title: name, label: "Details", text: [name, giveDetail].filter(Boolean).join("\n") }} onOpen={onOpenText}>{name}</OpenableText> : null}
         {skipped || missed ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{missed ? "Missed" : skipReason ? `Skipped — ${skipReason}` : "Skipped"}</span> : null}
@@ -245,7 +251,7 @@ function CareActivityDetail({ activity, careTemplates = [], onOpenText }: { acti
           {giveDetail ? <OpenableText modal={{ title: name || displayActivityLabel(activity), label: "Details", text: [name, giveDetail].filter(Boolean).join("\n") }} onOpen={onOpenText}>{giveDetail}</OpenableText> : null}
           <div className="inline-flex shrink-0 items-center gap-2">
             {timingLine ? (
-              <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${activity.activityType === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : "bg-sky-100/80 text-sky-700/60"}`}>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-normal ${activity.activityType === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : medicationTimingBadgeColorClassName(timingLine)}`}>
                 {timingLine}
               </span>
             ) : null}
@@ -267,8 +273,20 @@ function ActivityDetailAndNotes({ activity, careTemplates = [], onOpenText }: { 
     return <CareActivityDetail activity={activity} careTemplates={careTemplates} onOpenText={onOpenText} />;
   }
 
+  if (activity.activityType === "sick" && (activity.detail === "Medication" || activity.detail?.startsWith("Medication: "))) {
+    return (
+      <TimelineDetailText
+        detail={renderHealthTimelineActivityDetail(activity, careTemplates)}
+        status={null}
+        className="mt-1 text-sm text-zinc-600"
+        title="Medication"
+        onOpenText={onOpenText}
+      />
+    );
+  }
+
   return (
-    <div className="mt-2 space-y-1 text-sm text-zinc-600">
+    <div className="mt-1 space-y-1 text-sm text-zinc-600">
       {activity.detail ? <OpenableText modal={{ title: displayActivityLabel(activity), label: "Details", text: activity.detail }} onOpen={onOpenText}>{activity.detail}</OpenableText> : null}
       {notesText ? <ExpandableNoteText>Notes: {notesText}</ExpandableNoteText> : null}
       {showAttachmentFallback && attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
@@ -370,17 +388,52 @@ function TimelineStatusBadge({ status }: { status: "Skipped" | "Missed" | null }
   return status ? <span className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200/80">{status}</span> : null;
 }
 
+function isCareTimingLine(line: string) {
+  return line === "With Food" || line === "Empty Stomach";
+}
+
+function careTimingBadgeClassName(timingLine: string, activityType?: TimelineItem["activityType"]) {
+  return `rounded-full px-2.5 py-1 text-xs font-normal ${activityType === "supplement" ? "bg-white/55 text-[#1f3d5c]/60" : medicationTimingBadgeColorClassName(timingLine)}`;
+}
+
+function displayTimelineLine(line: string) {
+  return normalizeCareFrequencyLine(line);
+}
+
+function TimelineLineContent({ line }: { line: string }) {
+  const displayLine = displayTimelineLine(line);
+  if (displayLine.startsWith("Medication: ")) {
+    return <span className="font-semibold text-zinc-800">{displayLine}</span>;
+  }
+  if (displayLine.startsWith("Notes: ")) {
+    return (
+      <>
+        <span className="font-medium text-zinc-600">Notes:</span>
+        {displayLine.slice("Notes:".length)}
+      </>
+    );
+  }
+  return <>{displayLine}</>;
+}
+
 function TimelineDetailText({ detail, status, className = timelineDetailClassName, title = "Details", onOpenText }: { detail: string; status: "Skipped" | "Missed" | null; className?: string; title?: string; onOpenText?: (modal: TextModal) => void }) {
   const cleanDetail = cleanTimelineDetail(detail, status);
   const detailLines = cleanDetail.split("\n").filter(Boolean);
+  const timingLines = detailLines.filter(isCareTimingLine);
+  const textLines = detailLines.filter((line) => !isCareTimingLine(line));
 
   return (
     <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${className}`}>
-      {detailLines.length ? (
+      {textLines.length ? (
         <OpenableText className="min-w-0" modal={{ title, label: "Details", text: cleanDetail }} onOpen={onOpenText}>
-          {detailLines.map((line, index) => (
-            <span key={`${line}-${index}`} className="block">
-              {line}
+          {textLines.map((line, index) => (
+            <span key={`${line}-${index}`} className="block leading-6">
+              <TimelineLineContent line={line} />
+              {line.startsWith("Give ") ? timingLines.map((timingLine) => (
+                <span key={timingLine} className={`ml-2 inline-flex align-middle ${careTimingBadgeClassName(timingLine)}`}>
+                  {timingLine}
+                </span>
+              )) : null}
             </span>
           ))}
         </OpenableText>
@@ -393,14 +446,21 @@ function TimelineDetailText({ detail, status, className = timelineDetailClassNam
 function InlineTimelineDetailText({ detail, status, className = timelineDetailClassName }: { detail: string; status: "Skipped" | "Missed" | null; className?: string }) {
   const cleanDetail = cleanTimelineDetail(detail, status);
   const detailLines = cleanDetail.split("\n").filter(Boolean);
+  const timingLines = detailLines.filter(isCareTimingLine);
+  const textLines = detailLines.filter((line) => !isCareTimingLine(line));
 
   return (
     <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${className}`}>
-      {detailLines.length ? (
+      {textLines.length ? (
         <ExpandableNoteText collapsedLines={2}>
-          {detailLines.map((line, index) => (
-            <span key={`${line}-${index}`} className="block">
-              {line}
+          {textLines.map((line, index) => (
+            <span key={`${line}-${index}`} className="block leading-6">
+              <TimelineLineContent line={line} />
+              {line.startsWith("Give ") ? timingLines.map((timingLine) => (
+                <span key={timingLine} className={`ml-2 inline-flex align-middle ${careTimingBadgeClassName(timingLine)}`}>
+                  {timingLine}
+                </span>
+              )) : null}
             </span>
           ))}
         </ExpandableNoteText>
@@ -630,7 +690,7 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
 
 function TimelineMarker({ style }: { style: ReturnType<typeof getTimelineStyle> }) {
   return (
-    <div className={`mt-1 flex size-5 shrink-0 items-center justify-center rounded-full ${style.dot}`}>
+    <div className={`flex size-5 shrink-0 items-center justify-center rounded-full ${style.dot}`}>
       {style.icon}
     </div>
   );
@@ -664,14 +724,14 @@ export function ActivityFeed({
 
     if (visibleTimelineItems) {
       return (
-        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+        <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg)] p-5 shadow-sm ring-1 ring-[var(--hewie-ring)]">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[var(--hewie-active-text,#334155)]">{title}</h2>
-            {subtitle ? <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">{subtitle}</p> : null}
+            <h2 className="text-lg font-semibold text-[var(--hewie-active-text)]">{title}</h2>
+            {subtitle ? <p className="text-sm text-[var(--hewie-active-text)]/65">{subtitle}</p> : null}
           </div>
           <div className="space-y-3">
             {visibleTimelineItems.length === 0 ? (
-              <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">{emptyMessage}</p>
+              <p className="text-sm text-[var(--hewie-active-text)]/65">{emptyMessage}</p>
             ) : (
               visibleTimelineItems.map((item, index) => {
                 if (item.activity) {
@@ -735,24 +795,24 @@ export function ActivityFeed({
 
                 const status = timelineStatusFor(item);
                 return (
-                  <div key={`${item.activityType ?? "item"}-${item.time}-${item.label}-${item.detail}-${index}`} className="rounded-2xl bg-[#f4eadf]/90 p-4 ring-1 ring-[#d8b895]">
-                    <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] gap-x-3 gap-y-2">
-                      <span className="flex size-9 items-center justify-center rounded-full bg-[#8a5a35]/75 text-white">
-                        <Check className="size-4.5" strokeWidth={3} />
-                      </span>
-                      <p className="self-center font-medium text-zinc-900">{item.label}</p>
-                      <p className={`self-center justify-self-end ${timelineTimeBadgeClassName}`}>{item.time}</p>
-                      <div className="col-span-2 col-start-2 min-w-0">
-                        {item.detail.includes(" • Notes: ") ? (
-                          <>
-                            <InlineTimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} />
-                            <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
-                          </>
-                        ) : (
-                          <InlineTimelineDetailText detail={item.detail} status={status} />
-                        )}
+                    <div key={`${item.activityType ?? "item"}-${item.time}-${item.label}-${item.detail}-${index}`} className="rounded-2xl bg-zinc-50/75 p-2.5 ring-1 ring-zinc-200/70">
+                      <div className="grid grid-cols-[1.35rem_minmax(0,1fr)_auto] gap-x-2.5 gap-y-2">
+                        <span className="flex size-5 items-center justify-center rounded-full bg-[#8a5a35]/75 text-white">
+                          <Check className="size-3.5" strokeWidth={3} />
+                        </span>
+                        <p className="self-center text-sm font-semibold text-zinc-900">{item.label}</p>
+                        <p className={`self-center justify-self-end ${timelineTimeBadgeClassName}`}>{item.time}</p>
+                        <div className="col-span-2 col-start-2 min-w-0">
+                          {item.detail.includes(" • Notes: ") ? (
+                            <>
+                              <InlineTimelineDetailText detail={item.detail.split(" • Notes: ")[0]} status={status} />
+                              <ExpandableNoteText className="mt-1 text-sm text-zinc-500">Notes: {item.detail.split(" • Notes: ")[1]}</ExpandableNoteText>
+                            </>
+                          ) : (
+                            <InlineTimelineDetailText detail={item.detail} status={status} />
+                          )}
+                        </div>
                       </div>
-                    </div>
                   </div>
                 );
               })
@@ -763,18 +823,18 @@ export function ActivityFeed({
     }
 
     return (
-      <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg,#f1f5f9)] p-5 shadow-sm ring-1 ring-[var(--hewie-ring,#cbd5e1)]">
+      <section className="mb-4 rounded-3xl bg-[var(--hewie-active-bg)] p-5 shadow-sm ring-1 ring-[var(--hewie-ring)]">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-[var(--hewie-active-text,#334155)]">{title}</h2>
-          {subtitle ? <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">{subtitle}</p> : null}
+          <h2 className="text-lg font-semibold text-[var(--hewie-active-text)]">{title}</h2>
+          {subtitle ? <p className="text-sm text-[var(--hewie-active-text)]/65">{subtitle}</p> : null}
         </div>
         <div className="space-y-5">
           {dayEntries.length === 0 ? (
-            <p className="text-sm text-[var(--hewie-active-text,#334155)]/65">{emptyMessage}</p>
+            <p className="text-sm text-[var(--hewie-active-text)]/65">{emptyMessage}</p>
           ) : (
             dayEntries.map(([day, logs]) => (
               <div key={day} className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--hewie-active-text,#334155)]/55">{day}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--hewie-active-text)]/55">{day}</p>
                 {[...logs].sort(compareActivitiesChronological).map((activity) => {
                   const displayType = activity.detail === "Hike" ? "hike" : (["pee", "poop"].includes(activity.activityType) ? "potty" : activity.activityType);
                   const style = getActivityStyle(displayType);
