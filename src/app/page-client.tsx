@@ -2579,7 +2579,7 @@ export default function HomeApp() {
                     : "";
                   const iconClassName = isSupplement
                     ? "bg-white/55 text-[#1f3d5c] ring-[#b8c9dd]/70"
-                    : "bg-sky-100 text-sky-600 ring-transparent";
+                    : "bg-sky-100 text-sky-600 ring-sky-200";
                   const timingBadgeClassName = isSupplement ? "bg-white/55 text-[#1f3d5c]/60" : medicationTimingBadgeColorClassName(timingLabel);
                   const skipButtonClassName = isSupplement
                     ? "bg-white/45 text-[#1f3d5c]/55 ring-[#b8c9dd]/45 hover:bg-white/70 hover:text-[#1f3d5c]/75"

@@ -52,7 +52,7 @@ const settingsItems = [
     href: "/notebook/medications",
     icon: MedicationPillIcon,
     accent: "bg-sky-50 text-sky-700",
-    iconAccent: "bg-sky-100 text-sky-600",
+    iconAccent: "bg-sky-100 text-sky-600 ring-1 ring-sky-200",
   },
   {
     title: "Account Settings",

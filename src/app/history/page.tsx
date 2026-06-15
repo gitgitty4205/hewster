@@ -1335,7 +1335,7 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
 
         card: "bg-sky-50/80 ring-sky-200",
 
-        iconWrap: "bg-sky-100 text-sky-600",
+        iconWrap: "bg-sky-100 text-sky-600 ring-1 ring-sky-200",
 
       };
 
@@ -1409,7 +1409,7 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
 
   if (activityType === "medication") {
     return (
-      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600 ring-1 ring-sky-100">
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600 ring-1 ring-sky-200">
         <MedicationPillIcon className="size-3.5" />
       </span>
     );

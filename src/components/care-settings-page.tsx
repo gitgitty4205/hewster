@@ -154,6 +154,7 @@ export function CareSettingsPage({
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving">("idle");
   const [hydrated, setHydrated] = useState(false);
   const [duplicatePromptItem, setDuplicatePromptItem] = useState<CareItemTemplate | null>(null);
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<CareItemTemplate | null>(null);
 
   useEffect(() => {
     if (window.location.hostname !== "www.petnotebook.com" && window.location.hostname !== "petnotebook.com") return;
@@ -294,6 +295,13 @@ export function CareSettingsPage({
     setDuplicatePromptItem(null);
   };
 
+  const promptDeleteCompletedMedicationCourse = () => {
+    if (!duplicatePromptItem) return;
+
+    setPendingDeleteItem(duplicatePromptItem);
+    setDuplicatePromptItem(null);
+  };
+
   const cancelEditing = (id: number) => {
     setDraftItems((current) => {
       const next = { ...current };
@@ -366,17 +374,22 @@ export function CareSettingsPage({
 
   const deleteItem = (id: number) => {
     const item = items.find((candidate) => candidate.id === id);
-    const itemName = item?.name.trim() || `this saved ${kind}`;
-    const confirmed = window.confirm(`Delete ${itemName}? This will remove it from saved ${kind} settings.`);
-    if (!confirmed) return;
+    if (!item) return;
 
-    commitItems(items.filter((item) => item.id !== id));
+    setPendingDeleteItem(item);
+  };
+
+  const confirmDeleteItem = () => {
+    if (!pendingDeleteItem) return;
+
+    commitItems(items.filter((item) => item.id !== pendingDeleteItem.id));
     setDraftItems((current) => {
       const next = { ...current };
-      delete next[id];
+      delete next[pendingDeleteItem.id];
       return next;
     });
-    setEditingId((current) => (current === id ? null : current));
+    setEditingId((current) => (current === pendingDeleteItem.id ? null : current));
+    setPendingDeleteItem(null);
   };
 
   return (
@@ -780,8 +793,45 @@ export function CareSettingsPage({
               >
                 Duplicate for New Course
               </Button>
+              <Button
+                variant="outline"
+                className="rounded-full border-rose-200 text-rose-600 hover:bg-rose-50"
+                onClick={promptDeleteCompletedMedicationCourse}
+              >
+                <Trash2 className="size-4" />
+                Delete Saved Plan
+              </Button>
               <Button variant="outline" className="rounded-full" onClick={() => setDuplicatePromptItem(null)}>
                 Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {pendingDeleteItem ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/35 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-care-item-title">
+          <button type="button" aria-label={`Cancel delete ${kind}`} className="absolute inset-0 cursor-default" onClick={() => setPendingDeleteItem(null)} />
+          <div className="relative w-full max-w-sm rounded-[1.75rem] bg-white p-5 text-zinc-900 shadow-2xl ring-1 ring-zinc-200">
+            <div className="mb-5 flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                <Trash2 className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <h2 id="delete-care-item-title" className="text-base font-semibold">
+                  Delete {kind === "supplement" ? "Supplement" : "Medication"}?
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-zinc-500">
+                  Delete {pendingDeleteItem.name.trim() || `this saved ${kind}`} from Saved {kind === "supplement" ? "Supplements" : "Medications"}?
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" className="rounded-full" onClick={() => setPendingDeleteItem(null)}>
+                Cancel
+              </Button>
+              <Button type="button" className="rounded-full bg-rose-600 text-white hover:bg-rose-700" onClick={confirmDeleteItem}>
+                Delete
               </Button>
             </div>
           </div>

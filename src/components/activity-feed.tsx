@@ -588,7 +588,7 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
         icon: MedicationPillIcon,
         iconText: null,
         card: "bg-sky-50/80 ring-sky-200",
-        iconWrap: "bg-sky-100 text-sky-600",
+        iconWrap: "bg-sky-100 text-sky-600 ring-1 ring-sky-200",
         dot: "bg-sky-100",
       };
     case "sick":
@@ -657,7 +657,7 @@ function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
       };
     case "medication":
       return {
-        dot: "bg-sky-100 ring-1 ring-sky-100",
+        dot: "bg-sky-100 ring-1 ring-sky-200",
         icon: <MedicationPillIcon className="size-3.5 text-sky-600" />,
       };
     case "sick":
