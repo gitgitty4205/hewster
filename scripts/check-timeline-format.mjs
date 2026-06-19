@@ -7,8 +7,6 @@ const activityFeed = await readFile(activityFeedPath, "utf8");
 const historyPage = await readFile(historyPagePath, "utf8");
 
 const lockedTimeBadgeClass =
-  "rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold leading-none text-zinc-500 ring-1 ring-zinc-200/80";
-const historyTimeBadgeClass =
   "rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80";
 
 const requiredActivityFeedSnippets = [
@@ -38,8 +36,12 @@ for (const snippet of forbiddenActivityFeedSnippets) {
   }
 }
 
-if (!historyPage.includes(historyTimeBadgeClass)) {
+if (!historyPage.includes(lockedTimeBadgeClass)) {
   throw new Error("History timeline compact time badge changed. Re-check Today timeline before accepting this change.");
+}
+
+if (activityFeed.includes("leading-none text-zinc-500 ring-1 ring-zinc-200/80")) {
+  throw new Error("Today timeline time badge is thinner than History. Use the locked History badge class.");
 }
 
 console.log("Timeline format lock passed.");

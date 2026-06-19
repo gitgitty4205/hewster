@@ -384,6 +384,10 @@ time {
   animation: hewiePriorityBorderPulse 1.45s ease-in-out infinite;
 }
 
+.hewie-priority-border-meal {
+  --hewie-priority-color: #caa57f;
+}
+
 .hewie-priority-border-medication {
   --hewie-priority-color: #bae6fd;
 }

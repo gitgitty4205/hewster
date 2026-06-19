@@ -2,6 +2,7 @@
 
 import { Ellipsis } from "lucide-react";
 
+import { EmojiAsset } from "@/components/emoji-asset";
 import { Button } from "@/components/ui/button";
 import type { ActivityType } from "@/lib/hewster-data";
 
@@ -41,10 +42,10 @@ const quickActions = [
     label: "Food",
     type: "food" as const,
     icon: null,
-    iconText: "\u{1F969}",
+    emojiAsset: "steak" as const,
     accent: "bg-[#f4eadf]/90 text-[#6b3f22]",
     iconAccent: "bg-[#9a6940]/70 text-white",
-    iconTextClass: "text-xl scale-110"
+    iconTextClass: "scale-110"
   },
   {
     label: "Treat",
@@ -59,10 +60,10 @@ const quickActions = [
     label: "Health",
     type: "sick" as const,
     icon: null,
-    iconText: "\u{1FA7A}",
+    emojiAsset: "health" as const,
     accent: "bg-sky-50 text-sky-700",
     iconAccent: "bg-sky-100 text-sky-600",
-    iconTextClass: "text-xl scale-110",
+    iconTextClass: "scale-110",
   },
   {
     label: "Wellness",
@@ -158,7 +159,13 @@ export function QuickLogCard({ activityState, onQuickLog, includeOther = true, v
               aria-label={action.label}
             >
               <span className={`flex shrink-0 items-center justify-center rounded-full ${iconOnly ? "size-10" : "size-9"} ${quickIconDepth} ${action.iconAccent}`}>
-                {Icon ? <Icon className={iconOnly ? "size-5.5" : "size-4.5"} /> : <span className={`inline-block ${iconOnly ? "text-[1.35rem]" : "text-lg"} ${"iconTextClass" in action ? action.iconTextClass : ""} leading-none`}>{action.iconText}</span>}
+                {Icon ? (
+                  <Icon className={iconOnly ? "size-5.5" : "size-4.5"} />
+                ) : "emojiAsset" in action && action.emojiAsset ? (
+                  <EmojiAsset name={action.emojiAsset} label={action.label} className={`${iconOnly ? "size-6" : "size-5"} ${"iconTextClass" in action ? action.iconTextClass : ""}`} />
+                ) : (
+                  <span className={`inline-block ${iconOnly ? "text-[1.35rem]" : "text-lg"} ${"iconTextClass" in action ? action.iconTextClass : ""} leading-none`}>{action.iconText}</span>
+                )}
               </span>
               {iconOnly ? null : <span className="text-base font-semibold">{action.label}</span>}
             </Button>

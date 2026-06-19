@@ -2,8 +2,8 @@
 
 
 
-import { useEffect, useState } from "react";
-import { Camera, Check, ChevronDown, ChevronRight, ChevronUp, Images } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { Ban, Camera, Check, ChevronDown, ChevronRight, ChevronUp, CircleHelp, Images } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +24,7 @@ import {
 
 const MAX_ATTACHMENT_FILES = 5;
 const MAX_EVENT_TITLE_LENGTH = TEXT_LIMITS.shortName;
+const supplementNameNotePrefix = "Supplement: ";
 
 
 
@@ -78,10 +79,15 @@ type Props = {
   onCancel: () => void;
 
   onDelete?: () => void;
+  deleteLabel?: string;
 
   saving: boolean;
 
   savedCareItems?: CareItemTemplate[];
+
+  carePlanEditor?: boolean;
+
+  carePlanTitle?: string;
 
 };
 
@@ -127,7 +133,7 @@ const presets: Record<ActivityType, string[]> = {
 
   food: [],
 
-  supplement: ["Supplement Name", "Given", "Skipped", "Missed", "Dose Change", "Reminder", "Refill Date"],
+  supplement: ["Supplement Name & Dose", "Given", "Skipped", "Missed", "Dose Change", "Reminder", "Refill Date"],
 
   medication: ["Given", "Skipped", "Missed"],
 
@@ -275,6 +281,11 @@ const notesPlaceholders: Record<ActivityType, string> = {
 
 };
 
+const carePlanNotesPlaceholders: Partial<Record<ActivityType, string>> = {
+  supplement: "e.g. reaction, skipped reason, or anything notable",
+  medication: "e.g. reaction, skipped reason, or vet instructions",
+};
+
 
 
 function bristolScaleClasses(value: string, selected: boolean) {
@@ -308,30 +319,31 @@ function bristolScaleClasses(value: string, selected: boolean) {
   switch (bristolType) {
 
     case "1":
+      return selected ? "bg-[#6B7280] text-[#111827] ring-[#4b5563] shadow-sm" : "bg-[#f1f3f5] text-[#374151] ring-[#6B7280]/65 hover:bg-[#e5e7eb]";
 
     case "2":
 
-      return selected ? "bg-stone-300 text-stone-950 ring-stone-500 shadow-sm" : "bg-stone-50 text-stone-800 ring-stone-200/60 hover:bg-stone-100";
+      return selected ? "bg-[#9CA3AF] text-[#374151] ring-[#6B7280] shadow-sm" : "bg-[#f8fafc] text-[#4b5563] ring-[#9CA3AF]/80 hover:bg-[#f1f5f9]";
 
     case "3":
 
-      return selected ? "bg-orange-200 text-orange-950 ring-[#c17a2b] shadow-sm" : "bg-orange-50/60 text-orange-800 ring-orange-200/50 hover:bg-orange-50";
+      return selected ? "bg-[#92532A] text-[#2f1608] ring-[#6f3d1d] shadow-sm" : "bg-[#fff4ea] text-[#7a3e18] ring-[#92532A]/35 hover:bg-[#fde8d2]";
 
     case "4":
 
-      return selected ? "bg-amber-200 text-amber-950 ring-[#c99a2e] shadow-sm" : "bg-amber-50/60 text-amber-800 ring-amber-200/50 hover:bg-amber-50";
+      return selected ? "bg-[#d8a23a] text-[#3f2a08] ring-[#a87418] shadow-sm" : "bg-[#fff7dc] text-[#765313] ring-[#d8a23a]/40 hover:bg-[#ffefbd]";
 
     case "5":
 
-      return selected ? "bg-orange-200 text-orange-950 ring-[#c17a2b] shadow-sm" : "bg-orange-50/60 text-orange-800 ring-orange-200/50 hover:bg-orange-50";
+      return selected ? "bg-[#F0892A] text-orange-950 ring-[#b96514] shadow-sm" : "bg-[#fff1e5] text-[#743512] ring-[#F0892A]/45 hover:bg-[#f4ca9a]";
 
     case "6":
 
-      return selected ? "bg-rose-200 text-rose-950 ring-[#c86b7d] shadow-sm" : "bg-rose-50/60 text-rose-800 ring-rose-200/50 hover:bg-rose-50";
+      return selected ? "bg-[#FA8072] text-[#4a120f] ring-[#d95f54] shadow-sm" : "bg-[#fff0ee] text-[#83302b] ring-[#FA8072]/50 hover:bg-[#ffd7d3]";
 
     case "7":
 
-      return selected ? "bg-rose-300 text-rose-950 ring-[#c86b7d] shadow-sm" : "bg-rose-50/70 text-rose-800 ring-rose-200/60 hover:bg-rose-50";
+      return selected ? "bg-[#e8645e] text-[#4a120f] ring-[#bf403b] shadow-sm" : "bg-[#fff0f5] text-[#83302b] ring-[#e8645e]/45 hover:bg-[#ffd9e6]";
 
     default:
 
@@ -493,7 +505,7 @@ function PottyEventIcon({ event }: { event: string }) {
 
   if (event === "No Poop") {
 
-    return <span className="text-base leading-none">{"\u{1F6AB}"}</span>;
+    return <Ban className="h-4 w-4 text-zinc-500" strokeWidth={2.25} />;
 
   }
 
@@ -723,6 +735,38 @@ function isOtherMedicalDetail(detail: string) {
 
 }
 
+function wellnessSupplementNameFromNotes(notes: string) {
+  const nameLine = notes
+    .split("\n")
+    .find((line) => line.trimStart().startsWith(supplementNameNotePrefix));
+
+  return nameLine?.trimStart().replace(supplementNameNotePrefix, "") ?? "";
+}
+
+function wellnessSupplementNoteBody(notes: string) {
+  return notes
+    .split("\n")
+    .filter((line) => !line.trim().startsWith(supplementNameNotePrefix))
+    .join("\n");
+}
+
+function wellnessSupplementNotes(name: string, body: string) {
+  return [
+    name.trim() ? `${supplementNameNotePrefix}${name}` : "",
+    body,
+  ].filter(Boolean).join("\n");
+}
+
+function healthMedicationNameFromDetail(detail: string) {
+  return detail.startsWith("Medication: ")
+    ? detail.replace(/^Medication:\s*/i, "").trim()
+    : "";
+}
+
+function healthMedicationDetail(name: string) {
+  return name.trim() ? `Medication: ${name.trim()}` : "Medication";
+}
+
 function sickNotesPlaceholder(detail: string) {
   if (detail === "Vet Visit") return "Clinic, vet name, reason for visit, or a short note. Attach documents below.";
   if (detail === "Medication" || detail.startsWith("Medication: ")) return "Reason for medication, instructions, side effects, or follow-up notes";
@@ -788,10 +832,15 @@ export function ActivityDetailForm({
   onCancel,
 
   onDelete,
+  deleteLabel,
 
   saving,
 
   savedCareItems = [],
+
+  carePlanEditor = false,
+
+  carePlanTitle,
 
 }: Props) {
 
@@ -800,6 +849,7 @@ export function ActivityDetailForm({
   const inferredSickLogMode = activityType === "sick" ? sickLogModeFromDetail(detail) : "";
   const [selectedSickLogMode, setSelectedSickLogMode] = useState<SickLogMode>("");
   const [expandedSavedCareItemKey, setExpandedSavedCareItemKey] = useState<string | null>(null);
+  const [selectedSavedCareItemKey, setSelectedSavedCareItemKey] = useState<string | null>(null);
   const sickLogMode = activityType === "sick" ? selectedSickLogMode || inferredSickLogMode : "";
 
 
@@ -827,11 +877,12 @@ export function ActivityDetailForm({
   const showExtraNotesField = (activityType === "treat" || activityType === "food") && onExtraNotesChange;
 
   const hasSickDetail = activityType !== "sick" || Boolean(detail.trim());
-  const showCoreFields = activityType !== "sick" || hasSickDetail;
+  const showCoreFields = carePlanEditor || activityType !== "sick" || hasSickDetail;
   const poopPhotoDetail = activityType === "poop" || (activityType === "potty" && /\bpoop\b/i.test(detail) && !/\bno poop\b/i.test(detail));
   const showMedicalAttachmentField = activityType === "sick" && (detail === "Vet Visit" || isOtherMedicalDetail(detail));
   const showAttachmentField = Boolean(
-    onAttachmentsChange &&
+    !carePlanEditor &&
+      onAttachmentsChange &&
       (showMedicalAttachmentField ||
         poopPhotoDetail ||
         (isEditing && (attachmentNames.length > 0 || attachmentFiles.length > 0)))
@@ -843,20 +894,35 @@ export function ActivityDetailForm({
 
   const attachmentAccept = poopPhotoDetail ? "image/*" : "image/*,.pdf,application/pdf";
 
-  const attachmentHelp = poopPhotoDetail ? "Optional photos for color, texture, or anything unusual." : "Medical notes, certificates, lab reports, invoices, and photos.";
+  const attachmentHelp = poopPhotoDetail
+    ? "Optional photos for color, texture, or anything unusual."
+    : `Upload vet notes, lab results, certificates, invoices, photos, and other health documents. Files are saved in Health Records, making them easy to find and review later. Limit ${maxAttachmentFiles} files per entry.`;
+  const attachmentInputId = useId();
+  const activityPresets = carePlanEditor && (activityType === "medication" || activityType === "supplement")
+    ? ["Given", "Skipped"]
+    : presets[activityType];
 
   const showDetailField = activityType === "other" || (activityType === "sick" && (detail === "Other" || sickSymptomFromDetail(detail) === "Other" || isOtherMedicalDetail(detail)));
 
-  const presetGroups = activityType === "sick" ? undefined : groupedPresets[activityType];
+  const presetGroups = activityType === "sick" || carePlanEditor ? undefined : groupedPresets[activityType];
 
   const hasNotesContent = Boolean(notes.trim() || extraNotes.trim());
   const notesPlaceholder = activityType === "sick" ? sickNotesPlaceholder(detail) : notesPlaceholders[activityType];
+  const notesRows = carePlanEditor ? 2 : activityType === "medication" || activityType === "supplement" ? 1 : activityType === "wellness" || isPottyLog ? 2 : 3;
+  const showWellnessSupplementNameField = activityType === "wellness" && detail === "Supplements";
+  const wellnessSupplementName = showWellnessSupplementNameField ? wellnessSupplementNameFromNotes(notes) : "";
+  const wellnessSupplementNotesBody = showWellnessSupplementNameField ? wellnessSupplementNoteBody(notes) : notes;
+  const showHealthMedicationNameField = activityType === "sick" && (detail === "Medication" || detail.startsWith("Medication: "));
+  const healthMedicationName = showHealthMedicationNameField ? healthMedicationNameFromDetail(detail) : "";
+  const formTitle = carePlanEditor && carePlanTitle?.trim()
+    ? carePlanTitle.trim()
+    : `${isEditing ? "Edit" : "Log"} ${activityType === "other" ? "Other" : formatActivityLabel(activityType)}`;
 
   const requiresPresetDetail = activityType === "potty" || activityType === "poop";
 
   const requiresTitleDetail = activityType === "other" || activityType === "sick";
 
-  const visibleSavedCareItems = savedCareItems.filter((item) => {
+  const visibleSavedCareItems = carePlanEditor ? [] : savedCareItems.filter((item) => {
 
     if (activityType === item.kind) return true;
 
@@ -880,7 +946,7 @@ export function ActivityDetailForm({
 
     <div className={`rounded-2xl p-3 ring-1 ${savedCareShortcutHasSupplement ? "bg-rose-50/60 ring-[#e0b4bf]" : "bg-sky-50/60 ring-sky-100"}`}>
 
-      <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.16em] ${savedCareShortcutHasSupplement ? "text-[#a44f68]" : "text-sky-500"}`}>{savedCareShortcutHasSupplement ? "Saved Supplement" : "Saved Medication"}</p>
+      <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.16em] ${savedCareShortcutHasSupplement ? "text-[#a44f68]" : "text-sky-500"}`}>{savedCareShortcutHasSupplement ? "Saved Supplements" : "Saved Medications"}</p>
 
       <div className="flex flex-wrap gap-2">
 
@@ -892,7 +958,7 @@ export function ActivityDetailForm({
           const savedCareItemKey = `${item.kind}-${item.id}`;
           const savedCareInfoExpanded = expandedSavedCareItemKey === savedCareItemKey;
           const savedCareDetailValue = activityType === "sick" ? `Medication: ${label}` : activityType === "wellness" && item.kind === "supplement" ? "Supplements" : label;
-          const savedCareItemSelected = detail === savedCareDetailValue;
+          const savedCareItemSelected = activityType === "wellness" ? detail === "Supplements" && selectedSavedCareItemKey === savedCareItemKey : detail === savedCareDetailValue;
           const savedCareItemClasses = savedCareItemSelected
             ? isSupplementShortcut
               ? "bg-[#a44f68] text-white ring-2 ring-[#a44f68] shadow-sm"
@@ -919,11 +985,11 @@ export function ActivityDetailForm({
 
               key={savedCareItemKey}
 
-              className="flex flex-col items-start gap-2"
+              className="inline-flex flex-col items-stretch"
 
             >
 
-              <span className={`inline-flex overflow-hidden rounded-full text-sm font-medium transition ${savedCareItemClasses}`}>
+              <span className={`inline-flex overflow-hidden text-sm font-medium transition ${savedCareInfoExpanded ? "rounded-t-2xl rounded-b-none" : "rounded-full"} ${savedCareItemClasses}`}>
 
                 <button
 
@@ -933,9 +999,28 @@ export function ActivityDetailForm({
 
                   onClick={() => {
 
+                    if (activityType === "wellness" && savedCareItemSelected) {
+                      setSelectedSavedCareItemKey(null);
+                      onNotesChange(wellnessSupplementNotes("", wellnessSupplementNotesBody));
+                      return;
+                    }
+
+                    if (activityType === "sick" && savedCareItemSelected) {
+                      setSelectedSavedCareItemKey(null);
+                      onDetailChange("Medication");
+                      return;
+                    }
+
                     onDetailChange(savedCareDetailValue);
 
-                    if (activityType !== "sick") onNotesChange(savedCareItemLogNotes(item));
+                    if (activityType === "wellness") {
+                      setSelectedSavedCareItemKey(savedCareItemKey);
+                      onNotesChange(wellnessSupplementNotes(label, ""));
+                    }
+
+                    if (activityType === "sick") {
+                      setSelectedSavedCareItemKey(savedCareItemKey);
+                    }
 
                   }}
 
@@ -965,7 +1050,7 @@ export function ActivityDetailForm({
 
               {savedCareInfoExpanded ? (
 
-                <div className={`whitespace-pre-line rounded-2xl bg-white px-3 py-2 text-sm leading-5 ring-1 ${isSupplementShortcut ? "text-[#7f344a] ring-[#e0b4bf]" : "text-sky-800 ring-sky-100"}`}>
+                <div className={`-mt-px whitespace-pre-line rounded-b-2xl bg-white px-3 py-2 text-sm leading-5 ring-1 ${isSupplementShortcut ? "text-[#7f344a] ring-[#e0b4bf]" : "text-sky-800 ring-sky-100"}`}>
 
                   {savedCareItemLogNotes(item)}
 
@@ -1045,19 +1130,19 @@ export function ActivityDetailForm({
 
   return (
 
-    <section className={embedded ? "mt-3 rounded-[1.5rem] border border-zinc-200 bg-white/85 p-4 shadow-sm" : "rounded-[1.5rem] border border-zinc-200 bg-white/80 p-4"}>
+    <section className={embedded ? "mt-3 rounded-[1.5rem] border border-zinc-200 bg-white/85 p-4 text-zinc-900 shadow-sm" : "rounded-[1.5rem] border border-zinc-200 bg-white/80 p-4 text-zinc-900"}>
 
       <div className="mb-4">
 
-        <h2 className="text-lg font-semibold">
-          {isEditing ? "Edit" : "Log"} {activityType === "other" ? "Other" : formatActivityLabel(activityType)}
+        <h2 className="text-lg font-semibold text-zinc-900">
+          {formTitle}
         </h2>
 
       </div>
 
 
 
-      {activityType === "sick" ? null : savedCareShortcutContent ? <div className="mb-4">{savedCareShortcutContent}</div> : null}
+      {activityType === "sick" || activityType === "wellness" ? null : savedCareShortcutContent ? <div className="mb-4">{savedCareShortcutContent}</div> : null}
 
       {activityType === "sick" ? (
 
@@ -1290,7 +1375,15 @@ export function ActivityDetailForm({
 
                       onClick={() => {
 
-                        if (!bristolDisabled) onDetailChange(nextDetailValue(activityType, preset, detail));
+                        if (!bristolDisabled) {
+                          if (activityType === "wellness") {
+                            setSelectedSavedCareItemKey(null);
+                            if (detail === "Supplements" && preset !== "Supplements") {
+                              onNotesChange(wellnessSupplementNotesBody);
+                            }
+                          }
+                          onDetailChange(nextDetailValue(activityType, preset, detail));
+                        }
 
                       }}
 
@@ -1303,6 +1396,10 @@ export function ActivityDetailForm({
                   ))}
 
                 </div>
+
+                {activityType === "wellness" && group.label === "Wellness Type" && savedCareShortcutContent ? (
+                  <div className="mt-3">{savedCareShortcutContent}</div>
+                ) : null}
 
                 {activityType === "sick" && group.label === "Medical / Vet" && isProcedureDetail(detail) ? (
 
@@ -1462,29 +1559,91 @@ export function ActivityDetailForm({
 
         </div>
 
-      ) : presets[activityType].length ? (
+      ) : activityPresets.length ? (
 
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div className="mb-4">
 
-          {presets[activityType].map((preset) => (
+          {carePlanEditor ? <p className="mb-1 text-sm font-medium text-zinc-700">Status</p> : null}
 
-            <button
+          <div className="flex flex-wrap gap-2">
 
-              key={preset}
+            {activityPresets.map((preset) => (
 
-              className={presetButtonClasses(activityType, preset, isPresetSelected(activityType, preset, detail))}
+              <button
 
-              onClick={() => onDetailChange(nextDetailValue(activityType, preset, detail))}
+                key={preset}
 
-            >
+                className={presetButtonClasses(activityType, preset, isPresetSelected(activityType, preset, detail))}
 
-              {preset}
+                onClick={() => onDetailChange(nextDetailValue(activityType, preset, detail))}
 
-            </button>
+              >
 
-          ))}
+                {preset}
+
+              </button>
+
+            ))}
+
+          </div>
 
         </div>
+
+      ) : null}
+
+
+
+      {showCoreFields && showWellnessSupplementNameField ? (
+
+        <label className="mb-3 block text-sm">
+
+          <span className="mb-1 block font-medium text-zinc-700">Supplement Name & Dose</span>
+
+          <input
+
+            value={wellnessSupplementName}
+
+            onChange={(event) => {
+              setSelectedSavedCareItemKey(null);
+              onNotesChange(wellnessSupplementNotes(event.target.value, wellnessSupplementNotesBody));
+            }}
+
+            maxLength={TEXT_LIMITS.shortName}
+
+            placeholder="Supplement name & dose"
+
+            className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+
+          />
+
+        </label>
+
+      ) : null}
+
+      {showCoreFields && showHealthMedicationNameField ? (
+
+        <label className="mb-3 block text-sm">
+
+          <span className="mb-1 block font-medium text-zinc-700">Medication Name & Dose</span>
+
+          <input
+
+            value={healthMedicationName}
+
+            onChange={(event) => {
+              setSelectedSavedCareItemKey(null);
+              onDetailChange(healthMedicationDetail(event.target.value));
+            }}
+
+            maxLength={TEXT_LIMITS.shortName}
+
+            placeholder="Medication name & dose"
+
+            className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
+
+          />
+
+        </label>
 
       ) : null}
 
@@ -1597,15 +1756,18 @@ export function ActivityDetailForm({
 
         <textarea
 
-          value={showTreatDetailField ? "" : notes}
+          value={showTreatDetailField ? "" : wellnessSupplementNotesBody}
 
-          onChange={(event) => onNotesChange(clampText(event.target.value, TEXT_LIMITS.note))}
+          onChange={(event) => {
+            const nextNotes = clampText(event.target.value, TEXT_LIMITS.note);
+            onNotesChange(showWellnessSupplementNameField ? wellnessSupplementNotes(wellnessSupplementName, nextNotes) : nextNotes);
+          }}
 
           maxLength={TEXT_LIMITS.note}
 
-          rows={activityType === "medication" || activityType === "supplement" ? 1 : activityType === "wellness" || isPottyLog ? 2 : 3}
+          rows={notesRows}
 
-          placeholder={notesPlaceholder}
+          placeholder={carePlanEditor && carePlanNotesPlaceholders[activityType] ? carePlanNotesPlaceholders[activityType] : showWellnessSupplementNameField ? "Instructions, amount, reaction, or anything notable" : notesPlaceholder}
 
           className={`w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 ${activityType === "wellness" ? "resize-none overflow-hidden" : ""}`}
 
@@ -1671,18 +1833,33 @@ export function ActivityDetailForm({
               </label>
             </div>
           ) : (
-            <label
-              onClick={(event) => {
-                if (!attachmentPickerBlocked) return;
-                event.preventDefault();
-                openAttachmentUpgrade();
-              }}
-              className={`flex w-full rounded-2xl border border-dashed border-sky-200 bg-sky-50/50 px-3 py-3 text-sm ${attachmentPickerDisabled ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}
-            >
-              <span className="rounded-full bg-sky-100 px-3 py-1.5 text-sm font-semibold text-sky-700">
-                Add Files
+            <div className={`flex w-full items-center rounded-2xl border border-dashed border-sky-200 bg-sky-50/50 px-3 py-3 text-sm ${attachmentPickerDisabled ? "opacity-55" : ""}`}>
+              <span className="inline-flex items-center rounded-full bg-sky-100 text-sm font-semibold text-sky-700">
+                <label
+                  htmlFor={attachmentInputId}
+                  onClick={(event) => {
+                    if (!attachmentPickerBlocked) return;
+                    event.preventDefault();
+                    openAttachmentUpgrade();
+                  }}
+                  className={`py-1.5 pl-3 pr-1 ${attachmentPickerDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+                >
+                  Add Files
+                </label>
+                <button
+                  type="button"
+                  aria-label={attachmentHelp}
+                  title={attachmentHelp}
+                  className="group relative mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-sky-700/60 transition hover:bg-sky-200/70 hover:text-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                >
+                  <CircleHelp className="size-4" strokeWidth={2.4} />
+                  <span className="pointer-events-none absolute left-1/2 top-8 z-20 hidden w-[min(18rem,calc(100vw-4rem))] -translate-x-1/2 rounded-2xl bg-zinc-900 px-3 py-2 text-left text-xs font-medium leading-5 text-white shadow-lg group-hover:block group-focus:block">
+                    {attachmentHelp}
+                  </span>
+                </button>
               </span>
               <input
+                id={attachmentInputId}
                 type="file"
                 multiple
                 accept={attachmentAccept}
@@ -1693,10 +1870,8 @@ export function ActivityDetailForm({
                 }}
                 className="sr-only"
               />
-            </label>
+            </div>
           )}
-
-          {!poopPhotoDetail ? <p className="mt-1 text-xs text-zinc-500">{attachmentHelp} Up to {maxAttachmentFiles} {maxAttachmentFiles === 1 ? "file" : "files"}.</p> : null}
 
           {!attachmentPickerBlocked && attachmentLimitReached ? <p className="mt-1 text-xs font-medium text-amber-700">{attachmentLimitLabel}</p> : null}
 
@@ -1797,13 +1972,13 @@ export function ActivityDetailForm({
 
 
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className={`mt-4 flex gap-2 ${carePlanEditor ? "flex-nowrap" : "flex-wrap"}`}>
 
         <Button
           type="button"
           onClick={onSave}
           disabled={saveDisabled}
-          className="rounded-full !text-white hover:opacity-90 disabled:!opacity-100 disabled:brightness-90 disabled:cursor-not-allowed"
+          className={`rounded-full py-2 !text-white shadow-sm hover:opacity-90 disabled:!opacity-100 disabled:brightness-90 disabled:cursor-not-allowed ${carePlanEditor ? "px-3 text-sm" : "px-4"}`}
           style={{ backgroundColor: theme.activeText }}
         >
 
@@ -1811,13 +1986,13 @@ export function ActivityDetailForm({
 
         </Button>
 
-        <Button type="button" variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
+        <Button type="button" variant="outline" onClick={onCancel} className={`rounded-full border-zinc-200 bg-white py-2 !text-zinc-700 shadow-sm hover:bg-zinc-50 ${carePlanEditor ? "px-3 text-sm" : "px-4"}`}>Cancel</Button>
 
         {onDelete ? (
 
-          <Button type="button" variant="outline" onClick={onDelete} className="rounded-full text-rose-600">
+          <Button type="button" variant="outline" onClick={onDelete} className={`rounded-full border-rose-100 bg-white py-2 !text-rose-600 shadow-sm hover:bg-rose-50 ${carePlanEditor ? "px-3 text-sm" : "px-4"}`}>
 
-            Delete
+            {deleteLabel ?? (carePlanEditor ? "Undo Log" : "Delete")}
 
           </Button>
 

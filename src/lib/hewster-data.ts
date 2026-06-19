@@ -4,8 +4,10 @@ import type { CareItemKind, CareItemTemplate } from "@/lib/care-settings";
 import type { MealStatus, MealTemplate } from "@/lib/meal-templates";
 import { clampMealFoodText, clampMealNameText, clampMealNoteText, initialTemplates, isInitialMealTemplatePlan, isMealTemplateArray, normalizeMealTemplate, sortMealTemplatesByTime, STORAGE_KEY } from "@/lib/meal-templates";
 import {
+  canAttemptLimitedNotebookEntryEdit,
   canDeleteNotebookEntries,
   canEditNotebookEntries,
+  canUseNotebookAttachments,
   resolveActiveNotebookAccess,
   type NotebookMember,
   type NotebookAccessRole,
@@ -388,6 +390,26 @@ function requireEntryEditAccess(accessRole: NotebookAccessRole) {
   }
 }
 
+function isWithinCaretakerEditWindow(value: string | null | undefined) {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && Date.now() - time <= 24 * 60 * 60 * 1000;
+}
+
+function canEditNotebookEntryForActor(accessRole: NotebookAccessRole, actorUserId: string, entry?: { auditInfo?: NotebookEntryAuditInfo; createdAt?: string }) {
+  if (canEditNotebookEntries(accessRole)) return true;
+  if (accessRole !== "caretaker" && accessRole !== "pet-sitter") return false;
+  const loggedByUserId = entry?.auditInfo?.loggedByUserId ?? null;
+  const loggedAt = entry?.auditInfo?.loggedAt ?? entry?.createdAt ?? null;
+  return loggedByUserId === actorUserId && isWithinCaretakerEditWindow(loggedAt);
+}
+
+function requireNotebookEntryEditAccess(accessRole: NotebookAccessRole, actorUserId: string, entry?: { auditInfo?: NotebookEntryAuditInfo; createdAt?: string }) {
+  if (!canEditNotebookEntryForActor(accessRole, actorUserId, entry)) {
+    throw new Error("Caretakers can only edit entries they logged themselves within 24 hours.");
+  }
+}
+
 function requireEntryDeleteAccess(accessRole: NotebookAccessRole) {
   if (!canDeleteNotebookEntries(accessRole)) {
     throw new Error("Only the notebook owner can delete saved notebook entries.");
@@ -396,11 +418,12 @@ function requireEntryDeleteAccess(accessRole: NotebookAccessRole) {
 
 export async function loadNotebookEntryPermissions() {
   const signedInSupabase = await getSignedInSupabase();
-  if (!signedInSupabase) return { canEditEntries: true, canDeleteEntries: true };
+  if (!signedInSupabase) return { canEditEntries: true, canDeleteEntries: true, canUseAttachments: true };
 
   return {
-    canEditEntries: canEditNotebookEntries(signedInSupabase.accessRole),
+    canEditEntries: canAttemptLimitedNotebookEntryEdit(signedInSupabase.accessRole),
     canDeleteEntries: canDeleteNotebookEntries(signedInSupabase.accessRole),
+    canUseAttachments: canUseNotebookAttachments(signedInSupabase.accessRole),
   };
 }
 
@@ -1706,8 +1729,8 @@ export async function updateActivityLogInSupabase(activity: ActivityLog) {
     return;
   }
 
-  const { supabase, userId, accessRole } = signedInSupabase;
-  requireEntryEditAccess(accessRole);
+  const { supabase, user, userId, accessRole } = signedInSupabase;
+  requireNotebookEntryEditAccess(accessRole, user.id, activity);
   cacheActivityLog(activity);
   const { error } = await supabase
     .from("activity_logs")
@@ -1733,7 +1756,10 @@ export async function saveActivityAttachmentsToSupabase(activity: ActivityLog, f
   const signedInSupabase = await getSignedInSupabase();
   if (!signedInSupabase || !files.length) return [];
 
-  const { supabase, userId } = signedInSupabase;
+  const { supabase, userId, accessRole } = signedInSupabase;
+  if (!canUseNotebookAttachments(accessRole)) {
+    throw new Error("Caretakers cannot add attachments.");
+  }
   const savedAttachments: ActivityAttachment[] = [];
   const replaceExisting = options.replaceExisting ?? true;
 
@@ -1972,8 +1998,8 @@ export async function updateWeightLogInSupabase(weight: WeightLog) {
   const signedInSupabase = await getSignedInSupabase();
   if (!signedInSupabase) return;
 
-  const { supabase, userId, accessRole } = signedInSupabase;
-  requireEntryEditAccess(accessRole);
+  const { supabase, user, userId, accessRole } = signedInSupabase;
+  requireNotebookEntryEditAccess(accessRole, user.id, weight);
   const { error } = await supabase
     .from("weight_logs")
     .update(mapWeightLogToRow(weight, userId))

@@ -27,13 +27,14 @@ const guideSteps: GuideStep[] = [
   { title: "Today's Page", href: "/notebook", target: "today-upcoming", text: "View upcoming meals, supplements, medications, and reminders." },
   { title: "Quick Log", href: "/notebook", target: "today-quick-log", text: "Tap an icon to quickly log an event. Swipe for more event types." },
   { title: "Poop Records", href: "/notebook", target: "today-poop-records", text: "View recent stool history." },
-  { title: "Manage Events", href: "/notebook/log", target: "log-events", text: "Open the log menu to add new events." },
-  { title: "Today's Events", href: "/notebook/log", target: "log-review", text: "Logged events show here. After you add one, tap it to view or edit details." },
-  { title: "Today's Meal Plan", href: "/notebook/log", target: "log-meal-plan", text: "Meals from your saved meal plan appear here. Tap any meal to view or edit details." },
-  { title: "Health Records", href: "/notebook/medical-records", target: "medical-records", text: "Quickly find health records, medications, and documents." },
+  { title: "Manage Plan & Events", href: "/notebook/log", target: "log-events", text: "Open the log menu to add new events." },
+  { title: "Today's Events", href: "/notebook/log", target: "log-review", text: "Review events logged today. Tap any event to view or edit details." },
+  { title: "Today's Plan", href: "/notebook/log", target: "log-meal-plan", text: "Review today's scheduled meals, medications, and supplements. Tap any item to log or edit details." },
+  { title: "Health Records", href: "/notebook/medical-records", target: "medical-records", text: "Review and track health records, including medications and vet visits. Use filters to quickly find health-related entries and uploaded medical attachments." },
+  { title: "History", href: "/notebook/history", target: "history-calendar", text: "Select a date to review and edit events. Use filters to find records or create PDF reports." },
   { title: "Alerts & Reminders", href: "/notebook/alerts", target: "alerts-reminders", text: "Keep everyone on the same page with alerts, reminders, and important care notes." },
-  { title: "Notebook Sharing", href: "/notebook/profile", target: "profile-sharing", text: "Invite family, caretakers, and pet sitters to help care for your pet and log events together." },
-  { title: "Settings", href: "/notebook/settings", target: "settings-schedules", text: "Create meal, supplement, and medication schedules. PetNotebook uses them to generate reminders and upcoming items automatically." },
+  { title: "Notebook Sharing", href: "/notebook/profile", target: "profile-sharing", text: "Invite family and caretakers to help care for your pet and log events together." },
+  { title: "Settings", href: "/notebook/settings", target: "settings-schedules", text: "Create meal, supplement, and medication schedules here. Scheduled items automatically appear on Today's Plan for reminders and quick logging." },
 ];
 
 function currentPathMatches(pathname: string, href: string) {

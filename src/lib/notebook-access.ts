@@ -3,6 +3,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabaseCurrentSession } from "@/lib/supabase";
 
 export type NotebookAccessRole = "owner" | "co-owner" | "caretaker" | "pet-sitter";
+export type ActiveNotebookAccessRole = Exclude<NotebookAccessRole, "pet-sitter">;
 
 export type NotebookMember = {
   id: string;
@@ -57,24 +58,50 @@ export class NotebookAccessRevokedError extends Error {
 
 export const notebookAccessRoleDescriptions: Record<NotebookAccessRole, string> = {
   owner: "Full access, including invites, access management, and exporting notebook copies.",
-  "co-owner": "Can manage daily care, view history, and export copies. Cannot edit the pet profile, invites, or access.",
-  caretaker: "Can help manage daily care, logs, care alerts, and settings. Cannot manage invites, access, or exports.",
-  "pet-sitter": "Limited access for short-term care. Can log basic care only, with no medical records, full history, or exports.",
+  "co-owner": "Full access to daily care, history, edits, and reports. Pet profile and notebook settings stay owner-only.",
+  caretaker: "Everything needed for day-to-day care, with access to recent records. History and notebook settings are limited.",
+  "pet-sitter": "Everything needed for day-to-day care, with access to recent records. History and notebook settings are limited.",
 };
 
+export function effectiveNotebookRole(role: NotebookAccessRole | null | undefined): ActiveNotebookAccessRole | null {
+  if (!role) return null;
+  return role === "pet-sitter" ? "caretaker" : role;
+}
+
 export function canExportNotebook(role: NotebookAccessRole) {
-  return role === "owner" || role === "co-owner";
+  return effectiveNotebookRole(role) === "owner" || effectiveNotebookRole(role) === "co-owner";
 }
 
 export function canEditNotebookEntries(role: NotebookAccessRole | null | undefined) {
-  return role === "owner" || role === "co-owner";
+  const effectiveRole = effectiveNotebookRole(role);
+  return effectiveRole === "owner" || effectiveRole === "co-owner";
+}
+
+export function canAttemptLimitedNotebookEntryEdit(role: NotebookAccessRole | null | undefined) {
+  const effectiveRole = effectiveNotebookRole(role);
+  return effectiveRole === "owner" || effectiveRole === "co-owner" || effectiveRole === "caretaker";
 }
 
 export function canDeleteNotebookEntries(role: NotebookAccessRole | null | undefined) {
-  return role === "owner";
+  return effectiveNotebookRole(role) === "owner";
 }
 
-export const notebookInviteRoles: NotebookAccessRole[] = ["co-owner", "caretaker", "pet-sitter"];
+export function canViewFullNotebookHistory(role: NotebookAccessRole | null | undefined) {
+  const effectiveRole = effectiveNotebookRole(role);
+  return effectiveRole === "owner" || effectiveRole === "co-owner";
+}
+
+export function canViewNotebookHealthRecords(role: NotebookAccessRole | null | undefined) {
+  const effectiveRole = effectiveNotebookRole(role);
+  return effectiveRole === "owner" || effectiveRole === "co-owner";
+}
+
+export function canUseNotebookAttachments(role: NotebookAccessRole | null | undefined) {
+  const effectiveRole = effectiveNotebookRole(role);
+  return effectiveRole === "owner" || effectiveRole === "co-owner";
+}
+
+export const notebookInviteRoles: Exclude<NotebookAccessRole, "owner" | "pet-sitter">[] = ["co-owner", "caretaker"];
 
 export function activeNotebookOwnerIdFromStorage() {
   if (typeof window === "undefined") return null;

@@ -9,7 +9,7 @@ export default function MedicationsPage() {
       kind="medication"
       title="Medication Settings"
       description="Create medication schedules, reminders, and daily logs."
-      emptyLabel="No medications yet. Add regular medications or custom reminders when your pet needs them."
+      emptyLabel="Save your pet's medications here to receive reminders and manage them from Today's Plan."
       icon={MedicationPillIcon}
       accentClassName="bg-sky-50 text-sky-700 ring-sky-200"
       iconClassName="bg-sky-50 text-sky-600 ring-sky-200"

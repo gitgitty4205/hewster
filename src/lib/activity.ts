@@ -2,6 +2,8 @@
 
 import type { CareItemTemplate } from "@/lib/care-settings";
 
+const supplementNameNotePrefix = "Supplement: ";
+
 export function formatActivityLabel(activityType: ActivityType) {
   switch (activityType) {
     case "potty":
@@ -36,6 +38,26 @@ export function formatActivityLabel(activityType: ActivityType) {
   }
 }
 
+export function isManualMedicationActivity(activity: ActivityLog) {
+  return activity.activityType === "sick" && (activity.detail === "Medication" || activity.detail?.startsWith("Medication: "));
+}
+
+export function isManualSupplementActivity(activity: ActivityLog) {
+  return activity.activityType === "wellness" && activity.detail === "Supplements";
+}
+
+export function eventCardActivityType(activity: ActivityLog): ActivityType {
+  if (isManualMedicationActivity(activity)) return "medication";
+  if (isManualSupplementActivity(activity)) return "supplement";
+  return activity.activityType;
+}
+
+export function eventCardActivityLabel(activity: ActivityLog) {
+  if (["pee", "poop", "potty"].includes(activity.activityType)) return "Potty";
+  if (isManualSupplementActivity(activity)) return "Supplements";
+  return formatActivityLabel(eventCardActivityType(activity));
+}
+
 export function formatActivityTime(happenedAt: string) {
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
@@ -49,6 +71,23 @@ export function renderActivityDetail(activity: ActivityLog) {
     .map(normalizeCareFrequencyLine)
     .join("\n")
     .replace(/\s*(?:•|�\?�|•)\s*Notes:\s*/g, " Notes: ") ?? null;
+
+  if (activity.activityType === "wellness" && activity.detail === "Supplements" && notes) {
+    const noteLines = notes.split("\n");
+    const supplementName = noteLines
+      .find((line) => line.trim().startsWith(supplementNameNotePrefix))
+      ?.trim()
+      .replace(supplementNameNotePrefix, "")
+      .trim();
+    const visibleNotes = noteLines
+      .filter((line) => !line.trim().startsWith(supplementNameNotePrefix))
+      .join("\n")
+      .trim();
+
+    if (supplementName && visibleNotes) return `Supplements: ${supplementName}\n${visibleNotes}`;
+    if (supplementName) return `Supplements: ${supplementName}`;
+    if (visibleNotes) return `Supplements: ${visibleNotes}`;
+  }
 
   if (activity.activityType === "treat" && activity.detail && notes) {
     return `${activity.detail}: ${notes}`;
@@ -96,6 +135,10 @@ function isMedicationTimingLine(line: string) {
   return line === "With Food" || line === "Empty Stomach";
 }
 
+function hideDefaultOralRoute(line: string | null) {
+  return line?.replace(/\s*\(Oral\)\s*$/i, "").trim() || null;
+}
+
 export function normalizeCareFrequencyLine(line: string) {
   return /^Every\s+\d+\s+Hours(?:\s+(?:•|,)?\s*)As Needed$/i.test(line)
     ? line.replace(/\bHours\b/i, "hours").replace(/\s*(?:•|,)?\s*As Needed$/i, ", As Needed")
@@ -111,22 +154,22 @@ export function careItemShortcutLabel(item: CareItemTemplate) {
 }
 
 export function savedCareItemLogNotes(item: CareItemTemplate) {
-  const medicationType = item.kind === "medication"
-    ? item.medicationType === "topical"
+  const careType = item.kind === "supplement" && item.scheduleKind === "meal"
+    ? null
+    : item.medicationType === "topical"
       ? "Topical"
       : item.medicationType === "injection"
         ? "Injection"
         : item.medicationType === "other"
           ? "Other"
-          : "Oral"
-    : null;
+          : null;
   const frequency = item.scheduleSteps.find((step) => step.everyHours)?.everyHours;
 
   return [
-    `Give ${item.dose || "as directed"}${medicationType ? ` (${medicationType})` : ""}`,
+    `Give ${item.dose || "as directed"}${careType ? ` (${careType})` : ""}`,
     frequency ? `Every ${frequency} hours, As Needed` : "As Needed",
     item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food",
-    item.notes ? `Notes: ${item.notes.trim()}` : "",
+    item.notes ? `Plan Notes: ${item.notes.trim()}` : "",
   ].filter(Boolean).join("\n");
 }
 
@@ -142,10 +185,27 @@ export function savedHealthMedicationShortcutNotes(detail: string, careTemplates
   return match ? savedCareItemLogNotes(match) : "";
 }
 
+export function savedWellnessSupplementShortcutNotes(notes: string, careTemplates: CareItemTemplate[]) {
+  const supplementText = splitActivityNoteLines(notes)
+    .find((line) => line.startsWith(supplementNameNotePrefix))
+    ?.replace(supplementNameNotePrefix, "")
+    .trim();
+  if (!supplementText) return "";
+
+  const match = careTemplates.find((item) => {
+    if (item.kind !== "supplement") return false;
+    return careItemShortcutLabel(item).toLowerCase() === supplementText.toLowerCase();
+  });
+
+  return match ? savedCareItemLogNotes(match).replace(/^Plan Notes: /gm, "Notes: ") : "";
+}
+
 function medicationDetailFromTemplate(notes: string | null, careTemplates: CareItemTemplate[]) {
   const lines = splitActivityNoteLines(notes).filter((line) => !isMetadataLine(line));
   const giveLine = lines.find((line) => line.startsWith("Give ")) ?? "";
-  const noteLines = lines.filter((line) => line.startsWith("Notes: ")).map((line) => line.replace(/^Notes:\s*/i, "").trim());
+  const noteLines = lines
+    .filter((line) => line.startsWith("Notes: ") || line.startsWith("Plan Notes: "))
+    .map((line) => line.replace(/^(?:Plan\s+)?Notes:\s*/i, "").trim());
   const timingLine = lines.find(isMedicationTimingLine) ?? "";
   const doseText = giveLine.replace(/^Give\s+/i, "").replace(/\s*\([^)]*\)\s*$/, "").trim();
 
@@ -183,7 +243,7 @@ export function renderHealthTimelineActivityDetail(activity: ActivityLog, careTe
     return notesText && detail ? `${detail} • Notes: ${notesText}` : detail || notesText;
   }
 
-  const giveLine = noteLines.find((line) => line.startsWith("Give ")) ?? null;
+  const giveLine = hideDefaultOralRoute(noteLines.find((line) => line.startsWith("Give ")) ?? null);
   const giveLineHasRoute = Boolean(giveLine && /\([^)]*\)/.test(giveLine));
   const displayLines = [
     medicationNameLine(detail),
@@ -192,8 +252,8 @@ export function renderHealthTimelineActivityDetail(activity: ActivityLog, careTe
       if (line.startsWith("Give ")) return false;
       if (line === "As Needed" || /^Every\s+\d+\s+Hours\b/i.test(line)) return true;
       if (isMedicationTimingLine(line)) return true;
-      if (isMedicationRouteLine(line)) return !giveLineHasRoute;
-      if (line.startsWith("Notes: ")) return true;
+      if (isMedicationRouteLine(line)) return line !== "Oral" && !giveLineHasRoute;
+      if (line.startsWith("Notes: ") || line.startsWith("Plan Notes: ")) return true;
       return false;
     }),
   ].filter(Boolean);

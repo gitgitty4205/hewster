@@ -9,6 +9,7 @@
     "check:alerts": "node scripts/check-alert-capacity.mjs",
     "check:auth": "node scripts/check-auth.mjs",
     "check:floating-menu": "node scripts/check-floating-menu.mjs",
+    "check:history-date-routes": "node scripts/check-history-date-routes.mjs",
     "check:meal-log-snapshot": "node scripts/check-meal-log-snapshot.mjs",
     "check:poop-photo-upload": "node scripts/check-poop-photo-upload.mjs",
     "check:timeline-format": "node scripts/check-timeline-format.mjs",

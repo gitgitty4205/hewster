@@ -8,15 +8,19 @@ type Props = {
   mealName: string;
   actualTime: string;
   onActualTimeChange: (value: string) => void;
+  mealStatus: "Fed" | "Skipped";
+  onMealStatusChange: (value: "Fed" | "Skipped") => void;
   fedNote: string;
   onFedNoteChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
   onUndo?: () => void;
+  undoLabel?: string;
   saveLabel?: string;
   careItems?: CareItemTemplate[];
   skippedCareItemIds?: string[];
   onToggleCareItem?: (careItemId: string) => void;
+  onSkippedCareItemIdsChange?: (careItemIds: string[]) => void;
 };
 
 function careItemId(item: CareItemTemplate) {
@@ -25,6 +29,15 @@ function careItemId(item: CareItemTemplate) {
 
 function toTimeInputValue(value: string) {
   const normalized = value.trim().replace(/\s+/g, " ").toUpperCase();
+  const twentyFourHourParts = normalized.match(/^(\d{1,2}):(\d{2})$/);
+  if (twentyFourHourParts) {
+    const hours = Number(twentyFourHourParts[1]);
+    const minutes = Number(twentyFourHourParts[2]);
+    if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+      return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    }
+  }
+
   const parts = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s?(AM|PM)$/i);
   if (!parts) return "";
 
@@ -47,12 +60,41 @@ function fromTimeInputValue(value: string) {
   return `${hours}:${String(rawMinutes).padStart(2, "0")} ${suffix}`;
 }
 
-export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote, onFedNoteChange, onSave, onCancel, onUndo, saveLabel = "Save", careItems = [], skippedCareItemIds = [], onToggleCareItem }: Props) {
+export function MealTimeForm({ mealName, actualTime, onActualTimeChange, mealStatus, onMealStatusChange, fedNote, onFedNoteChange, onSave, onCancel, onUndo, undoLabel = "Undo Log", saveLabel = "Save", careItems = [], skippedCareItemIds = [], onToggleCareItem, onSkippedCareItemIdsChange }: Props) {
+  const statusOptions = ["Fed", "Skipped"] as const;
+  const visibleFedNote = fedNote.trim() ? fedNote : "";
+  const setMealStatus = (status: "Fed" | "Skipped") => {
+    onMealStatusChange(status);
+    onSkippedCareItemIdsChange?.(status === "Skipped" ? careItems.map(careItemId) : []);
+  };
+
   return (
     <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold">Edit {mealName}</h2>
-        <p className="text-sm text-zinc-500">Update the logged time, notes, and what was given with {mealName}.</p>
+        <h2 className="text-lg font-semibold text-zinc-900">Edit {mealName}</h2>
+      </div>
+
+      <div className="mb-4">
+        <p className="mb-1 text-sm font-medium text-zinc-700">Status</p>
+        <div className="flex flex-wrap gap-2">
+          {statusOptions.map((status) => {
+            const selected = mealStatus === status;
+            return (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setMealStatus(status)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${
+                  selected
+                    ? "bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] ring-2 ring-[var(--hewie-accent)]"
+                    : "bg-white text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-50"
+                }`}
+              >
+                {status}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <label className="block text-sm">
@@ -70,13 +112,14 @@ export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote
           <p className="text-sm font-semibold text-zinc-700">Given With Meal</p>
           {careItems.map((item) => {
             const id = careItemId(item);
-            const checked = !skippedCareItemIds.includes(id);
+            const checked = mealStatus !== "Skipped" && !skippedCareItemIds.includes(id);
 
             return (
-              <label key={id} className="flex items-start gap-2 text-sm text-zinc-600">
+              <label key={id} className={`flex items-start gap-2 text-sm ${mealStatus === "Skipped" ? "text-zinc-400" : "text-zinc-600"}`}>
                 <input
                   type="checkbox"
                   checked={checked}
+                  disabled={mealStatus === "Skipped"}
                   onChange={() => onToggleCareItem?.(id)}
                   className="mt-1 size-4 accent-[var(--hewie-accent)]"
                 />
@@ -93,21 +136,25 @@ export function MealTimeForm({ mealName, actualTime, onActualTimeChange, fedNote
       <label className="mt-4 block text-sm">
         <span className="mb-1 block font-medium text-zinc-700">Notes</span>
         <textarea
-          value={fedNote}
+          value={visibleFedNote}
           onChange={(event) => onFedNoteChange(clampText(event.target.value, TEXT_LIMITS.note))}
           maxLength={TEXT_LIMITS.note}
-          rows={3}
-          placeholder={`Notes for ${mealName}`}
-          className="w-full resize-none rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+          rows={2}
+          placeholder="Optional meal instructions"
+          className="w-full resize-none rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition placeholder:text-zinc-400 focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
         />
       </label>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button type="button" onClick={onSave} className="rounded-full bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] hover:opacity-90">{saveLabel}</Button>
-        <Button type="button" variant="outline" onClick={onCancel} className="rounded-full">Cancel</Button>
+      <div className={`mt-4 flex gap-2 ${onUndo ? "flex-nowrap justify-center" : "flex-wrap"}`}>
+        <Button type="button" onClick={onSave} className="rounded-full bg-[var(--hewie-accent)] px-3 py-2 text-sm font-semibold text-[var(--hewie-accent-text)] shadow-sm hover:opacity-90">
+          {saveLabel}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel} className="rounded-full border-zinc-200 bg-white px-3 py-2 text-sm font-semibold !text-zinc-700 shadow-sm hover:bg-zinc-50">
+          Cancel
+        </Button>
         {onUndo ? (
-          <Button type="button" variant="outline" onClick={onUndo} className="rounded-full text-rose-600">
-            Mark as Not Logged
+          <Button type="button" variant="outline" onClick={onUndo} className="rounded-full border-rose-100 bg-white px-3 py-2 text-sm font-semibold !text-rose-600 shadow-sm hover:bg-rose-50">
+            {undoLabel}
           </Button>
         ) : null}
       </div>

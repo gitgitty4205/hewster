@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Check, ChevronRight, CircleHelp, Heart, Pencil, Plus, ShieldCheck } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Heart, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useState } from "react";
 
@@ -47,16 +47,16 @@ function petNotebookName(profile: PetProfile) {
 }
 
 function notebookRoleLabel(role: NotebookAccessRole) {
-  if (role === "pet-sitter") return "Pet Sitter";
+  if (role === "pet-sitter") return "Caretaker";
   if (role === "co-owner") return "Co-owner";
   if (role === "caretaker") return "Caretaker";
   return "Owner";
 }
 
 function accessStatusLabel(status: NotebookMember["status"]) {
-  if (status === "active") return "Active";
   if (status === "invited") return "Invited";
-  return "Revoked";
+  if (status === "revoked") return "Revoked";
+  return null;
 }
 
 type RequiredPetInfoField = "petFirstName" | "petLastName" | "species" | "breed" | "birthday" | "sex" | "spayNeuterStatus" | "color";
@@ -167,7 +167,6 @@ export default function ProfilePage() {
   const [pendingMemberAccess, setPendingMemberAccess] = useState<Record<string, Exclude<NotebookAccessRole, "owner"> | "remove">>({});
   const [accessStatus, setAccessStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [accessMessage, setAccessMessage] = useState("");
-  const [accessRoleHelp, setAccessRoleHelp] = useState<Exclude<NotebookAccessRole, "owner"> | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingAbout, setIsEditingAbout] = useState(false);
   const [isEditingEmergencyContact, setIsEditingEmergencyContact] = useState(false);
@@ -176,10 +175,15 @@ export default function ProfilePage() {
   const [profilePhotoMessage, setProfilePhotoMessage] = useState("");
   const [showGoodbyeIntro, setShowGoodbyeIntro] = useState(false);
   const [showMemorialSettings, setShowMemorialSettings] = useState(false);
+  const [showInviteRolePicker, setShowInviteRolePicker] = useState(false);
+  const [memberRolePickerId, setMemberRolePickerId] = useState<string | null>(null);
   const [showNotebookSharingIntro, setShowNotebookSharingIntro] = useState(false);
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlanId>("free");
   const visibleMembers = members.filter((member) => member.status !== "revoked");
   const notebookMemberLimitReached = visibleMembers.length >= NOTEBOOK_MEMBER_LIMIT;
+  const memberRolePickerMember = memberRolePickerId
+    ? visibleMembers.find((member) => member.id === memberRolePickerId)
+    : null;
 
   useEffect(() => {
     const refreshPlan = () => setSubscriptionPlan(loadStoredSubscriptionPlan());
@@ -241,7 +245,7 @@ export default function ProfilePage() {
   async function handleInvitePerson() {
     if (subscriptionPlan !== "plus") {
       setAccessStatus("error");
-      setAccessMessage("Notebook sharing is included with PetNotebook Plus. Upgrade to invite co-owners, caretakers, and pet sitters.");
+      setAccessMessage("Notebook sharing is included with PetNotebook Plus. Upgrade to invite co-owners and caretakers.");
       return;
     }
 
@@ -1004,64 +1008,18 @@ export default function ProfilePage() {
                     className="mt-2 w-full rounded-2xl border-0 bg-white px-4 py-3 text-sm font-medium normal-case tracking-normal text-zinc-800 ring-1 ring-[var(--hewie-ring)] placeholder:text-zinc-400"
                   />
                 </label>
-                <fieldset className="mt-2">
-                  <legend className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Role</legend>
-                  <div className="mt-2 grid gap-2">
-                    {notebookInviteRoles.map((role) => {
-                      const selected = accessRole === role;
-                      const helpOpen = accessRoleHelp === role;
-
-                      return (
-                        <div key={role}>
-                          <div
-                            role="radio"
-                            aria-checked={selected}
-                            tabIndex={0}
-                            onClick={() => setAccessRole(role as Exclude<NotebookAccessRole, "owner">)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                setAccessRole(role as Exclude<NotebookAccessRole, "owner">);
-                              }
-                            }}
-                            className="flex w-full cursor-pointer items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-zinc-800 ring-1 ring-[var(--hewie-ring)] transition"
-                          >
-                            <div className="flex min-w-0 items-start gap-0.5">
-                              <span className="min-w-0 text-left">
-                                {notebookRoleLabel(role)}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setAccessRoleHelp((current) => current === role ? null : role as Exclude<NotebookAccessRole, "owner">);
-                                }}
-                                aria-expanded={helpOpen}
-                                aria-label={`Show ${notebookRoleLabel(role)} details`}
-                                className="mt-[-4px] flex size-5 shrink-0 items-center justify-center text-[var(--hewie-active-text)]/55"
-                              >
-                                <CircleHelp className="size-3.5" />
-                              </button>
-                            </div>
-                            <span
-                              aria-hidden="true"
-                              className={`size-3 shrink-0 rounded-full ring-2 ${
-                                selected
-                                  ? "bg-[var(--hewie-accent)] ring-[var(--hewie-accent)]/60"
-                                  : "bg-transparent ring-[var(--hewie-ring)]"
-                              }`}
-                            />
-                          </div>
-                          {helpOpen ? (
-                            <p className="mt-2 rounded-2xl bg-white/65 p-3 text-xs leading-5 text-[var(--hewie-active-text)]/65 ring-1 ring-[var(--hewie-ring)]/70">
-                              {notebookAccessRoleDescriptions[role]}
-                            </p>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </fieldset>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Role</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowInviteRolePicker(true)}
+                    className="mt-2 flex w-full items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 text-left text-sm font-semibold normal-case tracking-normal text-zinc-800 ring-1 ring-[var(--hewie-ring)] transition hover:bg-zinc-50"
+                    aria-label="Invite member role"
+                  >
+                    <span>{notebookRoleLabel(accessRole)}</span>
+                    <ChevronDown className="size-4 shrink-0 text-[var(--hewie-active-text)]/45" aria-hidden="true" />
+                  </button>
+                </div>
               </div>
               <Button
                 type="button"
@@ -1071,9 +1029,6 @@ export default function ProfilePage() {
               >
                 {accessStatus === "saving" ? "Sending..." : "Invite"}
               </Button>
-              <p className="mt-2 text-center text-xs font-medium text-[var(--hewie-active-text)]/60">
-                {visibleMembers.length}/{NOTEBOOK_MEMBER_LIMIT} members
-              </p>
             </>
           ) : null}
           {canOwnNotebookAccess && !isNotebookSharingUnlocked ? (
@@ -1093,10 +1048,16 @@ export default function ProfilePage() {
           ) : null}
 
           <div className="mt-5 space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Notebook members</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Notebook members</h3>
+              <span className="text-xs font-semibold text-[var(--hewie-active-text)]/50">
+                {visibleMembers.length}/{NOTEBOOK_MEMBER_LIMIT}
+              </span>
+            </div>
             {visibleMembers.map((member) => {
               const pendingAccess = pendingMemberAccess[member.id] ?? member.role;
               const hasPendingChange = member.role !== "owner" && pendingAccess !== member.role;
+              const statusLabel = accessStatusLabel(member.status);
 
               return (
                 <div key={member.id} className="rounded-2xl bg-white/70 p-3 text-sm ring-1 ring-[var(--hewie-ring)]/70">
@@ -1105,32 +1066,31 @@ export default function ProfilePage() {
                       <p className="notebook-member-email truncate font-semibold text-[var(--hewie-active-text)]/85" x-apple-data-detectors="false">
                         {member.memberEmail}
                       </p>
-                      <p className="mt-0.5 text-xs text-[var(--hewie-active-text)]/72">
-                        {notebookRoleLabel(member.role)} - {accessStatusLabel(member.status)}
-                      </p>
+                      {statusLabel ? (
+                        <p className="mt-0.5 text-xs text-[var(--hewie-active-text)]/72">{statusLabel}</p>
+                      ) : null}
                     </div>
-                    <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[var(--hewie-active-text)]/65 ring-1 ring-[var(--hewie-ring)]">
-                      {notebookRoleLabel(member.role)}
-                    </span>
+                    {member.role === "owner" ? (
+                      <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[var(--hewie-active-text)]/65 ring-1 ring-[var(--hewie-ring)]">
+                        {notebookRoleLabel(member.role)}
+                      </span>
+                    ) : null}
                   </div>
 
                   {canManageNotebookAccess && member.role !== "owner" ? (
                     <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-                      <select
-                        value={pendingAccess}
-                        onChange={(event) => {
-                          const nextAccess = event.target.value as Exclude<NotebookAccessRole, "owner"> | "remove";
-                          setPendingMemberAccess((current) => ({ ...current, [member.id]: nextAccess }));
-                        }}
+                      <button
+                        type="button"
+                        onClick={() => setMemberRolePickerId(member.id)}
                         disabled={accessStatus === "saving"}
-                        className="min-w-0 rounded-full border-0 bg-white px-3 py-2 text-xs font-semibold text-[var(--hewie-active-text)]/75 ring-1 ring-[var(--hewie-ring)] disabled:opacity-60"
+                        className="flex min-w-0 items-center justify-between gap-2 rounded-full bg-white px-3 py-2 text-left text-xs font-semibold text-[var(--hewie-active-text)]/75 ring-1 ring-[var(--hewie-ring)] transition hover:bg-zinc-50 disabled:opacity-60"
                         aria-label={`Choose access action for ${member.memberEmail}`}
                       >
-                        {notebookInviteRoles.map((role) => (
-                          <option key={role} value={role}>{notebookRoleLabel(role)}</option>
-                        ))}
-                        <option value="remove">Remove access</option>
-                      </select>
+                        <span className="truncate">
+                          {pendingAccess === "remove" ? "Remove access" : notebookRoleLabel(pendingAccess)}
+                        </span>
+                        <ChevronDown className="size-3.5 shrink-0 text-[var(--hewie-active-text)]/45" aria-hidden="true" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => void handleSaveMemberAccess(member)}
@@ -1146,6 +1106,99 @@ export default function ProfilePage() {
             })}
           </div>
         </section>
+
+        {showInviteRolePicker ? (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/35 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="invite-role-picker-title">
+            <button
+              type="button"
+              aria-label="Close role picker"
+              className="absolute inset-0 cursor-default"
+              onClick={() => setShowInviteRolePicker(false)}
+            />
+            <div className="relative w-full max-w-sm rounded-3xl bg-white p-4 text-zinc-900 shadow-xl ring-1 ring-zinc-200">
+              <div className="mb-3 px-1">
+                <h3 id="invite-role-picker-title" className="text-base font-semibold text-[var(--hewie-active-text)]">Choose role</h3>
+              </div>
+              <div className="space-y-2">
+                {notebookInviteRoles.map((role) => {
+                  const selected = accessRole === role;
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => {
+                        setAccessRole(role as Exclude<NotebookAccessRole, "owner">);
+                        setShowInviteRolePicker(false);
+                      }}
+                      className={`flex w-full items-start gap-3 rounded-2xl p-3 text-left ring-1 transition ${selected ? "bg-[var(--hewie-active-bg)] text-[var(--hewie-active-text)] ring-[var(--hewie-ring)]" : "bg-white text-zinc-800 ring-zinc-200 hover:bg-zinc-50"}`}
+                    >
+                      <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ${selected ? "bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] ring-[var(--hewie-accent)]" : "bg-zinc-50 text-transparent ring-zinc-200"}`}>
+                        <Check className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold">{notebookRoleLabel(role)}</span>
+                        <span className="mt-0.5 block text-xs font-medium leading-5 text-[var(--hewie-active-text)]/58">
+                          {notebookAccessRoleDescriptions[role]}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {memberRolePickerMember ? (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/35 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="member-role-picker-title">
+            <button
+              type="button"
+              aria-label="Close member access picker"
+              className="absolute inset-0 cursor-default"
+              onClick={() => setMemberRolePickerId(null)}
+            />
+            <div className="relative w-full max-w-sm rounded-3xl bg-white p-4 text-zinc-900 shadow-xl ring-1 ring-zinc-200">
+              <div className="mb-3 px-1">
+                <h3 id="member-role-picker-title" className="text-base font-semibold text-[var(--hewie-active-text)]">Change access</h3>
+                <p className="mt-1 truncate text-xs font-medium leading-5 text-[var(--hewie-active-text)]/60">
+                  {memberRolePickerMember.memberEmail}
+                </p>
+              </div>
+              <div className="space-y-2">
+                {[...notebookInviteRoles, "remove" as const].map((accessOption) => {
+                  const pendingAccess = pendingMemberAccess[memberRolePickerMember.id] ?? memberRolePickerMember.role;
+                  const selected = pendingAccess === accessOption;
+                  const label = accessOption === "remove" ? "Remove access" : notebookRoleLabel(accessOption);
+                  const description = accessOption === "remove" ? "" : notebookAccessRoleDescriptions[accessOption];
+
+                  return (
+                    <button
+                      key={accessOption}
+                      type="button"
+                      onClick={() => {
+                        setPendingMemberAccess((current) => ({ ...current, [memberRolePickerMember.id]: accessOption }));
+                        setMemberRolePickerId(null);
+                      }}
+                      className={`flex w-full items-start gap-3 rounded-2xl p-3 text-left ring-1 transition ${selected ? "bg-[var(--hewie-active-bg)] text-[var(--hewie-active-text)] ring-[var(--hewie-ring)]" : "bg-white text-zinc-800 ring-zinc-200 hover:bg-zinc-50"}`}
+                    >
+                      <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ${selected ? "bg-[var(--hewie-accent)] text-[var(--hewie-accent-text)] ring-[var(--hewie-accent)]" : "bg-zinc-50 text-transparent ring-zinc-200"}`}>
+                        <Check className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold">{label}</span>
+                        {description ? (
+                          <span className="mt-0.5 block text-xs font-medium leading-5 text-[var(--hewie-active-text)]/58">
+                            {description}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {showNotebookSharingIntro ? (
           <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/35 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="notebook-sharing-upgrade-title">
@@ -1164,7 +1217,7 @@ export default function ProfilePage() {
                   </span>
                 </h3>
                 <p className="mt-1 text-sm font-semibold leading-5 text-[var(--hewie-active-text)]">
-                  Invite co-owners, caretakers, and pet sitters to help care for your pet.
+                  Invite co-owners and caretakers to help care for your pet.
                 </p>
               </div>
 

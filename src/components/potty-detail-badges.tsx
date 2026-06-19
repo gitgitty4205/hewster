@@ -1,25 +1,54 @@
 import type { ActivityLog } from "@/lib/hewster-data";
 import { ExpandableNoteText } from "@/components/expandable-note-text";
+import { Ban } from "lucide-react";
 
 function poopBadgeClasses(detail: string | null) {
   const normalized = detail?.trim().toLowerCase() ?? "";
+  const bristolType = normalized.match(/^type\s+([1-7])\b/)?.[1];
+
+  if (normalized === "no poop") {
+    return "bg-zinc-200 text-zinc-900 ring-1 ring-zinc-600";
+  }
+
+  switch (bristolType) {
+    case "1":
+      return "bg-[#6B7280] text-[#111827] ring-1 ring-[#4b5563]";
+    case "2":
+      return "bg-[#9CA3AF] text-[#374151] ring-1 ring-[#6B7280]";
+    case "3":
+      return "bg-[#92532A] text-[#2f1608] ring-1 ring-[#6f3d1d]";
+    case "4":
+      return "bg-[#d8a23a] text-[#3f2a08] ring-1 ring-[#a87418]";
+    case "5":
+      return "bg-[#F0892A] text-orange-950 ring-1 ring-[#b96514]";
+    case "6":
+      return "bg-[#FA8072] text-[#4a120f] ring-1 ring-[#d95f54]";
+    case "7":
+      return "bg-[#e8645e] text-[#4a120f] ring-1 ring-[#bf403b]";
+    default:
+      break;
+  }
 
   switch (normalized) {
+    case "type 1: very firm, small pieces":
+      return "bg-[#6B7280] text-[#111827] ring-1 ring-[#4b5563]";
+    case "type 2: firm, slightly uneven log":
+    case "type 2: firm, uneven log":
+      return "bg-[#9CA3AF] text-[#374151] ring-1 ring-[#6B7280]";
+    case "type 3: formed log with light cracks":
+    case "type 3: formed log, light cracks":
+      return "bg-[#92532A] text-[#2f1608] ring-1 ring-[#6f3d1d]";
+    case "type 4: smooth, well-formed log":
+    case "type 4: smooth, well-formed":
+      return "bg-[#d8a23a] text-[#3f2a08] ring-1 ring-[#a87418]";
+    case "type 5: soft, formed pieces":
+      return "bg-[#F0892A] text-orange-950 ring-1 ring-[#b96514]";
+    case "type 6: very soft, loose pieces":
+      return "bg-[#FA8072] text-[#4a120f] ring-1 ring-[#d95f54]";
+    case "type 7: fully liquid":
+      return "bg-[#e8645e] text-[#4a120f] ring-1 ring-[#bf403b]";
     case "no poop":
       return "bg-zinc-200 text-zinc-900 ring-1 ring-zinc-600";
-    case "type 1: very firm, small pieces":
-    case "type 2: firm, slightly uneven log":
-      return "bg-stone-200 text-stone-900 ring-1 ring-stone-400/80";
-    case "type 3: formed log with light cracks":
-      return "bg-orange-200 text-orange-950 ring-1 ring-orange-400/80";
-    case "type 4: smooth, well-formed log":
-      return "bg-amber-200 text-amber-950 ring-1 ring-amber-400/80";
-    case "type 5: soft, formed pieces":
-      return "bg-orange-300 text-orange-950 ring-1 ring-orange-500/70";
-    case "type 6: very soft, loose pieces":
-      return "bg-rose-200 text-rose-950 ring-1 ring-rose-400/80";
-    case "type 7: fully liquid":
-      return "bg-rose-300 text-rose-950 ring-1 ring-rose-500/70";
     default:
       return "bg-orange-200 text-orange-950 ring-1 ring-orange-400/80";
   }
@@ -64,6 +93,10 @@ function PeeSplash() {
   return <span className="mr-1 text-sm leading-none">{"\u{1F4A6}"}</span>;
 }
 
+function NoPoopIcon() {
+  return <Ban className="mr-1.5 h-4 w-4 text-zinc-500" strokeWidth={2.25} />;
+}
+
 export function PottyDetailBadges({
   detail,
   notes,
@@ -102,7 +135,7 @@ export function PottyDetailBadges({
       {showPoop ? (
         <div className={`flex w-full max-w-full flex-nowrap items-center gap-1.5 ${rowJustify}`}>
           <span className={`${pottyBadgeClasses(bristol ?? "Poop")} whitespace-nowrap`}>
-            <span className="mr-1">{"\u{1F4A9}"}</span>
+            <span className="mr-1.5 text-[16px] leading-none">{"\u{1F4A9}"}</span>
             {bristolType ?? "Poop"}
           </span>
           {bristolDescription ? (
@@ -112,7 +145,10 @@ export function PottyDetailBadges({
       ) : null}
       {showNoPoop ? (
         <div className={`flex w-full ${rowJustify}`}>
-          <span className={`${pottyBadgeClasses("No Poop")} whitespace-nowrap`}>No Poop</span>
+          <span className={`${pottyBadgeClasses("No Poop")} whitespace-nowrap`}>
+            <NoPoopIcon />
+            No Poop
+          </span>
         </div>
       ) : null}
       {showGenericPotty ? (

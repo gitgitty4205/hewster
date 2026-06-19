@@ -5,6 +5,8 @@ import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { CenteredLoadingIcon } from "@/components/centered-loading-icon";
+import { useAuth } from "@/components/auth-provider";
 import { ExpandableNoteText } from "@/components/expandable-note-text";
 import { compareActivitiesReverseChronological, formatActivityTime, formatActivityLabel, normalizeCareFrequencyLine, renderHealthTimelineActivityDetail } from "@/lib/activity";
 import { loadCareTemplates, loadCurrentCareTemplatesFromSupabase, type CareItemTemplate } from "@/lib/care-settings";
@@ -14,8 +16,10 @@ import {
   loadAppState,
 } from "@/lib/hewster-data";
 import { MedicationPillIcon } from "@/components/medication-pill-icon";
+import { EmojiAsset } from "@/components/emoji-asset";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { getSupabaseBrowserClient, getSupabaseCurrentSession } from "@/lib/supabase";
+import { canViewNotebookHealthRecords, resolveActiveNotebookAccess, type NotebookAccessRole } from "@/lib/notebook-access";
 
 const filters = ["All", "Symptoms", "Vet Visit", "Medication", "Injection", "Other Health", "Attachments"];
 const dateFilters = ["All Time", "Date Range"] as const;
@@ -165,7 +169,7 @@ function medicalRecordIcon(activity: ActivityLog): ReactNode {
   if (activity.activityType === "medication") return <MedicationPillIcon className="size-5" />;
 
   if (activity.activityType === "sick" || isVetVisitDetail(detail) || detail.includes("Injection")) {
-    return <span className="text-lg leading-none">{"\u{1FA7A}"}</span>;
+    return <EmojiAsset name="health" label="Health" className="size-5" />;
   }
 
   if (detail.includes("Medication")) return <MedicationPillIcon className="size-5" />;
@@ -231,13 +235,13 @@ function medicationFrequency(activity: ActivityLog) {
 }
 
 function medicationRoute(activity: ActivityLog) {
-  return noteLines(activity.notes).find((line) => line === "Oral" || line === "Topical" || line === "Injection" || line === "Other") ?? null;
+  return noteLines(activity.notes).find((line) => line === "Topical" || line === "Injection" || line === "Other") ?? null;
 }
 
 function medicationNotes(activity: ActivityLog) {
   return noteLines(activity.notes)
-    .filter((line) => line.startsWith("Notes: "))
-    .map((line) => line.replace(/^Notes:\s*/i, "").trim())
+    .filter((line) => line.startsWith("Plan Notes: "))
+    .map((line) => line.replace(/^Plan Notes:\s*/i, "").trim())
     .filter(Boolean);
 }
 
@@ -252,9 +256,11 @@ function medicationDoseAddedNotes(activity: ActivityLog, courseNotes: string | n
   return noteLines(activity.notes)
     .map((line) => {
       if (line.startsWith("Skip Note: ")) return line.replace(/^Skip Note:\s*/i, "").trim();
+      if (line.startsWith("Plan Notes: ")) return line.replace(/^Plan Notes:\s*/i, "").trim();
       if (line.startsWith("Notes: ")) return line.replace(/^Notes:\s*/i, "").trim();
       return line;
     })
+    .map((line) => line.replace(/^(?:Plan\s+)?Notes:\s*/i, "").trim())
     .filter((line) => {
       if (!line) return false;
       if (courseNoteValues.has(line)) return false;
@@ -495,8 +501,8 @@ function healthMedicationRecordParts(activity: ActivityLog, careTemplates: CareI
     frequency: detailLines.find((line) => line === "As Needed" || /^Every\s+\d+\s+hours\b/i.test(line)) ?? null,
     timing: detailLines.find(isMedicationTimingLine) ?? null,
     notes: detailLines
-      .filter((line) => line.startsWith("Notes: "))
-      .map((line) => line.replace(/^Notes:\s*/i, "").trim())
+      .filter((line) => line.startsWith("Notes: ") || line.startsWith("Plan Notes: "))
+      .map((line) => line.replace(/^(?:Plan\s+)?Notes:\s*/i, "").trim())
       .filter(Boolean)
       .join("\n") || null,
   };
@@ -527,7 +533,9 @@ function HealthMedicationRecordDetail({ activity, careTemplates, showTitle = tru
 }
 
 export default function MedicalRecordsPage() {
+  const { loading: authLoading } = useAuth();
   const [hydrated, setHydrated] = useState(false);
+  const [activeNotebookRole, setActiveNotebookRole] = useState<NotebookAccessRole | null>(null);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [careTemplates, setCareTemplates] = useState<CareItemTemplate[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -549,8 +557,12 @@ export default function MedicalRecordsPage() {
         loadCurrentCareTemplatesFromSupabase("supplement").catch(() => loadCareTemplates("supplement")),
         loadCurrentCareTemplatesFromSupabase("medication").catch(() => loadCareTemplates("medication")),
       ]);
+      const supabase = getSupabaseBrowserClient();
+      const session = supabase ? await getSupabaseCurrentSession(supabase) : null;
+      const access = supabase && session?.user ? await resolveActiveNotebookAccess(supabase, session.user) : null;
 
       if (!mounted) return;
+      setActiveNotebookRole(access?.role ?? null);
       setCareTemplates([...supplements, ...medications]);
       setActivityLogs(state.activityLogs);
       setHydrated(true);
@@ -560,6 +572,8 @@ export default function MedicalRecordsPage() {
       mounted = false;
     };
   }, []);
+
+  const canViewHealthRecords = activeNotebookRole ? canViewNotebookHealthRecords(activeNotebookRole) : true;
 
   const medicalRecords = useMemo(
     () => activityLogs
@@ -617,6 +631,31 @@ export default function MedicalRecordsPage() {
     );
   };
 
+  if (!hydrated || (authLoading && !activeNotebookRole)) {
+    return (
+      <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
+        <CenteredLoadingIcon className="min-h-screen" />
+      </main>
+    );
+  }
+
+  if (!canViewHealthRecords) {
+    return (
+      <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
+        <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
+          <header className="mb-6">
+            <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text)]" />
+            <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Health Records</h1>
+          </header>
+          <section className="rounded-3xl bg-white p-5 text-sm font-medium leading-6 text-zinc-600 shadow-sm ring-1 ring-zinc-200">
+            Health records are only available to owners and co-owners.
+          </section>
+        </div>
+        <BottomNav />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[var(--hewie-bg)] text-zinc-900">
       <div className="content-fade-in mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
@@ -624,26 +663,26 @@ export default function MedicalRecordsPage() {
           <div className="flex min-h-[4.5rem] items-center justify-between gap-3">
             <div>
               <PetNotebookTitle href="/notebook" className="text-sm font-bold text-[var(--hewie-active-text)]" />
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-[#3b2832]">Health Records</h1>
+              <div className="mt-1 flex items-center gap-1.5">
+                <h1 className="text-xl font-bold tracking-tight text-[#3b2832]">Health Records</h1>
+                <button
+                  type="button"
+                  onClick={toggleFilters}
+                  aria-label={showFilters ? "Hide filters" : "Open filters"}
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-full p-0 text-[var(--hewie-active-text)] shadow-[0_2px_5px_rgba(15,23,42,0.08)] ring-1 ring-[var(--hewie-accent)]/25 transition hover:brightness-98 active:scale-95"
+                  style={{ backgroundColor: "color-mix(in srgb, var(--hewie-accent) 18%, white)" }}
+                >
+                  <SlidersHorizontal className="size-3.5" />
+                </button>
+              </div>
             </div>
             <PetAvatarMenu shape="tile" />
           </div>
         </header>
 
-        <div className="mb-4">
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={toggleFilters}
-              aria-label={showFilters ? "Hide filters" : "Open filters"}
-              className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--hewie-accent)] p-0 text-[var(--hewie-accent-text)] shadow-[0_8px_18px_rgba(15,23,42,0.14)] ring-1 ring-[var(--hewie-accent)]/20 transition hover:opacity-90"
-            >
-              <SlidersHorizontal className="size-4" />
-            </button>
-          </div>
-
-          {showFilters ? (
-            <section className="mt-3 rounded-2xl bg-white/90 p-4 shadow-sm ring-1 ring-zinc-200">
+        {showFilters ? (
+          <div className="mb-4">
+            <section className="rounded-2xl bg-white/90 p-4 shadow-sm ring-1 ring-zinc-200">
               <div className="space-y-4">
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Record Type</p>
@@ -730,8 +769,8 @@ export default function MedicalRecordsPage() {
                 </div>
               </div>
             </section>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <div data-guide="medical-records" className="space-y-3">
           {!hydrated ? (

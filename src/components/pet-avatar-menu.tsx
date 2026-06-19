@@ -103,7 +103,7 @@ function uniquePetProfileSlug(name: string, pets: RosterPet[]) {
 }
 
 function roleLabel(role: NotebookAccessRole) {
-  if (role === "pet-sitter") return "Pet Sitter";
+  if (role === "pet-sitter") return "Caretaker";
   if (role === "co-owner") return "Co-Owner";
   if (role === "caretaker") return "Caretaker";
   return "Owner";

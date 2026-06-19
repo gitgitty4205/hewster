@@ -1,11 +1,12 @@
 "use client";
 
-import { Bell, ChevronDown, TriangleAlert } from "lucide-react";
+import { Bell, ChevronDown, Trash2, TriangleAlert } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { type MouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { CenteredLoadingIcon } from "@/components/centered-loading-icon";
+import { getTimelineStyle, TimelineMarker } from "@/components/activity-feed";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import {
@@ -126,6 +127,15 @@ function InlineDetails({
   );
 }
 
+function alertTimelineType(alert: ResolvedAlert) {
+  if (alert.reviewAction?.type === "meal") return "meal";
+  if (alert.reviewAction?.type === "custom-care") return alert.reviewAction.item.kind;
+  if (alert.eventType === "meal") return "meal";
+  if (alert.eventType) return alert.eventType;
+  if (alert.kind === "manual") return "manual";
+  return "manual";
+}
+
 function timeInputValueFromDisplay(value: string) {
   const normalized = value.trim().replace(/\s+/g, " ").toUpperCase();
   const twelveHourMatch = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/);
@@ -194,22 +204,25 @@ function buildMealLog(meal: MealTemplate, actualTime: string, fedNotes: string |
 }
 
 type ReviewAction = NonNullable<ResolvedAlert["reviewAction"]>;
+type PendingDelete =
+  | { type: "manual-alert"; id: string; title: string }
+  | { type: "reminder-rule"; id: string; title: string };
 
-function medicationTypeLabel(item: CareItemTemplate) {
-  if (item.kind !== "medication") return null;
+function careTypeLabel(item: CareItemTemplate) {
+  if (item.kind === "supplement" && item.scheduleKind === "meal") return null;
   if (item.medicationType === "topical") return "Topical";
   if (item.medicationType === "injection") return "Injection";
   if (item.medicationType === "other") return "Other";
-  return "Oral";
+  return null;
 }
 
 function customCareTimingLabel(item: CareItemTemplate) {
-  if (item.kind === "medication" && item.medicationType !== "oral") return null;
+  if (item.medicationType !== "oral") return null;
   return item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food";
 }
 
 function customCareGiveText(item: CareItemTemplate) {
-  const medicationType = medicationTypeLabel(item);
+  const medicationType = careTypeLabel(item);
   return `Give ${item.dose || "as directed"}${medicationType ? ` (${medicationType})` : ""}`;
 }
 
@@ -234,7 +247,6 @@ function buildCustomCareActivityLog(
     notes: [
       customCareGiveText(action.item),
       customCareTimingLabel(action.item),
-      action.item.kind === "medication" ? medicationTypeLabel(action.item) : null,
       statusNote,
       action.item.notes ? `Notes: ${action.item.notes}` : "",
     ].filter(Boolean).join("\n") || null,
@@ -274,6 +286,7 @@ export default function AlertsPage() {
   const [reviewMealTimeValues, setReviewMealTimeValues] = useState<Record<string, string>>({});
   const [activeReviewLogId, setActiveReviewLogId] = useState<string | null>(null);
   const [expandedAlertDetails, setExpandedAlertDetails] = useState<Record<string, boolean>>({});
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [alertMinuteKey, setAlertMinuteKey] = useState("");
   const [petRemembered, setPetRemembered] = useState(false);
@@ -620,12 +633,15 @@ export default function AlertsPage() {
     }
   };
 
-  const deleteManualAlert = async (alertId: string) => {
-    const confirmed = window.confirm("Delete this alert?");
-    if (!confirmed) return;
+  const deleteManualAlert = (alertId: string) => {
+    const alert = manualAlerts.find((entry) => entry.id === alertId);
+    setPendingDelete({ type: "manual-alert", id: alertId, title: alert?.title.trim() || "this care alert" });
+  };
 
+  const confirmDeleteManualAlert = async (alertId: string) => {
     setManualAlerts((current) => current.filter((alert) => alert.id !== alertId));
     cancelEditingAlert();
+    setPendingDelete(null);
 
     if (supabaseReady) {
       try {
@@ -689,10 +705,18 @@ export default function AlertsPage() {
   };
 
   const deleteReminderRule = (ruleId: string) => {
-    const confirmed = window.confirm("Delete this reminder setting?");
-    if (!confirmed) return;
+    const rule = reminderRules.find((entry) => entry.id === ruleId);
+    setPendingDelete({
+      type: "reminder-rule",
+      id: ruleId,
+      title: rule ? `reminder for ${reminderActionLabel(rule.eventType)}` : "this reminder setting",
+    });
+  };
+
+  const confirmDeleteReminderRule = (ruleId: string) => {
     commitReminderRules(reminderRules.filter((rule) => rule.id !== ruleId));
     cancelEditingReminderRule();
+    setPendingDelete(null);
   };
 
   const resolveManualAlert = async (alertId: string) => {
@@ -846,6 +870,7 @@ export default function AlertsPage() {
                   const detailsExpanded = Boolean(expandedAlertDetails[detailKey]);
                   const expandedDetail = alertExpandedDetail(alert);
                   const hasExpandedDetail = Boolean(expandedDetail);
+                  const markerStyle = getTimelineStyle(alertTimelineType(alert));
 
                   return (
                     <article
@@ -853,7 +878,9 @@ export default function AlertsPage() {
                       className="rounded-2xl bg-white/80 p-4 ring-1 ring-[#e6c8ce]/75"
                     >
                       <div className="flex items-start gap-3">
-                        <TriangleAlert className="mt-0.5 size-4 shrink-0 text-[#8f1739]" />
+                        <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center">
+                          <TimelineMarker style={markerStyle} />
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="block min-w-0 text-left font-semibold text-[#8f1739]">
                             {alert.title}
@@ -1075,7 +1102,7 @@ export default function AlertsPage() {
                     <div>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="block min-w-0 text-left font-medium text-[#8f1739]">
+                          <p className="block min-w-0 text-left text-base font-semibold text-[#8f1739]">
                             {alert.title}
                           </p>
                           <p className="mt-1 text-sm text-[#b71f48]/70">
@@ -1199,7 +1226,7 @@ export default function AlertsPage() {
                     ) : (
                       <div>
                         <div>
-                          <p className="font-medium text-[var(--hewie-active-text)]">
+                          <p className="text-base font-semibold text-[var(--hewie-active-text)]">
                             Remind if {reminderActionLabel(rule.eventType)} not logged by {formatReminderTime(rule.time)}
                           </p>
                           <p className="mt-1 text-sm text-[var(--hewie-active-text)]/65">Every day</p>
@@ -1216,6 +1243,47 @@ export default function AlertsPage() {
 
         <BottomNav alertsCount={alertCards.length} />
       </div>
+
+      {pendingDelete ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/35 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-alert-title">
+          <button type="button" aria-label="Cancel delete" className="absolute inset-0 cursor-default" onClick={() => setPendingDelete(null)} />
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-4 text-zinc-900 shadow-2xl ring-1 ring-zinc-200">
+            <div className="mb-4 flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                <Trash2 className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <h2 id="delete-alert-title" className="text-base font-semibold">
+                  {pendingDelete.type === "manual-alert" ? "Delete alert?" : "Delete reminder setting?"}
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-zinc-500">
+                  {pendingDelete.type === "manual-alert"
+                    ? `Delete ${pendingDelete.title} from Saved Care Alerts?`
+                    : `Delete ${pendingDelete.title} from Saved Reminders?`}
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" className="rounded-full" onClick={() => setPendingDelete(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="rounded-full bg-rose-600 text-white hover:bg-rose-700"
+                onClick={() => {
+                  if (pendingDelete.type === "manual-alert") {
+                    void confirmDeleteManualAlert(pendingDelete.id);
+                    return;
+                  }
+                  confirmDeleteReminderRule(pendingDelete.id);
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

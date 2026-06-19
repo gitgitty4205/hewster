@@ -71,6 +71,7 @@ export default function WeightPage() {
   const [editingDateValue, setEditingDateValue] = useState("");
   const [editingWeightValue, setEditingWeightValue] = useState("");
   const [editingNoteValue, setEditingNoteValue] = useState("");
+  const [pendingDeleteWeight, setPendingDeleteWeight] = useState<WeightLog | null>(null);
   const [expandedYears, setExpandedYears] = useState<string[]>(() => [todayInputValue().slice(0, 4)]);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "saving" | "error">("idle");
   const [hydrated, setHydrated] = useState(false);
@@ -230,10 +231,10 @@ export default function WeightPage() {
     setSaveState("idle");
   };
 
-  const deleteWeight = async (entry: WeightLog) => {
-    const confirmed = window.confirm(`Delete the weight entry from ${formatWeightDate(entry.date)}?`);
-    if (!confirmed) return;
+  const confirmDeleteWeight = async () => {
+    if (!pendingDeleteWeight) return;
 
+    const entry = pendingDeleteWeight;
     const nextLogs = weightLogs.filter((log) => log.id !== entry.id);
     const localState = loadLocalState();
 
@@ -241,6 +242,7 @@ export default function WeightPage() {
     setWeightLogs(nextLogs);
     persistLocalState(localState.templates, localState.dailyMealState, localState.activityLogs, nextLogs);
     setSaveState("saving");
+    setPendingDeleteWeight(null);
     cancelEdit();
 
     try {
@@ -380,7 +382,7 @@ export default function WeightPage() {
               Cancel
             </Button>
             {canDeleteEntries ? (
-              <Button variant="outline" onClick={() => deleteWeight(entry)} className="rounded-full border-rose-200 text-rose-600 hover:bg-rose-50">
+              <Button variant="outline" onClick={() => setPendingDeleteWeight(entry)} className="rounded-full border-rose-200 text-rose-600 hover:bg-rose-50">
                 Delete
               </Button>
             ) : null}
@@ -526,6 +528,28 @@ export default function WeightPage() {
             )}
           </div>
         </section>
+
+        {pendingDeleteWeight ? (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/35 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-weight-title">
+            <button type="button" aria-label="Cancel delete weight entry" className="absolute inset-0 cursor-default" onClick={() => setPendingDeleteWeight(null)} />
+            <div className="relative w-full max-w-md rounded-3xl bg-white p-4 text-zinc-900 shadow-2xl ring-1 ring-zinc-200">
+              <div className="mb-4">
+                <h2 id="delete-weight-title" className="text-base font-semibold">Delete weight entry?</h2>
+                <p className="mt-1 text-sm leading-6 text-zinc-500">
+                  Delete the weight entry from {formatWeightDate(pendingDeleteWeight.date)}?
+                </p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" className="rounded-full" onClick={() => setPendingDeleteWeight(null)}>
+                  Cancel
+                </Button>
+                <Button type="button" className="rounded-full bg-rose-600 text-white hover:bg-rose-700" onClick={confirmDeleteWeight}>
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <BottomNav />
       </div>

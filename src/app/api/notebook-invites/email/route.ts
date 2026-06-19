@@ -10,11 +10,11 @@ const inviteBaseUrl = process.env.INVITE_BASE_URL || process.env.NEXT_PUBLIC_APP
 const inviteReplyToEmail = process.env.INVITE_REPLY_TO_EMAIL;
 
 function isInviteRole(value: unknown): value is Exclude<NotebookAccessRole, "owner"> {
-  return value === "co-owner" || value === "caretaker" || value === "pet-sitter";
+  return value === "co-owner" || value === "caretaker";
 }
 
 function roleLabel(role: NotebookAccessRole) {
-  if (role === "pet-sitter") return "Pet Sitter";
+  if (role === "pet-sitter") return "Caretaker";
   if (role === "co-owner") return "Co-owner";
   if (role === "caretaker") return "Caretaker";
   return "Owner";

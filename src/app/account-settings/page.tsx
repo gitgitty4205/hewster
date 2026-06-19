@@ -165,7 +165,7 @@ function saveStoredNotificationSettings(settings: NotificationSettingsSnapshot) 
 
 function notebookRoleLabel(role: NotebookAccessRole | null) {
   if (role === "co-owner") return "Co-Owner";
-  if (role === "pet-sitter") return "Pet Sitter";
+  if (role === "pet-sitter") return "Caretaker";
   if (role === "caretaker") return "Caretaker";
   if (role === "owner") return "Owner";
   return "Account";

@@ -687,10 +687,10 @@ export function CareSettingsPage({
                       </div>
                     ) : null}
 
-                    {kind === "medication" ? (
-                      <div className={`grid gap-3 text-sm ${item.medicationType === "oral" ? "grid-cols-2" : "grid-cols-1"}`}>
+                    {kind === "medication" || (kind === "supplement" && item.scheduleKind === "custom") ? (
+                      <div className={`grid gap-3 text-sm ${item.medicationType === "oral" && item.scheduleKind === "custom" ? "grid-cols-2" : "grid-cols-1"}`}>
                         <label className="block">
-                          <span className="mb-1 block font-medium text-zinc-700">Medication Type</span>
+                          <span className="mb-1 block font-medium text-zinc-700">{kind === "supplement" ? "Supplement Type" : "Medication Type"}</span>
                           <select
                             value={item.medicationType}
                             disabled={!isEditing}
@@ -706,7 +706,7 @@ export function CareSettingsPage({
                           </select>
                         </label>
 
-                        {item.medicationType === "oral" ? (
+                        {item.medicationType === "oral" && item.scheduleKind === "custom" ? (
                           <label className="block">
                             <span className="mb-1 block font-medium text-zinc-700">Give With</span>
                             <select
@@ -721,19 +721,6 @@ export function CareSettingsPage({
                           </label>
                         ) : null}
                       </div>
-                    ) : item.scheduleKind === "custom" ? (
-                      <label className="block text-sm">
-                        <span className="mb-1 block font-medium text-zinc-700">Give With</span>
-                        <select
-                          value={item.customTiming}
-                          disabled={!isEditing}
-                          onChange={(event) => updateItem(item.id, { customTiming: event.target.value as CareItemTemplate["customTiming"] })}
-                          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--hewie-ring)] focus:ring-4 focus:ring-zinc-100 disabled:bg-zinc-100 disabled:text-zinc-500"
-                        >
-                          <option value="with-food">With Food</option>
-                          <option value="empty-stomach">Empty Stomach</option>
-                        </select>
-                      </label>
                     ) : null}
 
                     <label className="block text-sm">
@@ -741,6 +728,7 @@ export function CareSettingsPage({
                       <textarea
                         value={item.notes}
                         disabled={!isEditing}
+                        placeholder="Optional notes"
                         onChange={(event) => updateItem(item.id, { notes: clampText(event.target.value, TEXT_LIMITS.note) })}
                         maxLength={TEXT_LIMITS.note}
                         rows={2}

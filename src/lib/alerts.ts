@@ -11,6 +11,7 @@ export type ResolvedAlert = {
   detail: string;
   expandedDetail?: string;
   severity: "info" | "warning";
+  eventType?: ReminderAlertEvent;
   reviewAction?:
     | { type: "meal"; mealId: number; plannedTime: string }
     | { type: "custom-care"; occurrenceKey: string; scheduledAt: string; item: CareItemTemplate };
@@ -423,21 +424,21 @@ function manualAlertCreatedAfterScheduledTime(alert: ManualAlert, todayKey: stri
   return createdAt.getHours() * 60 + createdAt.getMinutes() > alertMinutes;
 }
 
-function medicationTypeLabel(item: CareItemTemplate) {
-  if (item.kind !== "medication") return null;
+function careTypeLabel(item: CareItemTemplate) {
+  if (item.kind === "supplement" && item.scheduleKind === "meal") return null;
   if (item.medicationType === "topical") return "Topical";
   if (item.medicationType === "injection") return "Injection";
   if (item.medicationType === "other") return "Other";
-  return "Oral";
+  return null;
 }
 
 function careItemGiveText(item: CareItemTemplate) {
-  const route = medicationTypeLabel(item);
+  const route = careTypeLabel(item);
   return [item.dose.trim(), route ? `(${route})` : ""].filter(Boolean).join(" ");
 }
 
 function customCareTimingLabel(item: CareItemTemplate) {
-  if (item.kind === "medication" && item.medicationType !== "oral") return null;
+  if (item.medicationType !== "oral") return null;
   return item.customTiming === "empty-stomach" ? "Empty Stomach" : "With Food";
 }
 
@@ -630,6 +631,7 @@ export function resolveAlerts(
         title: `No ${reminderEventLabel(rule.eventType).toLowerCase()} logged by ${formatReminderTime(rule.time)}`,
         detail: `Everyday check-in: log it when it happens.`,
         severity: "info",
+        eventType: rule.eventType,
       });
     });
 

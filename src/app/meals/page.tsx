@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { CenteredLoadingIcon } from "@/components/centered-loading-icon";
+import { EmojiAsset } from "@/components/emoji-asset";
 import { PetNotebookTitle } from "@/components/pet-notebook-title";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
@@ -269,7 +270,7 @@ export default function MealsPage() {
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#8a5a35]/75 text-xl text-white ring-1 ring-[#caa57f]">
-                <span className="inline-block scale-110 text-[1.9rem] leading-none">🥩</span>
+                <EmojiAsset name="steak" label="Meal plan" className="size-7" />
               </span>
               <div className="min-w-0">
                 <h2 className="text-lg font-semibold">Saved Meal Plan</h2>
@@ -404,10 +405,10 @@ export default function MealsPage() {
                         value={displayedMeal.notes}
                         disabled={!isEditing}
                         maxLength={MEAL_NOTE_MAX_LENGTH}
-                        placeholder="Optional feeding notes"
+                        placeholder="Optional meal instructions"
                         onChange={(event) => updateDraft("notes", event.target.value)}
                         rows={2}
-                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
+                        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition placeholder:text-zinc-400 focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:bg-zinc-100 disabled:text-zinc-500"
                       />
                     </label>
                   </div>
@@ -435,7 +436,7 @@ export default function MealsPage() {
         </section>
 
         {mealPendingDelete ? (
-          <div className="fixed inset-0 z-[80] flex items-end bg-zinc-950/35 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="delete-meal-title">
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/35 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-meal-title">
             <button type="button" aria-label="Cancel delete meal" className="absolute inset-0 cursor-default" onClick={() => setMealPendingDelete(null)} />
             <div className="relative w-full max-w-md rounded-3xl bg-white p-4 text-zinc-900 shadow-2xl ring-1 ring-zinc-200">
               <div className="mb-4">
