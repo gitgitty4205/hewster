@@ -46,6 +46,11 @@ const checks = [
     name: "Past Entries link carries the current log date back to History",
     pattern: /<Link href=\{`\$\{historyPath\}\?date=\$\{logDayKey\}`\}/,
   },
+  {
+    file: "src/app/log/page.tsx",
+    name: "Past log title combines Past Entries with the selected date",
+    pattern: /<Link href=\{`\$\{historyPath\}\?date=\$\{logDayKey\}`\} className="[^"]*w-full[^"]*justify-center[^"]*whitespace-nowrap[^"]*bg-\[#fff4c6\][^"]*ring-\[#ecd98d\][^"]*">[\s\S]*<History className="size-4 shrink-0"[\s\S]*<span>Past Entries:<\/span>[\s\S]*\{formatLogDayLabel\(logDayKey\)\}[\s\S]*<\/Link>/,
+  },
 ];
 
 const contents = new Map();

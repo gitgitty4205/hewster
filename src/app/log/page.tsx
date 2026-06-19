@@ -2015,11 +2015,11 @@ function LogPageContent() {
       grouped
       title={
         logDayKey < currentTodayKey() ? (
-          <span className="flex flex-wrap items-center gap-2">
-            <span>{formatLogDayLabel(logDayKey)}</span>
-            <Link href={`${historyPath}?date=${logDayKey}`} className="inline-flex items-center gap-1.5 rounded-full bg-[#fff4c6] px-2.5 py-1 text-xs font-semibold text-[var(--hewie-active-text)] ring-1 ring-[#ecd98d]">
-              <History className="size-3.5 shrink-0" aria-hidden="true" />
-              Past Entries
+          <span className="block w-full max-w-full">
+            <Link href={`${historyPath}?date=${logDayKey}`} className="inline-flex w-full max-w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#fff4c6] px-3 py-1 text-[clamp(0.86rem,3.9vw,1.12rem)] font-bold leading-6 text-[var(--hewie-active-text)] ring-1 ring-[#ecd98d] sm:px-4">
+              <History className="size-4 shrink-0" strokeWidth={2.5} aria-hidden="true" />
+              <span>Past Entries:</span>
+              <span>{formatLogDayLabel(logDayKey)}</span>
             </Link>
           </span>
         ) : isTodayLog ? (
