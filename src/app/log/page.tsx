@@ -2,7 +2,7 @@
 
 
 
-import { Check, ChevronDown, Clock3, History, Tablets } from "lucide-react";
+import { Check, ChevronDown, Clock3, History, Tablets, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
@@ -64,7 +64,7 @@ import {
 
 } from "@/lib/hewster-data";
 
-import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, renderActivityDetail, renderHealthTimelineActivityDetail, savedHealthMedicationShortcutNotes, savedWellnessSupplementShortcutNotes } from "@/lib/activity";
+import { compareActivitiesReverseChronological, formatActivityLabel, formatActivityTime, manualFoodDetailParts, renderActivityDetail, renderHealthTimelineActivityDetail, savedHealthMedicationShortcutNotes, savedWellnessSupplementShortcutNotes } from "@/lib/activity";
 
 import { initialTemplates, isMealTemplateActiveForDay, type MealStatus, type MealTemplate } from "@/lib/meal-templates";
 
@@ -1040,7 +1040,7 @@ function TodayMealPlanCard({
               </div>
               <div className="mt-3">
                 {displayMealNotes ? <ExpandableNoteText className="text-sm text-[#6b3f22]/58">{displayMealNotes}</ExpandableNoteText> : null}
-                {fedNotes && !skipped && !missed ? <ExpandableNoteText className="mt-1 text-sm font-semibold leading-6 text-[#6b3f22]/72">Notes: {fedNotes}</ExpandableNoteText> : null}
+                {fedNotes && !skipped && !missed ? <ExpandableNoteText className="mt-1 text-sm leading-6 text-[#6b3f22]/72">Notes: {fedNotes}</ExpandableNoteText> : null}
               </div>
 
               {mealCareItems.length ? (
@@ -1640,7 +1640,9 @@ function LogPageContent() {
 
     setEditingActivityId(activity.id);
 
-    setDetailValue(isCareActivityType(activity.activityType) ? careStatusFromActivity(activity) : activity.detail ?? "");
+    const foodParts = activity.activityType === "food" ? manualFoodDetailParts(activity.detail, editableActivityNoteText(activity.notes)) : null;
+
+    setDetailValue(foodParts ? "" : isCareActivityType(activity.activityType) ? careStatusFromActivity(activity) : activity.detail ?? "");
 
     const notesParts = activity.notes?.split(/\s*(?:•\s*)?Notes:\s*/);
 
@@ -1651,6 +1653,12 @@ function LogPageContent() {
       setNotesValue(treatName);
 
       setExtraNotesValue(extraNotes ?? "");
+
+    } else if (foodParts) {
+
+      setNotesValue(foodParts.detail);
+
+      setExtraNotesValue(foodParts.notes);
 
     } else if (isCareActivityType(activity.activityType)) {
 
@@ -1768,7 +1776,7 @@ function LogPageContent() {
 
       setEditingActivityId(null);
 
-      setDetailValue(activityType === "food" ? "Food" : "");
+      setDetailValue("");
 
       setNotesValue("");
 
@@ -1861,7 +1869,11 @@ function LogPageContent() {
 
     const resolvedNotes =
 
-      detailActivityType === "treat"
+      detailActivityType === "food"
+
+        ? extraNotesValue.trim() || null
+
+        : detailActivityType === "treat"
 
         ? [notesValue.trim(), extraNotesValue.trim() ? `Notes: ${extraNotesValue.trim()}` : ""].filter(Boolean).join(" ") || null
 
@@ -1881,7 +1893,7 @@ function LogPageContent() {
 
       happenedAt,
 
-      detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : isCareActivityType(detailActivityType) ? careDetailForSave(originalCareDetail, trimmedDetail || "Given") : trimmedDetail || null,
+      detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : detailActivityType === "food" ? notesValue.trim() || null : isCareActivityType(detailActivityType) ? careDetailForSave(originalCareDetail, trimmedDetail || "Given") : trimmedDetail || null,
 
       notes: resolvedNotes,
 
@@ -2300,9 +2312,14 @@ function LogPageContent() {
           <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/35 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-event-title">
             <button type="button" aria-label="Cancel delete event" className="absolute inset-0 cursor-default" onClick={() => setPendingDeleteActivityId(null)} />
             <div className="relative w-full max-w-md rounded-3xl bg-white p-4 text-zinc-900 shadow-2xl ring-1 ring-zinc-200">
-              <div className="mb-4">
-                <h2 id="delete-event-title" className="text-base font-semibold">{pendingDeleteActivityIsTodayPlanLog ? "Undo plan log?" : "Delete event?"}</h2>
-                <p className="mt-1 text-sm leading-6 text-zinc-500">{pendingDeleteActivityIsTodayPlanLog ? "Remove this log from today's plan item?" : "Delete this event? This cannot be undone."}</p>
+              <div className="mb-4 flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                  <Trash2 className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="delete-event-title" className="text-base font-semibold">{pendingDeleteActivityIsTodayPlanLog ? "Undo plan log?" : "Delete event?"}</h2>
+                  <p className="mt-1 text-sm leading-6 text-zinc-500">{pendingDeleteActivityIsTodayPlanLog ? "Remove this log from today's plan item?" : "Delete this event? This cannot be undone."}</p>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" className="rounded-full" onClick={() => setPendingDeleteActivityId(null)}>

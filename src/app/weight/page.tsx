@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { PetAvatarMenu } from "@/components/pet-avatar-menu";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -533,11 +533,16 @@ export default function WeightPage() {
           <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/35 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-weight-title">
             <button type="button" aria-label="Cancel delete weight entry" className="absolute inset-0 cursor-default" onClick={() => setPendingDeleteWeight(null)} />
             <div className="relative w-full max-w-md rounded-3xl bg-white p-4 text-zinc-900 shadow-2xl ring-1 ring-zinc-200">
-              <div className="mb-4">
-                <h2 id="delete-weight-title" className="text-base font-semibold">Delete weight entry?</h2>
-                <p className="mt-1 text-sm leading-6 text-zinc-500">
-                  Delete the weight entry from {formatWeightDate(pendingDeleteWeight.date)}?
-                </p>
+              <div className="mb-4 flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                  <Trash2 className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="delete-weight-title" className="text-base font-semibold">Delete weight entry?</h2>
+                  <p className="mt-1 text-sm leading-6 text-zinc-500">
+                    Delete the weight entry from {formatWeightDate(pendingDeleteWeight.date)}?
+                  </p>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" className="rounded-full" onClick={() => setPendingDeleteWeight(null)}>

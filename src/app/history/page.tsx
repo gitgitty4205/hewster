@@ -324,6 +324,13 @@ function manualMedicationName(activity: ActivityLog) {
   return activity.detail?.replace(/^Medication:\s*/i, "").trim() || "";
 }
 
+function unnamedCareFallbackName(name: string, kind: "medication" | "supplement" | null) {
+  const normalized = name.trim();
+  if (kind === "medication" && (!normalized || normalized.toLowerCase() === "medication")) return "Unnamed Medication";
+  if (kind === "supplement" && (!normalized || normalized.toLowerCase() === "supplement" || normalized.toLowerCase() === "supplements")) return "Unnamed Supplement";
+  return normalized;
+}
+
 function manualSupplementParts(lines: string[]) {
   const supplementLine = lines
     .find((line) => line.trim().startsWith("Supplement: "))
@@ -697,12 +704,7 @@ function TimelineLineContent({ line }: { line: string }) {
     return <span className="font-semibold text-zinc-800">{displayLine}</span>;
   }
   if (displayLine.startsWith("Notes: ")) {
-    return (
-      <>
-        <span className="font-medium text-zinc-600">Notes:</span>
-        {displayLine.slice("Notes:".length)}
-      </>
-    );
+    return <>{displayLine}</>;
   }
   if (displayLine.startsWith("Plan Notes: ")) {
     return <>{displayLine.slice("Plan Notes:".length).trim()}</>;
@@ -1220,13 +1222,14 @@ function CareActivityDetail({ activity, careTemplates = [] }: { activity: Activi
   const doseText = giveLine?.replace(/^Give\s+/i, "").replace(/\s*\([^)]*\)\s*$/, "").trim() ?? matchedTemplate?.dose ?? "";
   const frequencyText = careFrequencyText(careLines.find(isCareFrequencyLine) ?? null) || careTemplateFrequencyText(matchedTemplate);
 
-  const name = (matchedTemplate?.name || supplementParts.name || (manualMedication ? manualMedicationName(activity) : "") || detail)
+  const parsedName = (matchedTemplate?.name || supplementParts.name || (manualMedication ? manualMedicationName(activity) : "") || detail)
 
     .replace(/\s*(?:[•·-]\s*)?(?:Skipped|Missed)\b/i, "")
 
     .replace(doseText ? new RegExp(`\\s*[•·]\\s*${doseText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : /$^/, "")
 
     .trim();
+  const name = unnamedCareFallbackName(parsedName, manualMedication ? "medication" : manualSupplement ? "supplement" : null);
 
   const giveDetail = giveLine ?? (supplementParts.dose ? `Give ${supplementParts.dose}` : null) ?? careTemplateGiveText(matchedTemplate);
 
@@ -1288,7 +1291,7 @@ function CareActivityDetail({ activity, careTemplates = [] }: { activity: Activi
 
       {frequencyText ? <p className="text-zinc-500">{frequencyText}</p> : null}
       {planNotes.length ? <ExpandableNoteText className="text-zinc-500">{planNotes.join(" · ")}</ExpandableNoteText> : null}
-      {specialNotes.length ? <ExpandableNoteText className="text-zinc-500"><span className="font-medium text-zinc-600">Notes:</span> {specialNotes.join(" · ")}</ExpandableNoteText> : null}
+      {specialNotes.length ? <ExpandableNoteText className="text-zinc-500">Notes: {specialNotes.join(" · ")}</ExpandableNoteText> : null}
 
       {activity.attachments?.length ? <ActivityAttachmentLinks activity={activity} /> : attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
 
@@ -1374,10 +1377,11 @@ function PlanCareActivityCard({
   const routeText = routeLine && routeLine !== "Oral" && !giveLine?.includes(`(${routeLine})`) ? `(${routeLine})` : "";
   const doseDetail = [doseText || null, routeText || null].filter(Boolean).join(" ");
   const frequencyText = careFrequencyText(careLines.find(isCareFrequencyLine) ?? null);
-  const name = (matchedTemplate?.name || supplementParts.name || (isManualMedicationActivity(activity) ? manualMedicationName(activity) : "") || detail)
+  const parsedName = (matchedTemplate?.name || supplementParts.name || (isManualMedicationActivity(activity) ? manualMedicationName(activity) : "") || detail)
     .replace(/\s*(?:[•·-]\s*)?(?:Given|Skipped|Missed)\b/i, "")
     .replace(doseText ? new RegExp(`\\s*(?:[•·-]|—)\\s*${doseText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : /$^/, "")
     .trim();
+  const name = unnamedCareFallbackName(parsedName, isManualMedicationActivity(activity) ? "medication" : isManualSupplementActivity(activity) ? "supplement" : null);
   const templatePlanNotes = matchedTemplate?.notes.trim() ?? "";
   const planNotes = [
     ...careLines.filter((line) => line.startsWith("Plan Notes: ")).map((line) => line.replace("Plan Notes: ", "")),
@@ -1656,10 +1660,10 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
 function ActivityStyleIcon({ style }: { style: ReturnType<typeof getActivityStyle> }) {
   const Icon = style.icon;
 
-  if (Icon) return <Icon className="size-4.5" />;
-  if ("emojiAsset" in style && style.emojiAsset) return <EmojiAsset name={style.emojiAsset} label="Activity" className="size-5" />;
+  if (Icon) return <Icon className="size-4" />;
+  if ("emojiAsset" in style && style.emojiAsset) return <EmojiAsset name={style.emojiAsset} label="Activity" className="size-4" />;
 
-  return <span className="text-lg leading-none">{style.iconText}</span>;
+  return <span className="text-base leading-none">{style.iconText}</span>;
 }
 
 
@@ -1677,7 +1681,7 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
   if (["activity", "outdoor", "hike"].includes(activityType)) {
     return (
       <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 ring-1 ring-emerald-200">
-        <span className="text-[0.72rem] leading-none">🌳</span>
+        <span className="text-[0.82rem] leading-none">🌳</span>
       </span>
     );
   }
@@ -1685,7 +1689,7 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
   if (activityType === "care") {
     return (
       <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-100 ring-1 ring-purple-200">
-        <span className="text-[0.72rem] leading-none">🏠</span>
+        <span className="text-[0.82rem] leading-none">🏠</span>
       </span>
     );
   }
@@ -1700,15 +1704,15 @@ function EventFeedMarker({ activityType }: { activityType: ActivityLog["activity
 
   if (activityType === "treat") {
     return (
-      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-orange-100 ring-1 ring-orange-200">
-        <span className="text-[0.72rem] leading-none">🦴</span>
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-orange-300 ring-1 ring-orange-200">
+        <span className="text-[0.72rem] leading-none text-white">🦴</span>
       </span>
     );
   }
 
   if (activityType === "food" || activityType === "meal") {
     return (
-      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#8a5a35]/75 ring-1 ring-[#8a5a35]/75">
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#8a5a35]/75 ring-1 ring-[#caa57f]">
         <EmojiAsset name="steak" label="Meal" className="size-4" />
       </span>
     );
@@ -3887,7 +3891,7 @@ function HistoryPageContent() {
 
                                 <div className="flex items-center gap-3">
 
-                                  <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+                                  <span className={`flex size-8 items-center justify-center rounded-full ${style.iconWrap}`}>
 
                                     <ActivityStyleIcon style={style} />
 
@@ -3927,7 +3931,7 @@ function HistoryPageContent() {
 
                             <div className="flex items-center gap-3">
 
-                              <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+                              <span className={`flex size-8 items-center justify-center rounded-full ${style.iconWrap}`}>
 
                                 <ActivityStyleIcon style={style} />
 
@@ -4059,7 +4063,7 @@ function HistoryPageContent() {
 
                                 <div className="flex items-center gap-3">
 
-                                  <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+                                  <span className={`flex size-8 items-center justify-center rounded-full ${style.iconWrap}`}>
 
                                     <ActivityStyleIcon style={style} />
 
@@ -4110,7 +4114,7 @@ function HistoryPageContent() {
 
                             <div className="flex items-center gap-3">
 
-                              <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+                              <span className={`flex size-8 items-center justify-center rounded-full ${style.iconWrap}`}>
 
                                 <ActivityStyleIcon style={style} />
 
@@ -4218,7 +4222,7 @@ function HistoryPageContent() {
 
                             {meal.notes ? <ExpandableNoteText className="mt-3 text-sm text-[#6b3f22]/58">{meal.notes}</ExpandableNoteText> : null}
 
-                            {meal.fedNotes && !missedMeal && !skippedMeal ? <ExpandableNoteText className="mt-1 text-sm font-semibold leading-6 text-[#6b3f22]/72">Notes: {meal.fedNotes}</ExpandableNoteText> : null}
+                            {meal.fedNotes && !missedMeal && !skippedMeal ? <ExpandableNoteText className="mt-1 text-sm leading-6 text-[#6b3f22]/72">Notes: {meal.fedNotes}</ExpandableNoteText> : null}
 
                             {meal.careItems.length ? (
                               <div className="mt-3 space-y-1.5 border-t border-[#d8b895]/45 pt-3">

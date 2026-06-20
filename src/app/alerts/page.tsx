@@ -1220,7 +1220,7 @@ export default function AlertsPage() {
                         <div className="grid grid-cols-3 gap-2">
                           <Button className="rounded-full bg-[var(--hewie-active-text)] px-2 text-white hover:opacity-90" onClick={saveEditedReminderRule}>Save</Button>
                           <Button variant="outline" className="rounded-full px-2" onClick={cancelEditingReminderRule}>Cancel</Button>
-                          <Button variant="outline" className="rounded-full border-[var(--hewie-ring)] px-2 text-[var(--hewie-active-text)] hover:bg-[var(--hewie-active-bg)]" onClick={() => deleteReminderRule(rule.id)}>Delete</Button>
+                          <Button variant="outline" className="rounded-full border-[#e6c8ce] px-2 text-[#d91f56] hover:bg-[#fff0f1]" onClick={() => deleteReminderRule(rule.id)}>Delete</Button>
                         </div>
                       </div>
                     ) : (

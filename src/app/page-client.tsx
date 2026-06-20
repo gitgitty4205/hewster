@@ -7,6 +7,7 @@ import {
   ChevronDown,
   StickyNote,
   Tablets,
+  Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -2147,7 +2148,9 @@ export default function HomeApp() {
           ? savedWellnessSupplementShortcutNotes(notesValue, careTemplates)
           : "";
       const resolvedNotes =
-        detailActivityType === "treat" || detailActivityType === "food"
+        detailActivityType === "food"
+          ? extraNotesValue.trim() || null
+          : detailActivityType === "treat"
           ? [notesValue.trim(), extraNotesValue.trim() ? `Notes: ${extraNotesValue.trim()}` : ""].filter(Boolean).join(" ") || null
           : [savedMedicationNotes, savedSupplementNotes, notesValue.trim(), recordTagNote, attachmentNote].filter(Boolean).join("\n") || null;
       const activity: ActivityLog = {
@@ -2155,7 +2158,7 @@ export default function HomeApp() {
         profileSlug: getActiveProfileSlug(),
         activityType: resolvedActivityType,
         happenedAt,
-        detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : trimmedDetail || null,
+        detail: resolvedActivityType === "pee" ? "Pee" : detailActivityType === "potty" ? trimmedDetail || null : detailActivityType === "food" ? notesValue.trim() || null : trimmedDetail || null,
         notes: resolvedNotes,
         createdAt: editingActivityId ? activityLogs.find((entry) => entry.id === editingActivityId)?.createdAt : new Date().toISOString(),
       };
@@ -2788,9 +2791,14 @@ export default function HomeApp() {
           <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/35 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-event-title">
             <button type="button" aria-label="Cancel delete event" className="absolute inset-0 cursor-default" onClick={() => setPendingDeleteActivityId(null)} />
             <div className="relative w-full max-w-md rounded-3xl bg-white p-4 text-zinc-900 shadow-2xl ring-1 ring-zinc-200">
-              <div className="mb-4">
-                <h2 id="delete-event-title" className="text-base font-semibold">Delete event?</h2>
-                <p className="mt-1 text-sm leading-6 text-zinc-500">Delete this event? This cannot be undone.</p>
+              <div className="mb-4 flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                  <Trash2 className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="delete-event-title" className="text-base font-semibold">Delete event?</h2>
+                  <p className="mt-1 text-sm leading-6 text-zinc-500">Delete this event? This cannot be undone.</p>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" className="rounded-full" onClick={() => setPendingDeleteActivityId(null)}>
@@ -2832,8 +2840,8 @@ export default function HomeApp() {
                   <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-3">
-                        <span className="flex size-9 items-center justify-center rounded-full bg-white/60 text-[#8a6200] ring-1 ring-[#f0d27a]/60">
-                          <span className="text-lg leading-none">{"\u{1F6BD}"}</span>
+                        <span className="flex size-8 items-center justify-center rounded-full bg-white/60 text-[#8a6200] ring-1 ring-[#f0d27a]/60">
+                          <span className="inline-flex size-4 items-center justify-center text-[1.15rem] leading-none">{"\u{1F6BD}"}</span>
                         </span>
                         <p className="font-medium text-[#6f4c0f]">Potty</p>
                       </div>

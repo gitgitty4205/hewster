@@ -46,6 +46,15 @@ export function isManualSupplementActivity(activity: ActivityLog) {
   return activity.activityType === "wellness" && activity.detail === "Supplements";
 }
 
+const healthMedicalDetailKeywords = ["Vet Visit", "Medication", "Injection", "Vaccine", "Lab / Test", "Procedure", "Flea & Tick", "Deworming", "Other Health", "Other Vet / Medical", "Other Vet/Medical", "Other Medical"];
+
+export function formatHealthSymptomTimelineDetail(detail: string | null) {
+  const value = detail?.trim() ?? "";
+  if (!value) return "";
+  if (healthMedicalDetailKeywords.some((keyword) => value.includes(keyword))) return value;
+  return `Symptom: ${value}`;
+}
+
 export function eventCardActivityType(activity: ActivityLog): ActivityType {
   if (isManualMedicationActivity(activity)) return "medication";
   if (isManualSupplementActivity(activity)) return "supplement";
@@ -72,6 +81,12 @@ export function renderActivityDetail(activity: ActivityLog) {
     .join("\n")
     .replace(/\s*(?:•|�\?�|•)\s*Notes:\s*/g, " Notes: ") ?? null;
 
+  if (activity.activityType === "food") {
+    const foodParts = manualFoodDetailParts(activity.detail, notes);
+    if (foodParts.detail && foodParts.notes) return `${foodParts.detail} • Notes: ${foodParts.notes}`;
+    return foodParts.detail || (foodParts.notes ? `Notes: ${foodParts.notes}` : "");
+  }
+
   if (activity.activityType === "wellness" && activity.detail === "Supplements" && notes) {
     const noteLines = notes.split("\n");
     const supplementName = noteLines
@@ -86,11 +101,11 @@ export function renderActivityDetail(activity: ActivityLog) {
 
     if (supplementName && visibleNotes) return `Supplements: ${supplementName}\n${visibleNotes}`;
     if (supplementName) return `Supplements: ${supplementName}`;
-    if (visibleNotes) return `Supplements: ${visibleNotes}`;
+    if (visibleNotes) return `Unnamed Supplement • Notes: ${visibleNotes.replace(/^Notes:\s*/i, "").trim()}`;
   }
 
   if (activity.activityType === "treat" && activity.detail && notes) {
-    return `${activity.detail}: ${notes}`;
+    return `${activity.detail} • Notes: ${notes}`;
   }
 
   if (
@@ -101,7 +116,6 @@ export function renderActivityDetail(activity: ActivityLog) {
       activity.activityType === "outdoor" ||
       activity.activityType === "care" ||
       activity.activityType === "wellness" ||
-      activity.activityType === "food" ||
       activity.activityType === "supplement" ||
       activity.activityType === "medication" ||
       activity.activityType === "sick"
@@ -109,14 +123,42 @@ export function renderActivityDetail(activity: ActivityLog) {
     activity.detail &&
     notes
   ) {
-    return `${activity.detail}: ${notes}`;
+    return `${activity.detail} • Notes: ${notes}`;
   }
 
   if (activity.detail && notes) {
-    return `${activity.detail}, ${notes}`;
+    return `${activity.detail} • Notes: ${notes}`;
   }
 
   return activity.detail ?? notes ?? "";
+}
+
+export function manualFoodDetailParts(detail: string | null, notes: string | null) {
+  const detailText = detail?.trim() ?? "";
+  const notesText = notes?.trim() ?? "";
+  const detailIsPlaceholder = detailText.toLowerCase() === "food";
+
+  if (!detailIsPlaceholder) {
+    return {
+      detail: detailText,
+      notes: notesText.replace(/^Notes:\s*/i, "").trim(),
+    };
+  }
+
+  if (!notesText) {
+    return {
+      detail: "",
+      notes: "",
+    };
+  }
+
+  const [foodText, extraNotes] = notesText.split(/\s*(?:•\s*)?Notes:\s+/, 2);
+  const normalizedFoodText = foodText.replace(/^Notes:\s*/i, "").trim();
+
+  return {
+    detail: normalizedFoodText,
+    notes: extraNotes?.trim() ?? "",
+  };
 }
 
 function splitActivityNoteLines(notes: string | null) {
@@ -146,11 +188,12 @@ export function normalizeCareFrequencyLine(line: string) {
 }
 
 function medicationTemplateLabel(item: CareItemTemplate) {
-  return `${item.name.trim() || "Medication"}${item.dose ? ` • ${item.dose}` : ""}`;
+  return `${item.name.trim() || "Unnamed Medication"}${item.dose ? ` • ${item.dose}` : ""}`;
 }
 
 export function careItemShortcutLabel(item: CareItemTemplate) {
-  return `${item.name.trim() || formatActivityLabel(item.kind)}${item.dose ? ` — ${item.dose}` : ""}`;
+  const fallbackName = item.kind === "supplement" ? "Unnamed Supplement" : "Unnamed Medication";
+  return `${item.name.trim() || fallbackName}${item.dose ? ` — ${item.dose}` : ""}`;
 }
 
 export function savedCareItemLogNotes(item: CareItemTemplate) {
@@ -227,8 +270,9 @@ function medicationDetailFromTemplate(notes: string | null, careTemplates: CareI
 function medicationNameLine(detail: string) {
   const medicationText = detail.replace(/^Medication:\s*/i, "").trim();
   const [name] = medicationText.split(/\s+(?:•|—)\s+/).map((part) => part.trim()).filter(Boolean);
+  const displayName = name || medicationText || detail.replace(/^Medication:\s*/i, "").trim();
 
-  return `Medication: ${name || medicationText || detail.replace(/^Medication:\s*/i, "").trim() || "Medication"}`;
+  return `Medication: ${displayName && displayName.toLowerCase() !== "medication" ? displayName : "Unnamed Medication"}`;
 }
 
 export function renderHealthTimelineActivityDetail(activity: ActivityLog, careTemplates: CareItemTemplate[] = []) {
@@ -240,7 +284,8 @@ export function renderHealthTimelineActivityDetail(activity: ActivityLog, careTe
 
   if (!isMedicationDetail) {
     const notesText = noteLines.join("\n");
-    return notesText && detail ? `${detail} • Notes: ${notesText}` : detail || notesText;
+    const displayDetail = formatHealthSymptomTimelineDetail(detail);
+    return notesText && displayDetail ? `${displayDetail} • Notes: ${notesText}` : displayDetail || notesText;
   }
 
   const giveLine = hideDefaultOralRoute(noteLines.find((line) => line.startsWith("Give ")) ?? null);
@@ -262,10 +307,10 @@ export function renderHealthTimelineActivityDetail(activity: ActivityLog, careTe
 }
 
 export function splitTreatDetailText(value: string) {
-  const [summary, notes] = value.split(/\s+Notes:\s+/, 2);
+  const [summary, notes] = value.split(/\s*(?:•\s*)?Notes:\s+/, 2);
 
   return {
-    summary: summary.trim(),
+    summary: summary.replace(/\s*•\s*$/, "").trim(),
     notes: notes?.trim() || null,
   };
 }

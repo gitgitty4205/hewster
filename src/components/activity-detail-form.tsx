@@ -920,7 +920,7 @@ export function ActivityDetailForm({
 
   const requiresPresetDetail = activityType === "potty" || activityType === "poop";
 
-  const requiresTitleDetail = activityType === "other" || activityType === "sick";
+  const requiresTitleDetail = activityType === "sick";
 
   const visibleSavedCareItems = carePlanEditor ? [] : savedCareItems.filter((item) => {
 

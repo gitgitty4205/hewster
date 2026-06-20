@@ -422,7 +422,7 @@ export default function MealsPage() {
                         Cancel
                       </Button>
                       {editingDraft?.isNew ? null : (
-                        <Button type="button" variant="outline" className="rounded-full text-rose-600" onClick={deleteEditingMeal}>
+                        <Button type="button" variant="outline" className="rounded-full border-rose-200 text-rose-600 hover:bg-rose-50" onClick={deleteEditingMeal}>
                           <Trash2 className="size-4" />
                           Delete
                         </Button>
@@ -439,11 +439,16 @@ export default function MealsPage() {
           <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/35 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-meal-title">
             <button type="button" aria-label="Cancel delete meal" className="absolute inset-0 cursor-default" onClick={() => setMealPendingDelete(null)} />
             <div className="relative w-full max-w-md rounded-3xl bg-white p-4 text-zinc-900 shadow-2xl ring-1 ring-zinc-200">
-              <div className="mb-4">
-                <h2 id="delete-meal-title" className="text-base font-semibold">Delete meal?</h2>
-                <p className="mt-1 text-sm leading-6 text-zinc-500">
-                  Delete {mealPendingDelete.name || "this meal"} from the saved meal plan?
-                </p>
+              <div className="mb-4 flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                  <Trash2 className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="delete-meal-title" className="text-base font-semibold">Delete meal?</h2>
+                  <p className="mt-1 text-sm leading-6 text-zinc-500">
+                    Delete {mealPendingDelete.name || "this meal"} from the saved meal plan?
+                  </p>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" className="rounded-full" onClick={() => setMealPendingDelete(null)}>

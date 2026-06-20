@@ -495,8 +495,10 @@ function healthMedicationRecordParts(activity: ActivityLog, careTemplates: CareI
   const medicationLine = detailLines.find((line) => line.startsWith("Medication: ")) ?? null;
   const giveLine = detailLines.find((line) => line.startsWith("Give ")) ?? null;
 
+  const medicationTitle = medicationLine?.replace(/^Medication:\s*/i, "").trim() || "";
+
   return {
-    title: medicationLine?.replace(/^Medication:\s*/i, "").trim() || "Medication",
+    title: medicationTitle && medicationTitle.toLowerCase() !== "medication" ? medicationTitle : "Unnamed Medication",
     dosage: giveLine?.replace(/^Give\s+/i, "").trim() ?? null,
     frequency: detailLines.find((line) => line === "As Needed" || /^Every\s+\d+\s+hours\b/i.test(line)) ?? null,
     timing: detailLines.find(isMedicationTimingLine) ?? null,

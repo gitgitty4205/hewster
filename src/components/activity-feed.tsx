@@ -7,7 +7,7 @@ import { PottyDetailBadges, pottyDetailForBadge } from "@/components/potty-detai
 import { ExpandableNoteText } from "@/components/expandable-note-text";
 import type { ActivityLog } from "@/lib/hewster-data";
 import type { CareItemTemplate } from "@/lib/care-settings";
-import { compareActivitiesChronological, eventCardActivityLabel, eventCardActivityType, formatActivityTime, groupActivitiesByDay, isManualMedicationActivity, isManualSupplementActivity, normalizeCareFrequencyLine, renderTreatDetailParts, splitTreatDetailText } from "@/lib/activity";
+import { compareActivitiesChronological, eventCardActivityLabel, eventCardActivityType, formatActivityTime, formatHealthSymptomTimelineDetail, groupActivitiesByDay, isManualMedicationActivity, isManualSupplementActivity, manualFoodDetailParts, normalizeCareFrequencyLine, renderTreatDetailParts, splitTreatDetailText } from "@/lib/activity";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 type TimelineItem = {
@@ -50,6 +50,7 @@ const timelineTitleClassName = "min-w-0 text-sm font-semibold text-zinc-900";
 const timelineDetailClassName = "mt-1 text-sm text-zinc-500";
 const timelineSecondaryDetailClassName = "mt-1 text-sm text-zinc-500";
 const timelineTimeBadgeClassName = "rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200/80";
+const eventCardTimeClassName = "text-sm font-normal text-zinc-500";
 
 function initialsFromName(name?: string | null) {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -179,6 +180,13 @@ function manualMedicationName(activity: ActivityLog) {
   return activity.detail?.replace(/^Medication:\s*/i, "").trim() || "";
 }
 
+function unnamedCareFallbackName(name: string, kind: "medication" | "supplement" | null) {
+  const normalized = name.trim();
+  if (kind === "medication" && (!normalized || normalized.toLowerCase() === "medication")) return "Unnamed Medication";
+  if (kind === "supplement" && (!normalized || normalized.toLowerCase() === "supplement" || normalized.toLowerCase() === "supplements")) return "Unnamed Supplement";
+  return normalized;
+}
+
 function manualSupplementParts(lines: string[]) {
   const supplementLine = lines
     .find((line) => line.trim().startsWith("Supplement: "))
@@ -277,7 +285,7 @@ function CareTemplateTimelineDetail({ item, detail, skipped = false, onOpenText 
           ) : null}
         </div>
       ) : null}
-      {noteText ? <ExpandableNoteText className="text-zinc-500"><span className="font-medium text-zinc-600">Notes:</span> {noteText}</ExpandableNoteText> : detail && !detail.includes(item.name) ? <p className="text-zinc-500">{detail}</p> : null}
+      {noteText ? <ExpandableNoteText className="text-zinc-500">Notes: {noteText}</ExpandableNoteText> : detail && !detail.includes(item.name) ? <p className="text-zinc-500">{detail}</p> : null}
     </div>
   );
 }
@@ -302,10 +310,11 @@ function CareActivityDetail({ activity, careTemplates = [], onOpenText }: { acti
   const visibleRouteLine = routeLine === "Oral" ? null : routeLine;
   const giveDetail = giveLine ?? (supplementParts.dose ? `Give ${supplementParts.dose}` : null) ?? (doseText || visibleRouteLine ? `Give ${doseText || "as directed"}${visibleRouteLine ? ` (${visibleRouteLine})` : ""}` : null);
   const frequencyText = careFrequencyText(careLines.find(isCareFrequencyLine) ?? null) || careTemplateFrequencyText(matchedTemplate);
-  const name = (matchedTemplate?.name || supplementParts.name || (manualMedication ? manualMedicationName(activity) : "") || detail)
+  const parsedName = (matchedTemplate?.name || supplementParts.name || (manualMedication ? manualMedicationName(activity) : "") || detail)
     .replace(/\s*(?:[•·-]\s*)?(?:Skipped|Missed)\b/i, "")
     .replace(doseText ? new RegExp(`\\s*(?:[•·-]|—)\\s*${doseText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : /$^/, "")
     .trim();
+  const name = unnamedCareFallbackName(parsedName, manualMedication ? "medication" : manualSupplement ? "supplement" : null);
   const templatePlanNotes = matchedTemplate?.notes.trim() ?? "";
   const planNotes = [
     ...careLines.filter((line) => line.startsWith("Plan Notes: ")).map((line) => line.replace("Plan Notes: ", "")),
@@ -343,7 +352,7 @@ function CareActivityDetail({ activity, careTemplates = [], onOpenText }: { acti
       ) : null}
       {frequencyText ? <p className="text-zinc-500">{frequencyText}</p> : null}
       {planNotes.length ? <ExpandableNoteText className="text-zinc-500">{planNotes.join(" · ")}</ExpandableNoteText> : null}
-      {specialNotes.length ? <ExpandableNoteText className="text-zinc-500"><span className="font-medium text-zinc-600">Notes:</span> {specialNotes.join(" · ")}</ExpandableNoteText> : null}
+      {specialNotes.length ? <ExpandableNoteText className="text-zinc-500">Notes: {specialNotes.join(" · ")}</ExpandableNoteText> : null}
       {showAttachmentFallback && attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
     </div>
   );
@@ -352,6 +361,9 @@ function CareActivityDetail({ activity, careTemplates = [], onOpenText }: { acti
 function ActivityDetailAndNotes({ activity, careTemplates = [], onOpenText }: { activity: ActivityLog; careTemplates?: CareItemTemplate[]; onOpenText?: (modal: TextModal) => void }) {
   const { notesText, attachmentLine } = splitActivityNotes(activity.notes);
   const showAttachmentFallback = !activity.attachments?.length;
+  const foodParts = activity.activityType === "food" ? manualFoodDetailParts(activity.detail, notesText) : null;
+  const activityDetail = foodParts?.detail ?? (activity.activityType === "sick" ? formatHealthSymptomTimelineDetail(activity.detail) : activity.detail);
+  const activityNotes = foodParts ? foodParts.notes : notesText;
 
   if (["medication", "supplement"].includes(activity.activityType) || isManualMedicationActivity(activity) || isManualSupplementActivity(activity)) {
     return <CareActivityDetail activity={activity} careTemplates={careTemplates} onOpenText={onOpenText} />;
@@ -359,8 +371,8 @@ function ActivityDetailAndNotes({ activity, careTemplates = [], onOpenText }: { 
 
   return (
     <div className="mt-1 space-y-1 text-sm text-zinc-600">
-      {activity.detail ? <OpenableText modal={{ title: displayActivityLabel(activity), label: "Details", text: activity.detail }} onOpen={onOpenText}>{activity.detail}</OpenableText> : null}
-      {notesText ? <ExpandableNoteText>Notes: {notesText}</ExpandableNoteText> : null}
+      {activityDetail ? <OpenableText modal={{ title: displayActivityLabel(activity), label: "Details", text: activityDetail }} onOpen={onOpenText}>{activityDetail}</OpenableText> : null}
+      {activityNotes ? <ExpandableNoteText>Notes: {activityNotes}</ExpandableNoteText> : null}
       {showAttachmentFallback && attachmentLine ? <ExpandableNoteText className="text-zinc-500">{attachmentLine}</ExpandableNoteText> : null}
     </div>
   );
@@ -480,12 +492,7 @@ function TimelineLineContent({ line }: { line: string }) {
     return <span className="font-semibold text-zinc-800">{displayLine}</span>;
   }
   if (displayLine.startsWith("Notes: ")) {
-    return (
-      <>
-        <span className="font-medium text-zinc-600">Notes:</span>
-        {displayLine.slice("Notes:".length)}
-      </>
-    );
+    return <>{displayLine}</>;
   }
   if (displayLine.startsWith("Plan Notes: ")) {
     return <>{displayLine.slice("Plan Notes:".length).trim()}</>;
@@ -586,6 +593,7 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
       return {
         icon: null,
         iconText: "\u{1F6BD}",
+        iconTextClass: "text-[1.15rem]",
         card: "bg-[#ead7a8] ring-[#f0d27a]",
         iconWrap: "bg-[rgba(255,255,255,0.55)] text-[#8a6200] ring-1 ring-[rgba(240,210,122,0.6)]",
         dot: "bg-[#d7a900]",
@@ -595,15 +603,16 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
         icon: Droplets,
         iconText: null,
         card: "bg-[#ead7a8] ring-amber-200",
-        iconWrap: "bg-amber-100 text-amber-600",
+        iconWrap: "bg-amber-100 text-amber-600 ring-1 ring-amber-200",
         dot: "bg-amber-400",
       };
     case "poop":
       return {
         icon: null,
         iconText: "\u{1F4A9}",
+        iconTextClass: "text-[1.15rem]",
         card: "bg-[#ead7a8] ring-orange-200",
-        iconWrap: "bg-orange-100 text-orange-600",
+        iconWrap: "bg-orange-100 text-orange-600 ring-1 ring-orange-200",
         dot: "bg-orange-800",
       };
     case "activity":
@@ -611,16 +620,18 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
       return {
         icon: null,
         iconText: "\u{1F333}",
+        iconTextClass: "text-[1.15rem]",
         card: "bg-emerald-50/80 ring-emerald-200",
-        iconWrap: "bg-emerald-100 text-emerald-600",
+        iconWrap: "bg-emerald-100 text-emerald-600 ring-1 ring-emerald-200",
         dot: "bg-emerald-400",
       };
     case "care":
       return {
         icon: null,
         iconText: "\u{1F3E0}",
+        iconTextClass: "text-[1.15rem]",
         card: "bg-purple-50/80 ring-purple-200",
-        iconWrap: "bg-purple-200 text-purple-800",
+        iconWrap: "bg-purple-200 text-purple-800 ring-1 ring-purple-300",
         dot: "bg-purple-400",
       };
     case "wellness":
@@ -628,32 +639,35 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
         icon: null,
         iconText: "\u{1F33F}",
         card: "bg-rose-50/80 ring-rose-200",
-        iconWrap: "bg-rose-100 text-rose-600",
+        iconWrap: "bg-rose-100 text-rose-600 ring-1 ring-rose-200",
         dot: "bg-rose-400",
       };
     case "hike":
       return {
         icon: null,
         iconText: "\u{1F333}",
+        iconTextClass: "text-[1.15rem]",
         card: "bg-emerald-50/80 ring-emerald-200",
-        iconWrap: "bg-emerald-100 text-emerald-600",
+        iconWrap: "bg-emerald-100 text-emerald-600 ring-1 ring-emerald-200",
         dot: "bg-emerald-400",
       };
     case "treat":
       return {
         icon: null,
         iconText: "\u{1F9B4}",
+        iconTextClass: "text-[1.15rem]",
         card: "bg-orange-50/80 ring-orange-200",
-        iconWrap: "bg-orange-400 text-white",
+        iconWrap: "bg-orange-400 text-white ring-1 ring-orange-200",
         dot: "bg-orange-400",
       };
     case "food":
       return {
         icon: null,
         emojiAsset: "steak" as const,
+        emojiAssetClass: "size-5",
         iconText: null,
         card: "bg-[#ead8c5]/80 ring-[#caa57f]",
-        iconWrap: "bg-[#8a5a35]/75 text-white",
+        iconWrap: "bg-[#8a5a35]/75 text-white ring-1 ring-[#caa57f]",
         dot: "bg-amber-900",
       };
     case "supplement":
@@ -676,9 +690,10 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
       return {
         icon: null,
         emojiAsset: "health" as const,
+        emojiAssetClass: "size-5",
         iconText: null,
         card: "bg-sky-50/80 ring-sky-200",
-        iconWrap: "bg-sky-100 text-sky-600",
+        iconWrap: "bg-sky-100 text-sky-600 ring-1 ring-sky-200",
         dot: "bg-sky-400",
       };
     case "other":
@@ -686,7 +701,7 @@ function getActivityStyle(activityType: ActivityLog["activityType"]) {
         icon: Ellipsis,
         iconText: null,
         card: "bg-zinc-100/90 ring-zinc-200",
-        iconWrap: "bg-zinc-200 text-zinc-600",
+        iconWrap: "bg-zinc-200 text-zinc-600 ring-1 ring-zinc-300",
         dot: "bg-zinc-400",
       };
   }
@@ -705,12 +720,12 @@ export function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
     case "outdoor":
       return {
         dot: "bg-emerald-100 ring-1 ring-emerald-200",
-        icon: <span className="text-[0.72rem] leading-none">🌳</span>,
+        icon: <span className="text-[0.82rem] leading-none">🌳</span>,
       };
     case "care":
       return {
         dot: "bg-purple-100 ring-1 ring-purple-200",
-        icon: <span className="text-[0.72rem] leading-none">🏠</span>,
+        icon: <span className="text-[0.82rem] leading-none">🏠</span>,
       };
     case "wellness":
       return {
@@ -720,16 +735,16 @@ export function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
     case "hike":
       return {
         dot: "bg-emerald-100 ring-1 ring-emerald-200",
-        icon: <span className="text-[0.72rem] leading-none">🌳</span>,
+        icon: <span className="text-[0.82rem] leading-none">🌳</span>,
       };
     case "treat":
       return {
-        dot: "bg-orange-100 ring-1 ring-orange-200",
-        icon: <span className="text-[0.72rem] leading-none">🦴</span>,
+        dot: "bg-orange-300 ring-1 ring-orange-200",
+        icon: <span className="text-[0.72rem] leading-none text-white">🦴</span>,
       };
     case "food":
       return {
-        dot: "bg-[#8a5a35]/75 ring-1 ring-[#8a5a35]/75",
+        dot: "bg-[#8a5a35]/75 ring-1 ring-[#caa57f]",
         icon: <EmojiAsset name="steak" label="Food" className="size-4" />,
       };
     case "supplement":
@@ -754,7 +769,7 @@ export function getTimelineStyle(activityType?: TimelineItem["activityType"]) {
       };
     case "meal":
       return {
-        dot: "bg-[#8a5a35]/75 ring-1 ring-[#8a5a35]/75",
+        dot: "bg-[#8a5a35]/75 ring-1 ring-[#caa57f]",
         icon: <EmojiAsset name="steak" label="Meal" className="size-4" />,
       };
     case "manual":
@@ -785,10 +800,10 @@ function timelineDisplayLabel(item: TimelineItem) {
 function ActivityStyleIcon({ style }: { style: ReturnType<typeof getActivityStyle> }) {
   const Icon = style.icon;
 
-  if (Icon) return <Icon className="size-4.5" />;
-  if ("emojiAsset" in style && style.emojiAsset) return <EmojiAsset name={style.emojiAsset} label="Activity" className="size-5" />;
+  if (Icon) return <Icon className="size-3.5" />;
+  if ("emojiAsset" in style && style.emojiAsset) return <EmojiAsset name={style.emojiAsset} label="Activity" className={"emojiAssetClass" in style ? style.emojiAssetClass : "size-3.5"} />;
 
-  return <span className="text-lg leading-none">{style.iconText}</span>;
+  return <span className={`inline-flex size-4 items-center justify-center ${"iconTextClass" in style ? style.iconTextClass : "text-[0.92rem]"} leading-none`}>{style.iconText}</span>;
 }
 
 export function TimelineMarker({ style }: { style: ReturnType<typeof getTimelineStyle> }) {
@@ -851,7 +866,7 @@ export function ActivityFeed({
                         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                           <button className="min-w-0 flex-1 text-left" onClick={() => onSelectActivity?.(activity)}>
                             <div className="flex items-center gap-3">
-                              <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+                              <span className={`flex size-8 items-center justify-center rounded-full ${style.iconWrap}`}>
                                 <ActivityStyleIcon style={style} />
                               </span>
                               <p className="font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
@@ -859,7 +874,7 @@ export function ActivityFeed({
                             <PottyDetailBadges detail={pottyDetailForBadge(activity)} />
                           </button>
                           <div className="shrink-0 text-right">
-                            <p className={timelineTimeBadgeClassName}>{customCareDisplayTime(activity)}</p>
+                            <p className={eventCardTimeClassName}>{customCareDisplayTime(activity)}</p>
                             <ActivityAttachmentLinks activity={pottyAttachmentActivity} className="mt-2 flex flex-wrap justify-end gap-2" />
                           </div>
                         </div>
@@ -874,12 +889,12 @@ export function ActivityFeed({
                       <button className="block w-full text-left" onClick={() => onSelectActivity?.(activity)}>
                         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                           <div className="flex min-w-0 items-center gap-3">
-                            <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+                            <span className={`flex size-8 items-center justify-center rounded-full ${style.iconWrap}`}>
                               <ActivityStyleIcon style={style} />
                             </span>
                             <p className="min-w-0 font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
                           </div>
-                          <p className={timelineTimeBadgeClassName}>{customCareDisplayTime(activity)}</p>
+                          <p className={eventCardTimeClassName}>{customCareDisplayTime(activity)}</p>
                         </div>
                         {isPottyActivity ? (
                           <PottyDetailBadges detail={pottyDetailForBadge(activity)} />
@@ -952,12 +967,12 @@ export function ActivityFeed({
                       >
                         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                           <div className="flex min-w-0 items-center gap-3">
-                            <span className={`flex size-9 items-center justify-center rounded-full ${style.iconWrap}`}>
+                            <span className={`flex size-8 items-center justify-center rounded-full ${style.iconWrap}`}>
                               <ActivityStyleIcon style={style} />
                             </span>
                             <p className="min-w-0 font-medium text-zinc-900">{displayActivityLabel(activity)}</p>
                           </div>
-                          <p className={timelineTimeBadgeClassName}>{customCareDisplayTime(activity)}</p>
+                          <p className={eventCardTimeClassName}>{customCareDisplayTime(activity)}</p>
                         </div>
                         {["pee", "poop", "potty"].includes(activity.activityType) && pottyDetailForBadge(activity) ? (
                           <PottyDetailBadges detail={pottyDetailForBadge(activity)} />

@@ -124,8 +124,8 @@ export default function PoopHistoryPage() {
                     <article key={log.id} className="rounded-2xl border border-orange-200 bg-orange-50/60 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <span className="flex size-9 items-center justify-center rounded-full bg-[rgba(255,255,255,0.55)] text-[#8a6200] ring-1 ring-[rgba(240,210,122,0.6)]">
-                            <span className="text-lg leading-none">{"\u{1F6BD}"}</span>
+                          <span className="flex size-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.55)] text-[#8a6200] ring-1 ring-[rgba(240,210,122,0.6)]">
+                            <span className="inline-flex size-4 items-center justify-center text-[1.15rem] leading-none">{"\u{1F6BD}"}</span>
                           </span>
                           <p className="font-medium text-zinc-900">Potty</p>
                         </div>
